@@ -1,0 +1,103 @@
+--- src/compress.c	2026-10-25 10:46:31.042926935 -0500
++++ tuned/compress.c	2026-10-25 10:48:54.012102431 -0500
+@@ -235,8 +235,10 @@
+ #define BZ_LESSER_ICOST  0
+ #define BZ_GREATER_ICOST 15
+ 
++/* HCM-tuned: same bitstream format; the encoder tries several table
++   counts and iteration counts and keeps the one that writes the fewest bits. */
+ static
+-void sendMTFValues ( EState* s )
++void sendMTFValues_p ( EState* s, Int32 forceGroups, Int32 nIters, Int32 maxCL, Int32 initV )
+ {
+    Int32 v, t, i, j, gs, ge, totc, bt, bc, iter;
+    Int32 nSelectors, alphaSize, minLen, maxLen, selCtr;
+@@ -275,6 +277,7 @@
+    if (s->nMTF < 1200) nGroups = 4; else
+    if (s->nMTF < 2400) nGroups = 5; else
+                        nGroups = 6;
++   if (forceGroups > 0) nGroups = forceGroups;
+ 
+    /*--- Generate an initial set of coding tables ---*/
+    {
+@@ -292,7 +295,7 @@
+             aFreq += s->mtfFreq[ge];
+          }
+ 
+-         if (ge > gs
++         if (initV == 0 && ge > gs
+              && nPart != nGroups && nPart != 1
+              && ((nGroups-nPart) % 2 == 1)) {
+             aFreq -= s->mtfFreq[ge];
+@@ -316,10 +319,21 @@
+       }
+    }
+ 
++   if (initV == 2) {   /* initial tables from contiguous stretches of the block */
++      Int32 nG50 = (s->nMTF + BZ_G_SIZE - 1) / BZ_G_SIZE;
++      for (t = 0; t < nGroups; t++) for (v = 0; v < alphaSize; v++) s->rfreq[t][v] = 1;
++      for (i = 0; i < s->nMTF; i++) {
++         t = (Int32)(((long long)(i / BZ_G_SIZE) * nGroups) / nG50);
++         s->rfreq[t][mtfv[i]]++;
++      }
++      for (t = 0; t < nGroups; t++)
++         BZ2_hbMakeCodeLengths ( &(s->len[t][0]), &(s->rfreq[t][0]), alphaSize, maxCL );
++   }
++
+    /*---
+       Iterate up to BZ_N_ITERS times to improve the tables.
+    ---*/
+-   for (iter = 0; iter < BZ_N_ITERS; iter++) {
++   for (iter = 0; iter < nIters; iter++) {
+ 
+       for (t = 0; t < nGroups; t++) fave[t] = 0;
+ 
+@@ -448,7 +462,7 @@
+          comment in huffman.c for details. */
+       for (t = 0; t < nGroups; t++)
+          BZ2_hbMakeCodeLengths ( &(s->len[t][0]), &(s->rfreq[t][0]),
+-                                 alphaSize, 17 /*20*/ );
++                                 alphaSize, maxCL );
+    }
+ 
+ 
+@@ -485,7 +499,7 @@
+          if (s->len[t][i] > maxLen) maxLen = s->len[t][i];
+          if (s->len[t][i] < minLen) minLen = s->len[t][i];
+       }
+-      AssertH ( !(maxLen > 17 /*20*/ ), 3004 );
++      AssertH ( !(maxLen > maxCL), 3004 );
+       AssertH ( !(minLen < 1),  3005 );
+       BZ2_hbAssignCodes ( &(s->code[t][0]), &(s->len[t][0]),
+                           minLen, maxLen, alphaSize );
+@@ -597,6 +611,30 @@
+ }
+ 
+ 
++static
++void sendMTFValues ( EState* s )
++{
++   /* dry runs write into the output buffer and are then rolled back */
++   UInt32 b0 = s->bsBuff; Int32 l0 = s->bsLive, z0 = s->numZ;
++   Int32 g, it, ml, iv, bestG = 0, bestI = BZ_N_ITERS, bestM = 17, bestV = 0;
++   long long best = -1;
++   static const Int32 iters[] = { 4, 8, 16, 32 };
++   static const Int32 mls[] = { 17, 20 };
++   for (g = 2; g <= 6; g++)
++    for (it = 0; it < 4; it++)
++     for (ml = 0; ml < 2; ml++)
++      for (iv = 0; iv < 3; iv++) {
++         Int32 vb = s->verbosity; s->verbosity = 0;
++         sendMTFValues_p ( s, g, iters[it], mls[ml], iv );
++         s->verbosity = vb;
++         long long bits = (long long)(s->numZ - z0) * 8 + s->bsLive - l0;
++         if (best < 0 || bits < best) { best = bits; bestG = g; bestI = iters[it]; bestM = mls[ml]; bestV = iv; }
++         s->bsBuff = b0; s->bsLive = l0; s->numZ = z0;
++      }
++   sendMTFValues_p ( s, bestG, bestI, bestM, bestV );
++}
++
++
+ /*---------------------------------------------------*/
+ void BZ2_compressBlock ( EState* s, Bool is_last_block )
+ {
