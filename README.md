@@ -15,6 +15,7 @@ This repository has three tools:
 ## The book and the research code
 
 - **Book:** [`Harringtons-Insights.pdf`](Harringtons-Insights.pdf) — *Harrington's Insights: Improvements, Concepts, Strategies, Successes and Failures in Data Compression*.
+- **Best results charts:** [`benchmarks/charts-2026-10-29/Harrington-Best-Results-Full.pdf`](benchmarks/charts-2026-10-29/Harrington-Best-Results-Full.pdf) — every tool built or modified here (originals, modifieds, mutants) against the stock tools on each standard benchmark; also in the book as Appendix G.
 - **Research source code:** [`src/`](src/) — hcmx (HCM v3.3 + ternary pointer + HCM-Bin), the Harrington Exchange and its Blosc2 hybrid, the baseline comparisons and the record-delta benchmark. See [`src/README.md`](src/README.md).
 
 ## Results: Canterbury Corpus (all 11 files)
