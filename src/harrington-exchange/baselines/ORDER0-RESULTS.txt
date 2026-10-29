@@ -1,0 +1,20 @@
+ORDER-0 CODER VS THE HARRINGTON EXCHANGE (29 October 2026)
+
+Coder: o0.c, a static order-0 rANS coder reading the data at a fixed symbol width
+(12-bit file at 12 bits, 5-bit file at 5 bits, both NIST files at 8 bits).
+One run per file. Compression time includes symbol unpacking and table build; decode time includes
+table build, rANS decode and repacking. All round trips exact. Sizes include the frequency table header.
+
+File (original bytes)        Order-0 size  Ratio  Compress  Decode   | Exchange (zstd)    | Exchange->Blosc2 hybrid
+12-bit noise (524,288)       323,335       1.62   3.9 ms    3.4 ms   | 324,507 / 5.1 ms   | 324,765 / 0.7 ms
+NIST biased bits (125,000)   17,925        6.97   1.5 ms    1.2 ms   | 19,722 / 1.5 ms    | 20,777 / 0.25 ms
+NIST biased bytes (1,000,000) 290,572      3.44   12.9 ms   15.4 ms  | 321,128 / 7.2 ms   | 321,168 / 1.3 ms
+5-bit skewed (524,289)       340,229       1.54   8.3 ms    8.3 ms   | 346,370 / 11.3 ms  | 345,725 / 0.93 ms
+
+Readings
+- Size: the order-0 coder is smallest on all four files; on the biased bits it is also smaller than
+  paq8px (17,925 vs 18,064). The NIST biased bytes are almost exactly memoryless, which order-0 exploits fully.
+- Speed: the Exchange->Blosc2 hybrid decodes 4-12x faster than this order-0 coder on all four files.
+- Caveats: the order-0 coder was told the right symbol width (the Exchange finds it itself); o0.c is a
+  simple, unoptimised implementation, so a tuned coder would decode faster; order-0 coding only suits
+  memoryless data and would lose to zstd-based methods on data with repeats (e.g. the radio captures).
