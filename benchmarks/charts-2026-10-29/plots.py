@@ -5,6 +5,7 @@ Writes PNG charts to charts/ and a combined PDF report Harrington-Benchmark-Char
 import json, os, sys, textwrap
 import matplotlib; matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.ticker
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.lines import Line2D
 
@@ -32,7 +33,7 @@ def totals():
         o = sum(x['orig'] for x in f); c = sum(x['comp'] for x in f)
         ct = sum(x['ct'] for x in f); dt = sum(x['dt'] for x in f)
         ram = max(max(x.get('cram', 0), x.get('dram', 0)) for x in f)
-        sets.setdefault(v['set'], {})[v['tool']] = dict(kind=v['kind'], orig=o, comp=c, ct=ct, dt=dt,
+        sets.setdefault({'Synthetic (Goodwin)': 'Synthetic set'}.get(v['set'], v['set']), {})[v['tool']] = dict(kind=v['kind'], orig=o, comp=c, ct=ct, dt=dt,
             ram=ram, files={n: x['comp'] / x['orig'] * 100 for n, x in v['files'].items()})
     # Silesia sample and Synthetic: existing recorded data only (no new runs)
     G = json.load(open(os.path.join(HERE, 'goodwin_corpora_cloud.json')))['res']
@@ -40,6 +41,7 @@ def totals():
     keep = {'lz4 -1': 'lz4 -1', 'gzip -9': 'gzip -9', 'bzip2 -9': 'bzip2 -9', 'zstd -3': 'zstd -3', 'zstd -19': 'zstd -19',
             'xz -9e': 'xz -9e', 'lpaq1 6': 'lpaq1 -6', 'ZPAQ -m5': 'ZPAQ -m5', 'HCM fast': 'HCM fast*', 'HCM max': 'HCM max*'}
     for gname, sname in (('Silesia (first 1 MB of each file)', 'Silesia 1 MB sample'), ('Synthetic', 'Synthetic set')):
+        if len(sets.get(sname, {})) >= 14: continue   # complete fresh run exists: use it
         rows = {}
         for k, n in keep.items():
             v = G[gname][k]
@@ -52,13 +54,57 @@ def totals():
             rows['bzip2-hi*'] = dict(kind='Modified', orig=sum(x['orig'] for x in f), comp=sum(x['comp'] for x in f),
                                     ct=sum(x['ct'] for x in f), dt=sum(x['dt'] for x in f), ram=None, files={})
         sets[sname] = rows
-    sets = {k: v for k, v in sets.items() if k == 'Canterbury' or '*' in ''.join(v)}
     return sets
 
 def pareto(pts):
     """pts: list of (speed, pct, name). Frontier = nothing both faster and smaller."""
     fr = [p for p in pts if not any(q[0] >= p[0] and q[1] <= p[1] and (q[0] > p[0] or q[1] < p[1]) for q in pts)]
     return sorted(fr)
+
+def place_labels(ax, items, fs=7.5):
+    """Greedy placement: each label tries 16 positions around its dot (then further out with a
+    leader line) and takes the first whose box hits no other label, dot or the axes edge."""
+    from matplotlib.transforms import Bbox
+    fig = ax.figure; fig.canvas.draw(); rend = fig.canvas.get_renderer()
+    axbox = ax.get_window_extent(rend)
+    dots = [Bbox.from_bounds(*(ax.transData.transform((x, y)) - 6), 12, 12) for x, y, _, _ in items]
+    placed = []
+    centers = [ax.transData.transform((x, y)) for x, y, _, _ in items]
+    def nearest_is_own(bb, i):
+        # the label's nearest edge point must be closer to its own dot than to any other dot
+        def dist(c):
+            dx = max(bb.x0 - c[0], 0, c[0] - bb.x1); dy = max(bb.y0 - c[1], 0, c[1] - bb.y1); return (dx * dx + dy * dy) ** 0.5
+        d0 = dist(centers[i])
+        return all(dist(c) > d0 + 2 for j, c in enumerate(centers) if j != i)
+    # place ours (bold) first so they get the best spots
+    order = sorted(range(len(items)), key=lambda i: items[i][3].get('fontweight') != 'bold')
+    rings = [(7, 3, 'left', 'bottom'), (-7, 3, 'right', 'bottom'), (7, -3, 'left', 'top'), (-7, -3, 'right', 'top'),
+             (0, 9, 'center', 'bottom'), (0, -9, 'center', 'top')]
+    cands = []
+    for k in (1, 2.4, 3.8, 5.2, 6.6, 8.0, 9.4):
+        cands += [(dx * k if dx else 0, dy * k, ha, va) for dx, dy, ha, va in rings]
+    skipped = []
+    for i in order:
+        x, y, name, kw = items[i]
+        done = False
+        for strict in (True, False):
+            for dx, dy, ha, va in cands:
+                far = abs(dy) > 12 or abs(dx) > 12
+                if not strict and not far: continue
+                t = ax.annotate(name, (x, y), xytext=(dx, dy), textcoords='offset points', ha=ha, va=va, fontsize=fs, **kw)
+                bb = t.get_window_extent(rend).expanded(1.04, 1.15)
+                others = [d for j, d in enumerate(dots) if j != i]
+                ok = (axbox.contains(bb.x0, bb.y0) and axbox.contains(bb.x1, bb.y1)
+                      and not any(bb.overlaps(o) for o in placed + others) and (not strict or nearest_is_own(bb, i)))
+                t.remove()
+                if ok:
+                    placed.append(bb)
+                    ax.annotate(name, (x, y), xytext=(dx, dy), textcoords='offset points', ha=ha, va=va, fontsize=fs,
+                                arrowprops=dict(arrowstyle='-', color='#8a8a85', lw=0.8, shrinkA=0, shrinkB=5) if far else None, **kw)
+                    done = True; break
+            if done: break
+        if not done: skipped.append(name)
+    return skipped
 
 def scatter(ax, rows, speed_key, xlabel, title):
     pts = []; lbl = []
@@ -77,17 +123,7 @@ def scatter(ax, rows, speed_key, xlabel, title):
     ax.set_xscale('log')
     xs = [p[0] for p in pts]; lo, hi = min(xs), max(xs)
     ax.set_xlim(lo / 2.5, hi * 2.5)
-    lbl.sort(key=lambda t: t[1]); placed = []
-    import math
-    ylo, yhi = min(p[1] for p in pts), max(p[1] for p in pts); yr = (yhi - ylo) or 1
-    for s, pct, name, ours in lbl:
-        right = s > hi / 6   # near the right edge: label goes on the left
-        dy = 3
-        while any(abs(math.log10(s) - a) < 0.6 and abs((pct - b) / yr * 380 + dy - c) < 10 for a, b, c in placed):
-            dy += 10
-        placed.append((math.log10(s), pct, dy))
-        ax.annotate(name, (s, pct), xytext=(-7 if right else 7, dy), textcoords='offset points', fontsize=7.5,
-                    ha='right' if right else 'left', color=INK if ours else INK2, fontweight='bold' if ours else 'normal')
+    place_labels(ax, [(s, pct, name, dict(color=INK if ours else INK2, fontweight='bold' if ours else 'normal')) for s, pct, name, ours in lbl])
     ax.set_xscale('log'); ax.set_xlabel(xlabel); ax.set_ylabel('Compressed size, % of original (lower is better)')
     ax.set_title(title, loc='left'); ax.grid(True, color=GRID, lw=0.6); ax.set_axisbelow(True)
     for sp in ('top', 'right'): ax.spines[sp].set_visible(False)
@@ -144,25 +180,36 @@ def main():
      "Classes. Standard: the stock tool. Original: the author's own designs (HCM, hcmx, Harrington Exchange). Modified: a tuned encoder whose output the stock decoder reads unchanged (bzip2-hi, xz-hi). Mutant: an existing compressor whose decoder was changed (lpaq1-h, the Exchange->Blosc2 hybrid, Exchange->xz).",
      "Sets follow Andrew Goodwin's review: the Canterbury corpus, the first 1 MB of each Silesia file, and his synthetic set; plus the author's biased packed-data set and six radio captures from earlier runs.",
      "How to read the dot charts. Each dot is one tool's total over a set. Up and down is size (lower is smaller); left to right is speed in MB of original data per second on a log scale (further right is faster). The dashed line joins the tools that nothing else beats on both size and speed; dots with a dark ring sit on it. Our tools are drawn larger with bold labels. The line charts show each file separately.",
-     "Data sources. Canterbury: one fresh run of every tool on one machine (29 Oct 2026). Silesia sample and Synthetic set: no new runs; the standard tools and HCM (marked *, Goodwin's HCM build) are Andrew Goodwin's recorded results (single 2.1 GHz Xeon core), and lpaq1-h* and bzip2-hi* are the author's recorded runs on a different machine, so their times are comparable only roughly (lpaq1-h decoded at the same speed as stock lpaq1 on the author's machine). Peak memory and file-by-file charts are given for Canterbury only, where every tool was measured together.",
+     "Data sources. All three of Goodwin's sets were run fresh, one run of all 14 tools per file on the same machine (29 Oct 2026), so speeds compare directly. Peak memory is the highest of compression and decode across the set's files.",
      "Timing notes. Times are wall clock including program start-up, so on small files the fast tools all look about the same; sizes are exact. lpaq1-h's compression time is the sum of its six tries (it keeps the best). ZPAQ sizes have its 1,015-byte per-file archive header removed, as in Goodwin's review. On the biased and radio sets decode times are earlier in-process measurements and compression times were mostly not recorded, so those two sets have decode charts only; ZPAQ's radio decode time is an estimate.",
      "RESULTS"] + summary(sets)
     text_page(pdf, 'Benchmark Charts', intro, 'summary.png')
     for sname, rows in sets.items():
-        fig, axs = plt.subplots(1, 2, figsize=(14, 6.6))
+        fig, axs = plt.subplots(1, 2, figsize=(14, 6.6)); fig.subplots_adjust(bottom=0.2, left=0.06, right=0.98, wspace=0.18)
         scatter(axs[0], rows, 'dt', 'Decompression speed, MB/s (log)', f'{sname}: size vs decode speed')
         scatter(axs[1], rows, 'ct', 'Compression speed, MB/s (log)', f'{sname}: size vs compression speed')
         legend(fig); fig.subplots_adjust(bottom=0.2, left=0.06, right=0.98, wspace=0.18)
         save(fig, f'{sname.split()[0].lower()}_scatter.png', pdf)
+        # close-up of the crowded strongest group
+        mn = min(r['comp'] for r in rows.values())
+        top = {n: r for n, r in rows.items() if r['comp'] <= mn * 1.15}
+        if len(top) >= 3:
+            fig, axs = plt.subplots(1, 2, figsize=(14, 6.6)); fig.subplots_adjust(bottom=0.2, left=0.06, right=0.98, wspace=0.18)
+            scatter(axs[0], top, 'dt', 'Decompression speed, MB/s (log)', f'{sname}, close-up of the smallest group: decode')
+            scatter(axs[1], top, 'ct', 'Compression speed, MB/s (log)', f'{sname}, close-up: compression')
+            for a in axs:
+                a.yaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter('%.2f'))
+            legend(fig); save(fig, f'{sname.split()[0].lower()}_closeup.png', pdf)
         if any(r['ram'] is None for r in rows.values()): continue
         # RAM chart
-        fig, ax = plt.subplots(figsize=(8.5, 5.5))
+        fig, ax = plt.subplots(figsize=(8.5, 5.5)); fig.subplots_adjust(bottom=0.25)
         for n, r in rows.items():
             col, m, _ = KIND[r['kind']]
             ax.scatter(r['ram'], r['comp'] / r['orig'] * 100, c=col, marker=m, s=60, edgecolors='white')
-            ax.annotate(n, (r['ram'], r['comp'] / r['orig'] * 100), xytext=(5, 3), textcoords='offset points', fontsize=7.5,
-                        color=INK if r['kind'] in OURS else INK2, fontweight='bold' if r['kind'] in OURS else 'normal')
-        ax.set_xscale('log'); ax.set_xlabel('Peak memory, MB (log; lower is lighter)'); ax.set_ylabel('Size, % of original')
+        ax.set_xscale('log'); rams = [r['ram'] for r in rows.values()]; ax.set_xlim(min(rams) / 2, max(rams) * 2.5)
+        place_labels(ax, [(r['ram'], r['comp'] / r['orig'] * 100, n, dict(color=INK if r['kind'] in OURS else INK2,
+                     fontweight='bold' if r['kind'] in OURS else 'normal')) for n, r in rows.items()])
+        ax.set_xlabel('Peak memory, MB (log; lower is lighter)'); ax.set_ylabel('Size, % of original')
         ax.set_title(f'{sname}: size vs peak memory', loc='left'); ax.grid(True, color=GRID, lw=0.6)
         for sp in ('top', 'right'): ax.spines[sp].set_visible(False)
         legend(fig); fig.subplots_adjust(bottom=0.25); save(fig, f'{sname.split()[0].lower()}_ram.png', pdf)
@@ -203,7 +250,7 @@ def main():
         for n, t in d['tools'].items():
             rows[n] = dict(kind=t['kind'], orig=d['orig'], comp=t['comp'], dt=(t['dt_ms'] / 1000 if t.get('dt_ms') else None))
         missing = [n for n, r in rows.items() if not r['dt']]
-        fig, ax = plt.subplots(figsize=(11, 6.6))
+        fig, ax = plt.subplots(figsize=(11, 6.6)); fig.subplots_adjust(bottom=0.24, left=0.07, right=0.98)
         scatter(ax, rows, 'dt', 'Decompression speed, MB/s (log)', f'{sname}: size vs decode speed')
         note = 'Compression times were not recorded for this set; decode times are earlier in-process measurements.'
         if missing:

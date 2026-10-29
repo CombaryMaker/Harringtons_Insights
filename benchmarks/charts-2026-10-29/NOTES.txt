@@ -1,7 +1,11 @@
-Benchmark charts, 29 October 2026.
-plots.py builds every chart and Harrington-Benchmark-Charts.pdf from the recorded data in this folder.
-Canterbury: fresh single run of all 14 tools on one machine (bench.py, results.json); size, compression time, decode time and peak memory per file.
-Silesia 1 MB sample and Synthetic set: Andrew Goodwin's recorded results (goodwin_corpora_cloud.json) for standard tools and HCM, plus our recorded lpaq1-h runs (lpaq1h_goodwin_sets.json) and a bzip2-hi Silesia run from a different machine, so speeds compare only roughly.
+Benchmark charts, 29 October 2026 (final).
+plots.py builds every chart and Harrington-Benchmark-Charts.pdf from the recorded data in this folder; bench.py is the harness that produced results.json.
+Canterbury, Silesia 1 MB sample and Goodwin's Synthetic set: one fresh run of all 14 tools on the same machine; size, compression time, decode time and peak memory per file; every round trip verified.
 Biased packed data and radio captures: earlier recorded results (extra_sets.json); compression times mostly not recorded and some decode times missing (noted on the charts).
-Notable: on Canterbury HCM v3.4 max (350,326 bytes) is smaller than ZPAQ -m5 (350,542) and decodes in 3.4 s vs 11.5 s; xz-hi is smaller than xz -9e and bzip2 -9 at stock decode speed. On the Synthetic set lpaq1-h (8,113,745) is smaller and faster to decode than ZPAQ -m5 (8,202,053). On Silesia ZPAQ -m5 remains smallest.
-The full benchmark run was stopped partway through Silesia; its unfinished results were not used.
+goodwin_corpora_cloud.json (Goodwin's own recorded results) and lpaq1h_goodwin_sets.json are kept for reference.
+Results, in bytes, compression time / decode time:
+Canterbury 2,810,784: HCM v3.4 max 350,326 (9.9 s / 3.4 s) is the smallest of all, beating ZPAQ -m5 350,542 (11.6 s / 11.5 s) on size and decode speed. xz-hi 462,832 beats xz -9e 493,080 at stock decode speed.
+Silesia sample 12,582,912: ZPAQ -m5 smallest at 3,418,919 (52.5 s / 54.7 s). Our best HCM v3.4 max 3,544,604 (61.7 s / 16.2 s), 3.4x faster decode. xz-hi 4,011,280 beats xz -9e 4,147,436 at stock decode speed; bzip2-hi 4,083,159 beats bzip2 -9 4,102,930.
+Synthetic 17,999,934: lpaq1-h smallest of all at 8,113,745 (149.4 s / 26.7 s). HCM v3.4 max 8,127,874 (99.9 s / 23.7 s), hcmx fast 8,168,432 and HCM v3.4 fast 8,190,545 (79.0 s / 18.7 s) also beat ZPAQ -m5 8,201,855 (82.3 s / 83.1 s) on both size and decode speed. HCM v3.4 fast also compresses faster than ZPAQ.
+Observation: HCM v3.4 improved on Goodwin's recorded HCM on every set (Synthetic 8,670,602 -> 8,127,874).
+Charts: full dot charts per set, close-ups of the crowded smallest group, file-by-file lines, difference against ZPAQ -m5 per file, and peak memory.
