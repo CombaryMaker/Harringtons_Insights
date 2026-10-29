@@ -721,6 +721,8 @@ static int hcm_decompress(const uint8_t *blob, size_t blobn, uint8_t **out, size
             update(m, y);
         }
     }
+    // A genuine v2 stream ends with the decoder 23-30 bits past the last stored bit.
+    if (r.pos < r.nbits || r.pos > r.nbits + 40) { model_free(m); return -5; }
     *out = m->buf;  // the model's history is the restored file
     *outn = m->n;
     m->buf = NULL;
@@ -845,6 +847,22 @@ static inline void rec_swap(uint32_t *h, const uint8_t *b, size_t n, const RecSt
     h[NORD] = hfin(RR + up * 0x1000193u + upr, 0x11);                                    // row above + above-right
     h[NORD + 1] = hfin(RR + up * 0x1000193u + up2 * 0x3B9AC9FBu + up3 * 0x6F4F2A35u, 0xAA);   // rows above 1-3
     h[NORD - 1] = hfin(RR + up * 0x1000193u + c1 * 0x3B9AC9FBu, 0x22);                    // row above + last byte
+}
+static int g_v34 = 0;   // v3.4: match recovery; numeric contexts for binary files
+// v3.4 numeric context: treats the data as 16-bit little-endian samples, one sample
+// every 2 bytes per channel (R = 4 gives stereo), and predicts the next byte from the
+// linear extrapolation 2a - b of the last two samples of the same channel.
+static inline uint32_t num_ctx(const uint8_t *b, size_t n, int R) {
+    size_t st = (R == 4 || R == 6 || R == 8) ? (size_t)R : 2;
+    if (n < 2 * st + 2) return 0x51A7u;
+    int ph = (int)(n & 1);                          // 0: next byte is a low byte, 1: high byte
+    size_t s0 = n - ph;                             // start of the sample being coded
+    int a = (int16_t)(b[s0 - st] | (b[s0 - st + 1] << 8)), c = (int16_t)(b[s0 - 2 * st] | (b[s0 - 2 * st + 1] << 8));
+    int pred = 2 * a - c, d = a - c; d = d < 0 ? -d : d;
+    int lvl = d < 2 ? 0 : d < 8 ? 1 : d < 32 ? 2 : d < 128 ? 3 : d < 512 ? 4 : 5;
+    if (ph == 0) return hfin((uint32_t)(pred & 0xFF) * 0x1000193u + (uint32_t)lvl * 0x3B9AC9FBu, 0x77);
+    int lo = b[n - 1];                              // the low byte just coded
+    return hfin((uint32_t)(((pred - lo + 128) >> 8) & 0xFF) * 0x9E3779B1u + (uint32_t)lvl * 0x6F4F2A35u + 0x100u, 0x78);
 }
 // rolling form of the 6-byte match hash (same value, two multiplies)
 static const uint64_t KINV20 = 0xd9f0bULL, K5_20 = 0xe3a13ULL;
@@ -1146,6 +1164,7 @@ static void run(Tables *t, uint8_t *buf, size_t n, Coder *cd, int isbin) {
         if ((byte >= 65 && byte <= 90) || (byte >= 97 && byte <= 122)) { word = (word * 0x2C9277B5u) ^ (uint32_t)(byte | 32); wl++; }
         else { if (word) pword = word; word = 0; wl = 0; }
         if (mlen > 0 && (size_t)mptr < nb - 1 && buf[mptr] == byte) { mptr++; mlen++; }
+        else if (V33 && g_v34 && mlen >= 24 && (size_t)mptr < nb - 1) { mptr++; mlen = 16; }   // v3.4 match recovery
         else mlen = 0;
         if (nb >= 6) {
             uint32_t hh;
@@ -1172,7 +1191,7 @@ static void run(Tables *t, uint8_t *buf, size_t n, Coder *cd, int isbin) {
         last = byte;
         ctx_hashes(h, buf, nb, word, pword);
         if (V33) {
-            if (isbin) { rec_update(&rs, buf, nb); rec_swap(h, buf, nb, &rs); }
+            if (isbin) { rec_update(&rs, buf, nb); rec_swap(h, buf, nb, &rs); if (g_v34) h[4] = num_ctx(buf, nb, rs.R); }
             else {   // text: the order-6 slot becomes a line-position context
                 if (byte == '\n') lnl = (int64_t)nb - 1;
                 uint32_t col = (uint32_t)((int64_t)nb - 1 - lnl); col = col < 255 ? col : 255;
@@ -1201,7 +1220,7 @@ static uint32_t crc32(const uint8_t *d, size_t n) {
 enum { MODE_FAST = 0, MODE_MAX = 1 };
 // mode byte: bit 0 = max mode, bit 4 = binary file, bit 5 = v3.3 model.
 // Plain v3 files (bits 4-5 clear) decode exactly as before.
-enum { FLAG_BIN = 16, FLAG_V33 = 32, FLAG_NOPTR = 4 };
+enum { FLAG_BIN = 16, FLAG_V33 = 32, FLAG_NOPTR = 4, FLAG_V34 = 2, FLAG_RAW = 8 };
 static const int HEADER = 13;
 
 static inline void put32(uint8_t *p, uint32_t v) { p[0] = (uint8_t)(v >> 24); p[1] = (uint8_t)(v >> 16); p[2] = (uint8_t)(v >> 8); p[3] = (uint8_t)v; }
@@ -1214,7 +1233,7 @@ static int is_v3(const uint8_t *blob, size_t n) {
 template <int DEC>
 static void run_any(Tables *t, uint8_t *buf, size_t n, Coder *cd, int mb) {
     int mx = mb & 1, v33 = (mb & FLAG_V33) != 0, bin = (mb & FLAG_BIN) != 0;
-    g_noptr = (mb & FLAG_NOPTR) != 0;
+    g_noptr = (mb & FLAG_NOPTR) != 0; g_v34 = (mb & FLAG_V34) != 0;
     if (mb & FLAG_PTR) {
         if (mb & FLAG_XREC) { if (mx) run_px<DEC, 1, 1>(t, buf, n, cd, bin); else run_px<DEC, 0, 1>(t, buf, n, cd, bin); }
         else                { if (mx) run_px<DEC, 1, 0>(t, buf, n, cd, bin); else run_px<DEC, 0, 0>(t, buf, n, cd, bin); }
@@ -1253,16 +1272,21 @@ static int compress(const uint8_t *data, size_t n, int mode, uint8_t **out, size
     // hcmx: v3, v3.3, hcm-trit v2 (pointer) and, for binaries, HCM-Bin v1 (pointer + record contexts);
     // the smallest is kept. HCMX_ONLY=<mode byte> forces one variant (for tests).
     int bin = looks_binary(data, n) ? FLAG_BIN : 0;
-    int cands[7], nc = 0;
+    int cands[12], nc = 0;
     const char *only = getenv("HCMX_ONLY");
     if (only) cands[nc++] = mode | atoi(only);
     else {
-        cands[nc++] = mode; cands[nc++] = mode | FLAG_V33 | bin; cands[nc++] = mode | FLAG_V33 | FLAG_PTR | bin;
-        if (bin) cands[nc++] = mode | FLAG_V33 | FLAG_PTR | FLAG_XREC | bin;
+        // original candidates, then the same with v3.4 (match recovery, numeric contexts) added
+        int base[4], nbase = 0;
+        base[nbase++] = mode | FLAG_V33 | bin; base[nbase++] = mode | FLAG_V33 | FLAG_PTR | bin;
+        if (bin) base[nbase++] = mode | FLAG_V33 | FLAG_PTR | FLAG_XREC | bin;
         else if (looks_ambiguous(data, n)) {   // image rows, audio: also try the binary variants
-            cands[nc++] = mode | FLAG_V33 | FLAG_BIN; cands[nc++] = mode | FLAG_V33 | FLAG_PTR | FLAG_BIN;
-            cands[nc++] = mode | FLAG_V33 | FLAG_PTR | FLAG_XREC | FLAG_BIN;
+            base[nbase++] = mode | FLAG_V33 | FLAG_BIN; base[nbase++] = mode | FLAG_V33 | FLAG_PTR | FLAG_BIN;
         }
+        cands[nc++] = mode;
+        for (int k = 0; k < nbase; k++) cands[nc++] = base[k];
+        for (int k = 0; k < nbase; k++) cands[nc++] = base[k] | FLAG_V34;
+        if (!bin && looks_ambiguous(data, n)) { cands[nc++] = mode | FLAG_V33 | FLAG_PTR | FLAG_XREC | FLAG_BIN; cands[nc++] = mode | FLAG_V33 | FLAG_PTR | FLAG_XREC | FLAG_BIN | FLAG_V34; }
     }
     uint8_t *best = NULL; size_t bestn = 0;
     for (int k = 0; k < nc; k++) {
@@ -1270,6 +1294,12 @@ static int compress(const uint8_t *data, size_t n, int mode, uint8_t **out, size
         if (encode_one(data, n, cands[k], &a, &an)) { free(best); return -1; }
         if (getenv("HCMX_VERBOSE")) fprintf(stderr, "mode %d: %zu\n", cands[k], an);
         if (!best || an < bestn) { free(best); best = a; bestn = an; } else free(a);
+    }
+    if (bestn >= (size_t)HEADER + n) {   // incompressible: store the bytes unchanged
+        free(best);
+        best = (uint8_t *)malloc(HEADER + (n ? n : 1)); if (!best) return -1;
+        best[0] = 'H'; best[1] = 'C'; best[2] = 'M'; best[3] = '3'; best[4] = (uint8_t)(FLAG_RAW | (mode & 1));
+        put32(best + 5, (uint32_t)n); put32(best + 9, crc32(data, n)); memcpy(best + HEADER, data, n); bestn = HEADER + n;
     }
     *out = best; *outn = bestn;
     return 0;
@@ -1280,9 +1310,16 @@ static int compress(const uint8_t *data, size_t n, int mode, uint8_t **out, size
 static int decompress(const uint8_t *blob, size_t bn, uint8_t **out, size_t *outn) {
     if (!is_v3(blob, bn)) return -2;
     int mb = blob[4];
-    if (mb & ~(1 | FLAG_BIN | FLAG_V33 | FLAG_PTR | FLAG_XREC | FLAG_NOPTR)) return -2;
-    if ((mb & FLAG_BIN) && !(mb & FLAG_V33)) return -2;
+    if (mb & ~(1 | FLAG_BIN | FLAG_V33 | FLAG_PTR | FLAG_XREC | FLAG_NOPTR | FLAG_V34 | FLAG_RAW)) return -2;
+    if ((mb & (FLAG_BIN | FLAG_V34)) && !(mb & FLAG_V33)) return -2;
     uint32_t n = get32(blob + 5), crc = get32(blob + 9);
+    if (mb & FLAG_RAW) {   // stored unchanged
+        if (mb & ~(FLAG_RAW | 1) || bn != (size_t)HEADER + n) return -2;
+        uint8_t *buf = (uint8_t *)malloc(n ? n : 1); if (!buf) return -1;
+        memcpy(buf, blob + HEADER, n);
+        if (crc32(buf, n) != crc) { free(buf); return -5; }
+        *out = buf; *outn = n; return 0;
+    }
     if (n > 0x7FFFFFFFu || (uint64_t)n > ((uint64_t)bn + 16) * 4096) return -2;
     BitReader r = {blob + HEADER, (uint64_t)(bn - HEADER) * 8, 0};
     Coder d = {0, TOP, 0, 0, NULL, &r};

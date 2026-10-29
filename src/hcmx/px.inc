@@ -261,6 +261,7 @@ static void run_px(Tables *t, uint8_t *buf, size_t n, Coder *cd, int isbin) {
         if ((byte >= 65 && byte <= 90) || (byte >= 97 && byte <= 122)) { word = (word * 0x2C9277B5u) ^ (uint32_t)(byte | 32); wl++; }
         else { if (word) pword = word; word = 0; wl = 0; }
         if (mlen > 0 && (size_t)mptr < nb - 1 && buf[mptr] == byte) { mptr++; mlen++; }
+        else if (g_v34 && mlen >= 24 && (size_t)mptr < nb - 1) { mptr++; mlen = 16; }   // v3.4 match recovery
         else mlen = 0;
         if (nb >= 6) {
             uint32_t hh;
@@ -299,6 +300,7 @@ static void run_px(Tables *t, uint8_t *buf, size_t n, Coder *cd, int isbin) {
                     h[NH + 3] = hfin(RR + up * 0x1000193u + up2 * 0x3B9AC9FBu + up3 * 0x6F4F2A35u, 0xAA);
                 } else for (int i = NH; i < nh; i++) h[i] = 0x1234567u * (uint32_t)(i + 1);
             } else rec_swap(h, buf, nb, &rs);
+            if (g_v34) h[4] = num_ctx(buf, nb, rs.R);   // v3.4 numeric context
         } else {
             if (byte == '\n') lnl = (int64_t)nb - 1;
             uint32_t col = (uint32_t)((int64_t)nb - 1 - lnl); col = col < 255 ? col : 255;
