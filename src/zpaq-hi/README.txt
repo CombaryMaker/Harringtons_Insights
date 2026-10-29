@@ -51,3 +51,10 @@ NOTES
 
 LICENSE: ZPAQ 7.15 is public domain (Matt Mahoney). The zpaq-hi changes are released under the MIT
 license (copyright Michael Harrington, 2026), as is the rest of this repository.
+
+MULTI-CORE (29 Oct 2026): ZPAQ already decodes separate blocks on separate cores, so zpaq-hi only has to write
+smaller blocks (-m51 = level 5 with 2 MB blocks). The STOCK zpaq 7.15 decoder read every archive (-threads 2). 2-core machine:
+  reymont one block 142,773 (1,000,000 bits down to), decode 41.5 s  ->  2 MB blocks 151,508, decode 22.9 s
+  x-ray   432,631, 44.9 s  ->  438,089, 22.0 s
+  dickens 205,223, 51.1 s  ->  222,108, 25.3 s
+Decoding about 2x faster on 2 cores; size cost 1.3% (x-ray) to 8% (dickens, text needs long history).

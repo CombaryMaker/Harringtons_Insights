@@ -45,3 +45,10 @@ Notes that stand out:
 - Decode speed is the same as stock lpaq1 on this machine (Canterbury 4.21 s lpaq1 vs 4.12 s lpaq1-h).
 - Compression is about 6x slower than lpaq1 because six flag settings are tried per file; a
   detector-chosen setting would remove most of that.
+
+PARALLEL BLOCKS (29 Oct 2026): lpaq1h_par.py cuts a file into blocks (2 MB in the test), compresses each with
+lpaq1-h best-of in parallel and decodes the blocks in parallel (format "LPHP"). 2-core machine, exact:
+  reymont 157,486 -> 163,049 (1,000,000 bits down to), decode 6.7 -> 4.1 s, compress 38.9 -> 28.2 s
+  x-ray   438,616 -> 444,765, decode 12.5 -> 6.5 s, compress 69.0 -> 36.6 s
+  dickens 215,212 -> 227,103, decode 12.4 -> 7.0 s, compress 69.7 -> 41.6 s
+Note: text loses most (dickens +5.5%) because every block starts with an empty model; larger blocks lose less.

@@ -1,0 +1,221 @@
+{
+ "_note": "HCM multi-core results, 29 Oct 2026, 2-core machine, one run, wall clock, all exact. samba/mozilla use 16 MB blocks; dickens/x-ray/reymont use 2 MB blocks. lpaq1-h and zpaq-hi: 2 MB blocks; zpaq-hi archives decoded by stock zpaq 7.15 with 2 threads.",
+ "rows": [
+  [
+   "samba",
+   21606400,
+   "HCM v3.4 single",
+   3400668,
+   62.9,
+   16.8
+  ],
+  [
+   "samba",
+   21606400,
+   "HCM v3.5 blocks",
+   3443819,
+   59.2,
+   13.9
+  ],
+  [
+   "samba",
+   21606400,
+   "HCM v3.6 sets",
+   3406084,
+   42.5,
+   9.7
+  ],
+  [
+   "mozilla",
+   51220480,
+   "HCM v3.4 single",
+   13355236,
+   180.8,
+   47.0
+  ],
+  [
+   "mozilla",
+   51220480,
+   "HCM v3.5 blocks",
+   13412925,
+   130.2,
+   32.7
+  ],
+  [
+   "mozilla",
+   51220480,
+   "HCM v3.6 sets",
+   13419759,
+   135.9,
+   35.4
+  ],
+  [
+   "dickens",
+   10192446,
+   "HCM v3.4 single",
+   2224460,
+   33.1,
+   8.3
+  ],
+  [
+   "dickens",
+   10192446,
+   "HCM v3.5 blocks",
+   2300345,
+   20.4,
+   5.6
+  ],
+  [
+   "dickens",
+   10192446,
+   "HCM v3.6 sets",
+   2319439,
+   19.9,
+   5.5
+  ],
+  [
+   "x-ray",
+   8474240,
+   "HCM v3.4 single",
+   3666372,
+   34.2,
+   8.6
+  ],
+  [
+   "x-ray",
+   8474240,
+   "HCM v3.5 blocks",
+   3683815,
+   17.8,
+   5.0
+  ],
+  [
+   "x-ray",
+   8474240,
+   "HCM v3.6 sets",
+   3710615,
+   17.5,
+   4.5
+  ],
+  [
+   "reymont",
+   6627202,
+   "HCM v3.4 single",
+   1093130,
+   18.7,
+   5.1
+  ],
+  [
+   "reymont",
+   6627202,
+   "HCM v3.5 blocks",
+   1121748,
+   12.7,
+   3.3
+  ],
+  [
+   "reymont",
+   6627202,
+   "HCM v3.6 sets",
+   1129732,
+   10.2,
+   2.8
+  ],
+  [
+   "reymont",
+   6627202,
+   "lpaq1-h single",
+   1043693,
+   38.9,
+   6.7
+  ],
+  [
+   "reymont",
+   6627202,
+   "lpaq1-h parallel 2 MB",
+   1080557,
+   28.2,
+   4.1
+  ],
+  [
+   "x-ray",
+   8474240,
+   "lpaq1-h single",
+   3716937,
+   69.0,
+   12.5
+  ],
+  [
+   "x-ray",
+   8474240,
+   "lpaq1-h parallel 2 MB",
+   3769048,
+   36.6,
+   6.5
+  ],
+  [
+   "dickens",
+   10192446,
+   "lpaq1-h single",
+   2193538,
+   69.7,
+   12.4
+  ],
+  [
+   "dickens",
+   10192446,
+   "lpaq1-h parallel 2 MB",
+   2314735,
+   41.6,
+   7.0
+  ],
+  [
+   "reymont",
+   6627202,
+   "zpaq-hi one block",
+   946184,
+   81.6,
+   41.5
+  ],
+  [
+   "reymont",
+   6627202,
+   "zpaq-hi 2 MB blocks",
+   1004076,
+   43.2,
+   22.9
+  ],
+  [
+   "x-ray",
+   8474240,
+   "zpaq-hi one block",
+   3666221,
+   58.9,
+   44.9
+  ],
+  [
+   "x-ray",
+   8474240,
+   "zpaq-hi 2 MB blocks",
+   3712468,
+   23.7,
+   22.0
+  ],
+  [
+   "dickens",
+   10192446,
+   "zpaq-hi one block",
+   2091723,
+   62.0,
+   51.1
+  ],
+  [
+   "dickens",
+   10192446,
+   "zpaq-hi 2 MB blocks",
+   2263820,
+   30.4,
+   25.3
+  ]
+ ]
+}

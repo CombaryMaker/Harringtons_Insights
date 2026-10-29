@@ -1,0 +1,12 @@
+reymont   lpaq1-h single                  1,043,693 B  1M bits-> 157,486  ratio  6.350  compress   38.9 s  decode    6.7 s  exact=True
+reymont   lpaq1-h parallel 2 MB           1,080,557 B  1M bits-> 163,049  ratio  6.133  compress   28.2 s  decode    4.1 s  exact=True
+reymont   zpaq-hi -m5 (one block) [stock decode]    946,184 B  1M bits-> 142,773  ratio  7.004  compress   81.6 s  decode   41.5 s  exact=True
+reymont   zpaq-hi -m51 (2 MB blocks) [stock decode]  1,004,076 B  1M bits-> 151,508  ratio  6.600  compress   43.2 s  decode   22.9 s  exact=True
+x-ray     lpaq1-h single                  3,716,937 B  1M bits-> 438,616  ratio  2.280  compress   69.0 s  decode   12.5 s  exact=True
+x-ray     lpaq1-h parallel 2 MB           3,769,048 B  1M bits-> 444,765  ratio  2.248  compress   36.6 s  decode    6.5 s  exact=True
+x-ray     zpaq-hi -m5 (one block) [stock decode]  3,666,221 B  1M bits-> 432,631  ratio  2.311  compress   58.9 s  decode   44.9 s  exact=True
+x-ray     zpaq-hi -m51 (2 MB blocks) [stock decode]  3,712,468 B  1M bits-> 438,089  ratio  2.283  compress   23.7 s  decode   22.0 s  exact=True
+dickens   lpaq1-h single                  2,193,538 B  1M bits-> 215,212  ratio  4.647  compress   69.7 s  decode   12.4 s  exact=True
+dickens   lpaq1-h parallel 2 MB           2,314,735 B  1M bits-> 227,103  ratio  4.403  compress   41.6 s  decode    7.0 s  exact=True
+dickens   zpaq-hi -m5 (one block) [stock decode]  2,091,723 B  1M bits-> 205,223  ratio  4.873  compress   62.0 s  decode   51.1 s  exact=True
+dickens   zpaq-hi -m51 (2 MB blocks) [stock decode]  2,263,820 B  1M bits-> 222,108  ratio  4.502  compress   30.4 s  decode   25.3 s  exact=True
