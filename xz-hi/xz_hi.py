@@ -13,6 +13,10 @@ Uses Python's built-in lzma module (liblzma).
 """
 import itertools, lzma, sys
 
+def looks_ambiguous(d):
+    """Few control bytes but 5% or more bytes >= 128 (image rows, audio samples): also try the filters."""
+    return len(d) > 0 and sum(1 for c in d if c >= 128) * 20 >= len(d)
+
 def looks_binary(d):
     ctl = sum(1 for c in d if c < 9 or 13 < c < 32 or c == 127)
     return len(d) > 0 and ctl * 10 > len(d)
@@ -49,7 +53,7 @@ def best_xz(data):
             cands.append((len(comp(data, lc, lp, pb)), (lc, lp, pb)))
     cands.sort()
     pres = [None]
-    if looks_binary(data):
+    if looks_binary(data) or looks_ambiguous(data):   # image rows and audio also get delta/BCJ filters
         dists = {1, 2, 4, 8, 12, 13, 16, 26, 48, 216}
         r = record_length(data)
         if 0 < r <= 256: dists.add(r)

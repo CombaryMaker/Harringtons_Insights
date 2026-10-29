@@ -12,6 +12,12 @@
 #include <string.h>
 #include <stdint.h>
 
+// Few control bytes but 5% or more bytes >= 128 (image rows, audio samples): also try the filters.
+static int looks_ambiguous(const uint8_t *d, size_t n) {
+    size_t hi = 0;
+    for (size_t i = 0; i < n; i++) hi += d[i] >= 128;
+    return n > 0 && hi * 20 >= n;
+}
 static int looks_binary(const uint8_t *d, size_t n) {
     size_t ctl = 0;
     for (size_t i = 0; i < n; i++) { unsigned c = d[i]; ctl += c < 9 || (c > 13 && c < 32) || c == 127; }
@@ -75,7 +81,7 @@ static int tool_compress(const uint8_t *in, size_t n, uint8_t **out, size_t *out
     for (int i = 1; i < nc; i++) for (int j = i; j > 0 && c[j].sz < c[j - 1].sz; j--) { LC t = c[j]; c[j] = c[j - 1]; c[j - 1] = t; }
     Pre pres[32]; int np = 0;
     pres[np++] = none;
-    if (looks_binary(in, n)) {
+    if (looks_binary(in, n) || looks_ambiguous(in, n)) {   // image rows and audio also get delta/BCJ filters
         uint32_t dists[16] = {1, 2, 4, 8, 12, 13, 16, 26, 48, 216}; int nd = 10;
         int r = record_length(in, n);
         int have = 0; for (int i = 0; i < nd; i++) have |= (int)dists[i] == r;
