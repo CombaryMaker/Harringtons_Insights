@@ -12,6 +12,11 @@ This repository has three tools:
 | **bzip2-hi** (`bzip2-hi/`) | bzip2 with a smarter encoder | standard `.bz2` (any bzip2 decodes it) |
 | **xz-hi** (`xz-hi/`) | xz with a per-file settings search | standard `.xz` (any xz decodes it) |
 
+## The book and the research code
+
+- **Book:** [`Harringtons-Insights.pdf`](Harringtons-Insights.pdf) — *Harrington's Insights: Improvements, Concepts, Strategies, Successes and Failures in Data Compression*.
+- **Research source code:** [`src/`](src/) — hcmx (HCM v3.3 + ternary pointer + HCM-Bin), the Harrington Exchange and its Blosc2 hybrid, the baseline comparisons and the record-delta benchmark. See [`src/README.md`](src/README.md).
+
 ## Results: Canterbury Corpus (all 11 files)
 
 Sizes in bytes. Every file was decoded back and compared byte for byte.
