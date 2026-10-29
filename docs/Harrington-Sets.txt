@@ -33,6 +33,12 @@ file into shared streams, excludes incompressible data through a layered map, an
 parallel inside a context-mixing compressor. To the author's knowledge no existing tool does this.
 Tools that already decode in milliseconds gain little and are left as they are.
 
+CREDITS
+Harrington Sets is the method described above. The compressor it was first applied to, HCM, is close to the
+work of others: its core design follows Matt Mahoney's lpaq1, with parts from paq8, lpaq and ZPAQ, the
+Witten, Neal and Cleary (1987) arithmetic coder and Arm Optimized Routines. lpaq1-h is a mutant of lpaq1.
+Full credits are in CREDITS.txt in this repository and in Section 1.8 of the book.
+
 RESULTS (one run, wall clock, a 2-core machine; every file decoded back exactly)
 Sizes are 1,000,000 bits down to X.
   samba (21,606,400 bytes), HCM fast

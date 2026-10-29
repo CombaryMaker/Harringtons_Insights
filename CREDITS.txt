@@ -1,0 +1,23 @@
+CREDITS
+Harrington's Insights, Michael Hugh Harrington, 29 October 2026
+
+Much of this work is close to the work of others and is built on it, and that work is gladly credited here.
+
+HCM (Harrington Compression Method) is a working name for a build whose overall design follows Matt
+Mahoney's lpaq1: hashed contexts of the previous one to eight bytes, word contexts, a long-match model, a
+mixer whose weights are chosen by the partial byte and the match length, and an APM refinement stage. The
+record contexts added in v3.3 and HCM-Bin are related to the paq8 record model, which detects fixed-length
+records from a byte recurring at equal spacing and adds contexts from the rows above. The hash-table layout
+(64-byte buckets with check values) and the adaptive counters, which adapt at a rate of 1/(n + 1.6), follow
+lpaq and ZPAQ (ZPAQ uses 1/(n + 1.5)). The arithmetic coder follows Witten, Neal and Cleary (1987). The
+exp() and log() functions used to build HCM's startup tables come from Arm Optimized Routines.
+
+lpaq1-h is a mutant of Matt Mahoney's lpaq1 (GPL). zpaq-hi is Matt Mahoney's ZPAQ / libzpaq with added
+candidate models. The -hi tools (xz-hi, lzma-hi, 7z-hi, zip-hi, bzip2-hi, zstd-hi, Brotli-hi, jxl-hi,
+flac-hi) are the original authors' software with marked encoder-side changes; their output is read by the
+stock decoders. Each keeps its original license and notices.
+
+Michael Hugh Harrington's own contributions are the additions built on these engines (record detection
+driving stock tools, the ternary pointer, word-position and line-position contexts, match recovery and the
+other changes listed in the book), the Harrington Exchange, Combary, HaBiTS, the header methods, and
+Harrington Sets. They are released under the MIT License and offered free for use in the original tools.

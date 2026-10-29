@@ -1,6 +1,16 @@
-// HCM -- Harrington Compression Method, version 3.3
+// HCM -- Harrington Compression Method, version 3.6
 // Copyright (c) 2026 Michael Harrington. MIT License (full text at the end
 // of this file).
+//
+// Credits: HCM is close to the work of others. Its overall design follows
+// Matt Mahoney's lpaq1 (hashed order-1..8 and word contexts, long-match
+// model, mixer selected by partial byte and match length, APM stage). The
+// record contexts relate to the paq8 record model. The hash-table layout
+// (64-byte buckets with check values) and adaptive counters follow lpaq and
+// ZPAQ. The arithmetic coder follows Witten, Neal and Cleary (1987). The
+// exp()/log() table routines come from Arm Optimized Routines. Michael
+// Harrington's contributions are the additions noted below and Harrington
+// Sets (v3.6); they are offered free for use in the original tools.
 //
 // A context-mixing compressor. For every bit it asks many contexts (the
 // last 1, 2, 3, 4, 6 and 8 bytes, the partial byte, the current word, the
