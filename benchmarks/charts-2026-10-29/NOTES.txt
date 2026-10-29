@@ -10,3 +10,10 @@ Synthetic 17,999,934: lpaq1-h smallest of all at 8,113,745 (149.4 s / 26.7 s). H
 Observation: HCM v3.4 improved on Goodwin's recorded HCM on every set (Synthetic 8,670,602 -> 8,127,874).
 Charts: full dot charts per set, close-ups of the crowded smallest group, file-by-file lines, difference against ZPAQ -m5 per file, and peak memory.
 Update: the biased packed-data and radio results now come first in the PDF, with per-file text results, a file-by-file chart and a size-against-Blosc2 chart. Per file, the order-0 rANS coder is smaller than the Exchange on all four biased files; the Exchange->Blosc2 hybrid beats Blosc2 on both size and decode on the 12-bit file (324,765 vs 360,045 bytes, 0.69 vs 0.76 ms).
+
+BEST-OF-THE-BEST ASSEMBLY (Harrington-Best-Results-Full.pdf; best_data.py + best_plots.py; no new measurements)
+Every recorded result of every tool we built or modified, per standard benchmark, beside every stock tool measured on it. Sizes are 1,000,000 bits down to X bits. "Harrington best-of" = smallest of our tools picked per file; "Best standard per file" does the same for stock tools.
+Smallest of all: Synthetic set (best-of 445,817 in 22.2 s vs ZPAQ -m5 455,660 in 83.1 s), modern logs and exports (xz-hi 60,702 vs xz -9e 61,305), PDF set (ours 837,340; No-Pain pick 846,683 rendering faster than qpdf 851,978), speech audio (flac-hi 520,279 in 123 ms vs flac -8 531,634 in 136 ms).
+Smaller AND faster than the strongest practical rival: Canterbury best-of 123,837 in 3.4 s beats ZPAQ -m5 124,713 in 11.5 s; biased data best-of 465,170 in 15 ms beats ZPAQ -m5 465,419 in 10.6 s.
+Behind: Canterbury vs cmix/paq8px (Tier 5), Silesia full vs ZPAQ -m5 (6.9%, but best-of decodes 2.1x faster), Silesia 1 MB sample vs ZPAQ -m5 (2.7%, 3.7x faster decode), biased vs order-0 rANS (4.0%), radio vs ZPAQ -m5 (6.1%).
+Spotlights: kennedy.xls (record delta: zstd -22 64,818 -> 26,401 bytes and 2.6x faster decode; HCM-Bin 16,797 vs ZPAQ 16,822 at 5.3x faster), x-ray (record delta + zstd -19 5,129,823 -> 4,508,494, faster), jxl-hi (up to 7.5x faster decode with stock decoder).
