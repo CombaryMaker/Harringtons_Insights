@@ -809,6 +809,14 @@ static int looks_binary(const uint8_t *d, size_t n) {
     for (size_t i = 0; i < n; i++) { unsigned c = d[i]; ctl += c < 9 || (c > 13 && c < 32) || c == 127; }
     return n > 0 && ctl * 10 > n;
 }
+
+// Not clearly binary, but not plain ASCII text either: 5% or more of the bytes are >= 128.
+// Such files (image rows, audio, non-English UTF-8 text) are compressed both ways.
+static int looks_ambiguous(const uint8_t *d, size_t n) {
+    size_t hi = 0;
+    for (size_t i = 0; i < n; i++) hi += d[i] >= 128;
+    return n > 0 && hi * 20 >= n;
+}
 // Record detection: a byte value seen at equal spacing several times in a
 // row votes for that spacing; enough votes make it the record length R.
 static const int RECMIN = 3;
@@ -1237,10 +1245,17 @@ static int encode_one(const uint8_t *data, size_t n, int mb, uint8_t **out, size
 static int compress(const uint8_t *data, size_t n, int mode, uint8_t **out, size_t *outn) {
     uint8_t *a, *b; size_t an, bn;
     if (encode_one(data, n, mode, &a, &an)) return -1;
-    int mb = mode | FLAG_V33 | (looks_binary(data, n) ? FLAG_BIN : 0);
+    int bin = looks_binary(data, n);
+    int mb = mode | FLAG_V33 | (bin ? FLAG_BIN : 0);
     if (encode_one(data, n, mb, &b, &bn)) { free(a); return -1; }
-    if (bn < an) { free(a); *out = b; *outn = bn; }
-    else { free(b); *out = a; *outn = an; }
+    if (bn < an) { free(a); a = b; an = bn; } else free(b);
+    // Ambiguous files (few control bytes but many bytes >= 128, such as image rows or
+    // audio samples) are also tried in binary mode, and the smaller result is kept.
+    if (!bin && looks_ambiguous(data, n)) {
+        if (encode_one(data, n, mode | FLAG_V33 | FLAG_BIN, &b, &bn)) { free(a); return -1; }
+        if (bn < an) { free(a); a = b; an = bn; } else free(b);
+    }
+    *out = a; *outn = an;
     return 0;
 }
 

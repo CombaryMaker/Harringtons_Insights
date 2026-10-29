@@ -809,6 +809,13 @@ static int looks_binary(const uint8_t *d, size_t n) {
     for (size_t i = 0; i < n; i++) { unsigned c = d[i]; ctl += c < 9 || (c > 13 && c < 32) || c == 127; }
     return n > 0 && ctl * 10 > n;
 }
+// Not clearly binary, but not plain ASCII text either: 5% or more of the bytes are >= 128.
+// Such files (image rows, audio, non-English UTF-8 text) are also tried in binary mode.
+static int looks_ambiguous(const uint8_t *d, size_t n) {
+    size_t hi = 0;
+    for (size_t i = 0; i < n; i++) hi += d[i] >= 128;
+    return n > 0 && hi * 20 >= n;
+}
 // Record detection: a byte value seen at equal spacing several times in a
 // row votes for that spacing; enough votes make it the record length R.
 static const int RECMIN = 3;
@@ -1246,12 +1253,16 @@ static int compress(const uint8_t *data, size_t n, int mode, uint8_t **out, size
     // hcmx: v3, v3.3, hcm-trit v2 (pointer) and, for binaries, HCM-Bin v1 (pointer + record contexts);
     // the smallest is kept. HCMX_ONLY=<mode byte> forces one variant (for tests).
     int bin = looks_binary(data, n) ? FLAG_BIN : 0;
-    int cands[4], nc = 0;
+    int cands[7], nc = 0;
     const char *only = getenv("HCMX_ONLY");
     if (only) cands[nc++] = mode | atoi(only);
     else {
         cands[nc++] = mode; cands[nc++] = mode | FLAG_V33 | bin; cands[nc++] = mode | FLAG_V33 | FLAG_PTR | bin;
         if (bin) cands[nc++] = mode | FLAG_V33 | FLAG_PTR | FLAG_XREC | bin;
+        else if (looks_ambiguous(data, n)) {   // image rows, audio: also try the binary variants
+            cands[nc++] = mode | FLAG_V33 | FLAG_BIN; cands[nc++] = mode | FLAG_V33 | FLAG_PTR | FLAG_BIN;
+            cands[nc++] = mode | FLAG_V33 | FLAG_PTR | FLAG_XREC | FLAG_BIN;
+        }
     }
     uint8_t *best = NULL; size_t bestn = 0;
     for (int k = 0; k < nc; k++) {
