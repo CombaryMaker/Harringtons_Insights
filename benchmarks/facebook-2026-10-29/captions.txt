@@ -1,0 +1,72 @@
+01_scoreboard.png
+The scoreboard: my best result on every benchmark I have recorded against the best standard tool on that same benchmark.
+
+02_canterbury_ranking.png
+Canterbury corpus, every recorded result ranked by size (shorter bar is better), with decode time beside each bar. My best, picked per file: 1,000,000 bits down to 123,837, decoded in 3.4 s. ZPAQ -m5: 124,713 in 11.5 s. Smaller AND 3.4x faster.
+
+03_canterbury_speed.png
+Canterbury corpus, size against decode speed. Lower is smaller and further right is faster; the dashed line joins the results nothing else beats on both. My best, picked per file: 1,000,000 bits down to 123,837, decoded in 3.4 s. ZPAQ -m5: 124,713 in 11.5 s. Smaller AND 3.4x faster.
+
+04_canterbury_before_after.png
+Canterbury corpus, what my changes did: each row is a standard tool and my version of it (or my nearest rival), with the size and decode change.
+
+05_silesia_ranking.png
+Silesia corpus (full), every recorded result ranked by size (shorter bar is better), with decode time beside each bar. ZPAQ -m5 is still the smallest here, but my best decodes 2.1x faster, and 7z-hi, xz-hi, lzma-hi and RAR each beat their stock versions on size with no slower decode.
+
+06_silesia_speed.png
+Silesia corpus (full), size against decode speed. Lower is smaller and further right is faster; the dashed line joins the results nothing else beats on both. ZPAQ -m5 is still the smallest here, but my best decodes 2.1x faster, and 7z-hi, xz-hi, lzma-hi and RAR each beat their stock versions on size with no slower decode.
+
+07_silesia_before_after.png
+Silesia corpus (full), what my changes did: each row is a standard tool and my version of it (or my nearest rival), with the size and decode change.
+
+08_biased_ranking.png
+Biased packed data, every recorded result ranked by size (shorter bar is better), with decode time beside each bar. My best, picked per file: 465,170 in 15 ms against ZPAQ -m5 at 465,419 in 10.6 s. The Exchange->Blosc2 hybrid is 8% smaller than Blosc2 at almost the same speed.
+
+09_biased_speed.png
+Biased packed data, size against decode speed. Lower is smaller and further right is faster; the dashed line joins the results nothing else beats on both. My best, picked per file: 465,170 in 15 ms against ZPAQ -m5 at 465,419 in 10.6 s. The Exchange->Blosc2 hybrid is 8% smaller than Blosc2 at almost the same speed.
+
+10_biased_before_after.png
+Biased packed data, what my changes did: each row is a standard tool and my version of it (or my nearest rival), with the size and decode change.
+
+11_radio_ranking.png
+Radio SDR captures, every recorded result ranked by size (shorter bar is better), with decode time beside each bar. xz-hi beats xz -9e on size with the stock decoder. The Harrington Exchange decodes about 4x faster than xz.
+
+12_radio_speed.png
+Radio SDR captures, size against decode speed. Lower is smaller and further right is faster; the dashed line joins the results nothing else beats on both. xz-hi beats xz -9e on size with the stock decoder. The Harrington Exchange decodes about 4x faster than xz.
+
+13_radio_before_after.png
+Radio SDR captures, what my changes did: each row is a standard tool and my version of it (or my nearest rival), with the size and decode change.
+
+14_logs_ranking.png
+Modern logs and exports, every recorded result ranked by size (shorter bar is better), with decode time beside each bar. xz-hi is the smallest of every tool tested: 60,702 against 61,305 for xz -9e. On server logs HCM max is up to 40% smaller than any stock tool.
+
+15_logs_speed.png
+Modern logs and exports, size against decode speed. Lower is smaller and further right is faster; the dashed line joins the results nothing else beats on both. xz-hi is the smallest of every tool tested: 60,702 against 61,305 for xz -9e. On server logs HCM max is up to 40% smaller than any stock tool.
+
+16_logs_before_after.png
+Modern logs and exports, what my changes did: each row is a standard tool and my version of it (or my nearest rival), with the size and decode change.
+
+17_pdf_ranking.png
+PDF documents (139 files), every recorded result ranked by size (shorter bar is better), with decode time beside each bar. My PDF row filter beats qpdf's optimisation. The No-Pain pick is smaller AND renders faster.
+
+18_pdf_speed.png
+PDF documents (139 files), size against decode speed. Lower is smaller and further right is faster; the dashed line joins the results nothing else beats on both. My PDF row filter beats qpdf's optimisation. The No-Pain pick is smaller AND renders faster.
+
+19_pdf_before_after.png
+PDF documents (139 files), what my changes did: each row is a standard tool and my version of it (or my nearest rival), with the size and decode change.
+
+20_speech_ranking.png
+Speech audio (FLAC, 6 speakers), every recorded result ranked by size (shorter bar is better), with decode time beside each bar. flac-hi: 2.1% smaller than flac -8 and decodes 10% faster, read by the standard FLAC decoder.
+
+21_speech_before_after.png
+Speech audio (FLAC, 6 speakers), what my changes did: each row is a standard tool and my version of it (or my nearest rival), with the size and decode change.
+
+22_kennedy.png
+Spotlight on kennedy.xls, the spreadsheet in the Canterbury corpus: what my record detection, activity map, HCM-Bin, xz-hi and lpaq1-h did to each standard tool.
+
+23_xray.png
+Spotlight on a real medical x-ray image (8.5 MB): every one of these is smaller and decodes faster, and each is read by its standard reader.
+
+24_jpegxl.png
+Spotlight on JPEG XL with medical images: each point is one of my tuned settings, showing its size change and decode speed-up; the standard JPEG XL decoder reads every one.
+
