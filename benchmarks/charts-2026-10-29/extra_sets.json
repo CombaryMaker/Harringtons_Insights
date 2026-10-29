@@ -1,0 +1,109 @@
+{
+ "_note": "Earlier measurements (28-29 Oct 2026). Decode times: in-process medians for zstd, xz, Blosc2, order-0, Exchange and hybrid; wall clock for ZPAQ and paq8px (single run). Compression times were mostly not recorded for these runs.",
+ "Biased packed data (4 files)": {
+  "orig": 2173577,
+  "tools": {
+   "zstd -19": {
+    "kind": "Standard",
+    "comp": 1181975,
+    "dt_ms": 2.71
+   },
+   "xz -9e": {
+    "kind": "Standard",
+    "comp": 1158940,
+    "dt_ms": null
+   },
+   "Brotli 11": {
+    "kind": "Standard",
+    "comp": 1119835,
+    "dt_ms": null
+   },
+   "7-Zip ultra": {
+    "kind": "Standard",
+    "comp": 1157358,
+    "dt_ms": null
+   },
+   "OpenZL": {
+    "kind": "Standard",
+    "comp": 1215664,
+    "dt_ms": null
+   },
+   "Blosc2 (best)": {
+    "kind": "Standard",
+    "comp": 1104359,
+    "dt_ms": 2.45
+   },
+   "order-0 rANS": {
+    "kind": "Standard",
+    "comp": 972061,
+    "dt_ms": 28.3,
+    "ct_ms": 26.6
+   },
+   "ZPAQ -m5": {
+    "kind": "Standard",
+    "comp": 1011624,
+    "dt_ms": 10566
+   },
+   "paq8px -8": {
+    "kind": "Standard",
+    "comp": 982684,
+    "dt_ms": 666312
+   },
+   "Harrington Exchange": {
+    "kind": "Original",
+    "comp": 1011727,
+    "dt_ms": 25.1
+   },
+   "Exchange->Blosc2 hybrid": {
+    "kind": "Mutant",
+    "comp": 1012435,
+    "dt_ms": 3.13
+   }
+  }
+ },
+ "Radio SDR captures (6 files)": {
+  "orig": 3752512,
+  "tools": {
+   "zstd -19": {
+    "kind": "Standard",
+    "comp": 2497293,
+    "dt_ms": 5.46
+   },
+   "xz -9e": {
+    "kind": "Standard",
+    "comp": 2308988,
+    "dt_ms": 168.6
+   },
+   "Blosc2 (best)": {
+    "kind": "Standard",
+    "comp": 2458263,
+    "dt_ms": 6.11
+   },
+   "order-0 rANS": {
+    "kind": "Standard",
+    "comp": 2654228,
+    "dt_ms": null
+   },
+   "ZPAQ -m5 (decode estimated)": {
+    "kind": "Standard",
+    "comp": 2166946,
+    "dt_ms": 15000
+   },
+   "xz-hi": {
+    "kind": "Modified",
+    "comp": 2299596,
+    "dt_ms": 171.0
+   },
+   "Harrington Exchange": {
+    "kind": "Original",
+    "comp": 2434000,
+    "dt_ms": 40.3
+   },
+   "Exchange->xz": {
+    "kind": "Mutant",
+    "comp": 2324718,
+    "dt_ms": 180.1
+   }
+  }
+ }
+}

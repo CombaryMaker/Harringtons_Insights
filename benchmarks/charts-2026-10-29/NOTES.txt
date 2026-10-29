@@ -1,0 +1,7 @@
+Benchmark charts, 29 October 2026.
+plots.py builds every chart and Harrington-Benchmark-Charts.pdf from the recorded data in this folder.
+Canterbury: fresh single run of all 14 tools on one machine (bench.py, results.json); size, compression time, decode time and peak memory per file.
+Silesia 1 MB sample and Synthetic set: Andrew Goodwin's recorded results (goodwin_corpora_cloud.json) for standard tools and HCM, plus our recorded lpaq1-h runs (lpaq1h_goodwin_sets.json) and a bzip2-hi Silesia run from a different machine, so speeds compare only roughly.
+Biased packed data and radio captures: earlier recorded results (extra_sets.json); compression times mostly not recorded and some decode times missing (noted on the charts).
+Notable: on Canterbury HCM v3.4 max (350,326 bytes) is smaller than ZPAQ -m5 (350,542) and decodes in 3.4 s vs 11.5 s; xz-hi is smaller than xz -9e and bzip2 -9 at stock decode speed. On the Synthetic set lpaq1-h (8,113,745) is smaller and faster to decode than ZPAQ -m5 (8,202,053). On Silesia ZPAQ -m5 remains smallest.
+The full benchmark run was stopped partway through Silesia; its unfinished results were not used.
