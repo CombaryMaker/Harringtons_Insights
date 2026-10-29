@@ -19,6 +19,10 @@ This repository has three tools:
 - **Best results charts:** [`benchmarks/charts-2026-10-29/Harrington-Best-Results-Full.pdf`](benchmarks/charts-2026-10-29/Harrington-Best-Results-Full.pdf) — every tool built or modified here (originals, modifieds, mutants) against the stock tools on each standard benchmark; also in the book as Appendix G.
 - **Research source code:** [`src/`](src/) — hcmx (HCM v3.3 + ternary pointer + HCM-Bin), the Harrington Exchange and its Blosc2 hybrid, the baseline comparisons and the record-delta benchmark. See [`src/README.md`](src/README.md).
 
+## Harrington Sets: multi-core for single-core compressors (original method)
+
+Harrington Sets (HCM v3.6, commands `s` fast / `t` max) lets compressors that have always run on one core use every core. The file is read in 64 KB windows measured on the spot; windows of the same kind are gathered from anywhere in the file into their own streams; random or already-compressed windows are excluded to a raw set through a layered exclusion map that keeps every window's exact position; each stream gets its own model and its own core. It works on any data with no format description. Loose ties only to equal-chunk parallel blocks, file grouping by extension, format-described stream splitting (OpenZL) and log clustering (Logzip), which all work differently. Results (2 cores): HCM on samba decodes 1.73x faster for +0.16% size; lpaq1-h 1.6-1.9x faster. Details: book Section 10.9 and [`src/hcm-v36`](src/hcm-v36/NOTES.txt).
+
 ## Results: Canterbury Corpus (all 11 files)
 
 Sizes in bytes. Every file was decoded back and compared byte for byte.
