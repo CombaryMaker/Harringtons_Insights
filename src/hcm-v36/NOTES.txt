@@ -33,3 +33,11 @@ OBSERVATIONS
   without smoothing mozilla split into 257 runs; both hurt. Tuned settings fixed both.
 - Not yet tried: warming each set's model with a shared sample, more than 3 sets, choosing sets by
   trial compression instead of byte statistics.
+
+RANDOM 5-FILE TEST (29 Oct 2026; seed 1793303107 picked from Canterbury + Silesia files up to 11 MB;
+2 MB blocks so medium files use both cores; 2-core machine; all decoded exactly). See random5_results.txt.
+- Medium files (6-10 MB): decoding 1.5x to 1.9x faster and compression 1.6x to 1.9x faster, for 0.5%
+  to 4.3% more size. Plain blocks were slightly smaller than sets on these single-type files; sets were
+  slightly faster (x-ray 4.5 s vs 5.0 s, reymont 2.8 s vs 3.3 s decode).
+- Small files (alice29.txt, ptt5): one block, no speed-up; sets mode adds about 30 bytes of map.
+- Smaller blocks cost more size: 2 MB blocks lose more than 16 MB blocks because each block starts empty.

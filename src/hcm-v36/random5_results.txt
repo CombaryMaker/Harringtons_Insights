@@ -1,0 +1,16 @@
+seed 1793303107 picked: dickens, alice29.txt, x-ray, reymont, ptt5
+dickens       10,192,446  v3.4 single       2,224,460 B  1M bits-> 218,246  ratio  4.582  compress   33.1 s  decode    8.3 s  exact=True
+dickens       10,192,446  v3.5 blocks 2MB   2,300,345 B  1M bits-> 225,691  ratio  4.431  compress   20.4 s  decode    5.6 s  exact=True
+dickens       10,192,446  v3.6 sets 2MB     2,319,439 B  1M bits-> 227,565  ratio  4.394  compress   19.9 s  decode    5.5 s  exact=True
+alice29.txt      152,089  v3.4 single          36,636 B  1M bits-> 240,885  ratio  4.151  compress    0.5 s  decode    0.1 s  exact=True
+alice29.txt      152,089  v3.5 blocks 2MB      36,636 B  1M bits-> 240,885  ratio  4.151  compress    0.6 s  decode    0.2 s  exact=True
+alice29.txt      152,089  v3.6 sets 2MB        36,666 B  1M bits-> 241,083  ratio  4.148  compress    0.6 s  decode    0.2 s  exact=True
+x-ray          8,474,240  v3.4 single       3,666,372 B  1M bits-> 432,649  ratio  2.311  compress   34.2 s  decode    8.6 s  exact=True
+x-ray          8,474,240  v3.5 blocks 2MB   3,683,815 B  1M bits-> 434,707  ratio  2.300  compress   17.8 s  decode    5.0 s  exact=True
+x-ray          8,474,240  v3.6 sets 2MB     3,710,615 B  1M bits-> 437,870  ratio  2.284  compress   17.5 s  decode    4.5 s  exact=True
+reymont        6,627,202  v3.4 single       1,093,130 B  1M bits-> 164,946  ratio  6.063  compress   18.7 s  decode    5.1 s  exact=True
+reymont        6,627,202  v3.5 blocks 2MB   1,121,748 B  1M bits-> 169,264  ratio  5.908  compress   12.7 s  decode    3.3 s  exact=True
+reymont        6,627,202  v3.6 sets 2MB     1,129,732 B  1M bits-> 170,469  ratio  5.866  compress   10.2 s  decode    2.8 s  exact=True
+ptt5             513,216  v3.4 single          28,125 B  1M bits->  54,801  ratio 18.248  compress    0.9 s  decode    0.3 s  exact=True
+ptt5             513,216  v3.5 blocks 2MB      28,125 B  1M bits->  54,801  ratio 18.248  compress    1.0 s  decode    0.3 s  exact=True
+ptt5             513,216  v3.6 sets 2MB        28,155 B  1M bits->  54,860  ratio 18.228  compress    1.0 s  decode    0.3 s  exact=True
