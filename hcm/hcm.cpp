@@ -9,6 +9,9 @@
 // refines the result, and codes the bit with a 32-bit arithmetic coder.
 // The decoder runs the identical model, so the file needs nothing else.
 //
+// v3.4 (29 Oct 2026): match recovery after one wrong byte, numeric contexts for 16-bit
+// samples in binary files, incompressible files stored unchanged, stricter check on old v2
+// files. Every older .hcm file decodes exactly as before.
 // v3.3 adds the Harrington Insights to the v3 engine: binary files get
 // record contexts (the record length is found automatically), text files get
 // a line-position context and word-position mixer weights. Each file is
@@ -1600,7 +1603,7 @@ static int run(int argc, pchar **argv, const pchar *self) {
         return do_compress(argv[2], argv[3], is_word(argv[1], 'x') ? v3::MODE_MAX : v3::MODE_FAST);
     }
     int mode = self && name_has_max(self) ? v3::MODE_MAX : v3::MODE_FAST;
-    printf("HCM v3.3  (Harrington Compression Method)  -  %s mode\n", mode == v3::MODE_MAX ? "max" : "fast");
+    printf("HCM v3.4  (Harrington Compression Method)  -  %s mode\n", mode == v3::MODE_MAX ? "max" : "fast");
     printf("Copyright (c) 2026 Michael Harrington. MIT License.\n\n");
     int failures = 0;
     if (argc < 2) {
