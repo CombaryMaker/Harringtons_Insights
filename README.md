@@ -1,8 +1,9 @@
 # Harrington Insights
 
-Compression improvements by **Michael Harrington**, built under one rule:
+Compression improvements by **Michael Harrington**, built under two rules:
 
-> **The no-pain rule:** no loss of compression or decode time is allowed, only gains to either or both.
+>1)  **The no-pain rule:** no loss of compression or decode time is allowed, only gains to either or both.
+>2)  **The Big Gain rule:** A loss in one category can be offset by a sufficiently large enough gain in the other.
 
 This repository has three tools:
 
