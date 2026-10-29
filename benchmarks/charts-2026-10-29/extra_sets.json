@@ -6,59 +6,173 @@
    "zstd -19": {
     "kind": "Standard",
     "comp": 1181975,
-    "dt_ms": 2.71
+    "dt_ms": 2.71,
+    "per_file": [
+     430664,
+     22172,
+     327568,
+     401571
+    ],
+    "per_file_dt": [
+     0.88,
+     0.12,
+     1.0,
+     0.71
+    ]
    },
    "xz -9e": {
     "kind": "Standard",
     "comp": 1158940,
-    "dt_ms": null
+    "dt_ms": null,
+    "per_file": [
+     403956,
+     21772,
+     334836,
+     398376
+    ]
    },
    "Brotli 11": {
     "kind": "Standard",
     "comp": 1119835,
-    "dt_ms": null
+    "dt_ms": null,
+    "per_file": [
+     384360,
+     22480,
+     324538,
+     388457
+    ]
    },
    "7-Zip ultra": {
     "kind": "Standard",
     "comp": 1157358,
-    "dt_ms": null
+    "dt_ms": null,
+    "per_file": [
+     399818,
+     21799,
+     334450,
+     401291
+    ]
    },
    "OpenZL": {
     "kind": "Standard",
     "comp": 1215664,
-    "dt_ms": null
+    "dt_ms": null,
+    "per_file": [
+     433897,
+     25596,
+     354931,
+     401240
+    ]
    },
    "Blosc2 (best)": {
     "kind": "Standard",
     "comp": 1104359,
-    "dt_ms": 2.45
+    "dt_ms": 2.45,
+    "per_file": [
+     360045,
+     21640,
+     321626,
+     401048
+    ],
+    "per_file_dt": [
+     0.76,
+     0.1,
+     0.93,
+     0.66
+    ]
    },
    "order-0 rANS": {
     "kind": "Standard",
     "comp": 972061,
     "dt_ms": 28.3,
-    "ct_ms": 26.6
+    "ct_ms": 26.6,
+    "per_file": [
+     323335,
+     17925,
+     290572,
+     340229
+    ],
+    "per_file_dt": [
+     3.4,
+     1.2,
+     15.4,
+     8.3
+    ]
    },
    "ZPAQ -m5": {
     "kind": "Standard",
     "comp": 1011624,
-    "dt_ms": 10566
+    "dt_ms": 10566,
+    "per_file": [
+     326799,
+     18986,
+     292664,
+     373175
+    ],
+    "per_file_dt": [
+     3284,
+     444,
+     4002,
+     2836
+    ]
    },
    "paq8px -8": {
     "kind": "Standard",
     "comp": 982684,
-    "dt_ms": 666312
+    "dt_ms": 666312,
+    "per_file": [
+     323153,
+     18064,
+     290460,
+     351007
+    ],
+    "per_file_dt": [
+     189253,
+     27381,
+     269710,
+     179968
+    ]
    },
    "Harrington Exchange": {
     "kind": "Original",
     "comp": 1011727,
-    "dt_ms": 25.1
+    "dt_ms": 25.1,
+    "per_file": [
+     324507,
+     19722,
+     321128,
+     346370
+    ],
+    "per_file_dt": [
+     5.1,
+     1.5,
+     7.2,
+     11.3
+    ]
    },
    "Exchange->Blosc2 hybrid": {
     "kind": "Mutant",
     "comp": 1012435,
-    "dt_ms": 3.13
+    "dt_ms": 3.13,
+    "per_file": [
+     324765,
+     20777,
+     321168,
+     345725
+    ],
+    "per_file_dt": [
+     0.69,
+     0.25,
+     1.27,
+     0.93
+    ]
    }
+  },
+  "files": {
+   "12bit_noise": 524288,
+   "biased_bits": 125000,
+   "biased_bytes": 1000000,
+   "5bit_skewed": 524289
   }
  },
  "Radio SDR captures (6 files)": {

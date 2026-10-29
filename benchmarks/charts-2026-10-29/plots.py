@@ -140,12 +140,17 @@ def save(fig, name, pdf):
 
 def text_page(pdf, title, body, name=None):
     fig = plt.figure(figsize=(8.5, 11)); fig.text(0.08, 0.93, title, fontsize=17, fontweight='bold', color=INK)
-    y = 0.89
+    y = 0.89; page = 1
     for para in body:
-        for line in textwrap.wrap(para, 95) or ['']:
+        lines = textwrap.wrap(para, 95) or ['']
+        if y - 0.017 * len(lines) < 0.05:
+            if name: fig.savefig(os.path.join(OUT, name.replace('.png', f'{page}.png')), dpi=130)
+            pdf.savefig(fig); plt.close(fig); page += 1
+            fig = plt.figure(figsize=(8.5, 11)); fig.text(0.08, 0.93, title + ' (continued)', fontsize=17, fontweight='bold', color=INK); y = 0.89
+        for line in lines:
             fig.text(0.08, y, line, fontsize=9.5, color=INK, family='DejaVu Sans'); y -= 0.017
         y -= 0.010
-    if name: fig.savefig(os.path.join(OUT, name), dpi=130)
+    if name: fig.savefig(os.path.join(OUT, name.replace('.png', f'{page}.png')), dpi=130)
     pdf.savefig(fig); plt.close(fig)
 
 def summary(sets):
@@ -172,6 +177,84 @@ def summary(sets):
         lines.append(L)
     return lines
 
+def earlier(pdf):
+    # earlier sets: decode only
+    for sname, d in X.items():
+        if sname.startswith('_'): continue
+        rows = {}
+        for n, t in d['tools'].items():
+            rows[n] = dict(kind=t['kind'], orig=d['orig'], comp=t['comp'], dt=(t['dt_ms'] / 1000 if t.get('dt_ms') else None))
+        missing = [n for n, r in rows.items() if not r['dt']]
+        fig, ax = plt.subplots(figsize=(11, 6.6)); fig.subplots_adjust(bottom=0.24, left=0.07, right=0.98)
+        scatter(ax, rows, 'dt', 'Decompression speed, MB/s (log)', f'{sname}: size vs decode speed')
+        note = 'Compression times were not recorded for this set; decode times are earlier in-process measurements.'
+        if missing:
+            note += ' Size only (no decode time recorded): ' + '; '.join(f"{n} {rows[n]['comp']/rows[n]['orig']*100:.1f}%" for n in sorted(missing, key=lambda n: rows[n]['comp'])) + '.'
+        fig.text(0.06, 0.15, textwrap.fill(note, 170), fontsize=8, color=INK2, va='top')
+        legend(fig); fig.subplots_adjust(bottom=0.24, left=0.07, right=0.98)
+        save(fig, f"{sname.split()[0].lower()}_scatter.png", pdf)
+    # biased set, file by file
+    d = X["Biased packed data (4 files)"]; files = list(d["files"])
+    show = ["zstd -19", "Blosc2 (best)", "ZPAQ -m5", "paq8px -8", "order-0 rANS", "Harrington Exchange", "Exchange->Blosc2 hybrid"]
+    cols = {"zstd -19": "#b5b4ae", "Blosc2 (best)": "#8a8a85", "ZPAQ -m5": "#5c5b57", "paq8px -8": "#2b2b29", "order-0 rANS": "#6250d6",
+            "Harrington Exchange": "#2a78d6", "Exchange->Blosc2 hybrid": "#eb6834"}
+    fig, ax = plt.subplots(figsize=(12, 6)); fig.subplots_adjust(bottom=0.14, left=0.07, right=0.98)
+    for n in show:
+        t = d["tools"][n]; y = [c / d["files"][f] * 100 for c, f in zip(t["per_file"], files)]
+        ax.plot(range(len(files)), y, marker=KIND[t["kind"]][1], color=cols[n], lw=2.2 if t["kind"] in OURS else 1.6, ms=7,
+                ls='-' if t["kind"] in OURS else '--', label=f'{n} ({t["kind"]})')
+    ax.set_xticks(range(len(files))); ax.set_xticklabels(files)
+    ax.set_ylabel('Size, % of original (lower is better)')
+    ax.set_title('Biased packed data: file by file (solid = ours, dashed = standard)', loc='left')
+    ax.grid(True, color=GRID, lw=0.6); ax.legend(frameon=False, fontsize=8, ncol=2)
+    for sp in ('top', 'right'): ax.spines[sp].set_visible(False)
+    save(fig, 'biased_perfile.png', pdf)
+    fig, ax = plt.subplots(figsize=(12, 6)); fig.subplots_adjust(bottom=0.14, left=0.08, right=0.98)
+    ax.axhline(0, color=INK2, lw=1)
+    base = d["tools"]["Blosc2 (best)"]["per_file"]
+    for n in ["ZPAQ -m5", "paq8px -8", "order-0 rANS", "Harrington Exchange", "Exchange->Blosc2 hybrid"]:
+        t = d["tools"][n]; y = [(c - b) / b * 100 for c, b in zip(t["per_file"], base)]
+        ax.plot(range(len(files)), y, marker=KIND[t["kind"]][1], color=cols[n], lw=2.2 if t["kind"] in OURS else 1.6, ms=7,
+                ls='-' if t["kind"] in OURS else '--', label=f'{n} ({t["kind"]})')
+    ax.set_xticks(range(len(files))); ax.set_xticklabels(files)
+    ax.set_ylabel('Size vs Blosc2 (best practical rival), % (below 0 = smaller)')
+    ax.set_title('Biased packed data: size against Blosc2, file by file', loc='left')
+    ax.grid(True, color=GRID, lw=0.6); ax.legend(frameon=False, fontsize=8, ncol=2)
+    for sp in ('top', 'right'): ax.spines[sp].set_visible(False)
+    save(fig, 'biased_vs_blosc2.png', pdf)
+
+def earlier_summary():
+    out = []
+    for sname, d in X.items():
+        if sname.startswith('_'): continue
+        t = d['tools']; o = d['orig']
+        ours = {n: v for n, v in t.items() if v['kind'] in OURS}; std = {n: v for n, v in t.items() if v['kind'] == 'Standard'}
+        bo = min(ours, key=lambda n: ours[n]['comp']); bs = min(std, key=lambda n: std[n]['comp'])
+        L = f"{sname} ({o:,} bytes). Smallest overall: {bs if std[bs]['comp'] < ours[bo]['comp'] else bo}. Our best: {bo} at {ours[bo]['comp']:,} bytes"
+        L += f" (decode {ours[bo]['dt_ms']} ms)." if ours[bo].get('dt_ms') else "."
+        both = []
+        for n, v in ours.items():
+            if not v.get('dt_ms'): continue
+            beat = [m for m, s in std.items() if s.get('dt_ms') and v['comp'] < s['comp'] and v['dt_ms'] < s['dt_ms']]
+            if beat: both.append(f"{n} beats {', '.join(beat)}")
+        if both: L += " Smaller AND faster to decode: " + '; '.join(both) + '.'
+        out.append(L)
+    d = X["Biased packed data (4 files)"]; files = list(d["files"]); T = d["tools"]
+    for i, f in enumerate(files):
+        tl = {n: (v["per_file"][i], v.get("per_file_dt", [None] * 4)[i], v["kind"]) for n, v in T.items() if "per_file" in v}
+        ours = min((v[0], n) for n, v in tl.items() if v[2] in OURS)
+        allbest = min((v[0], n) for n, v in tl.items())
+        fast = [(v[0], n) for n, v in tl.items() if v[2] == 'Standard' and v[1] is not None and v[1] < 100]
+        fs = min(fast) if fast else None
+        L = f"Biased file {f} ({d['files'][f]:,} bytes): our best {ours[1]} {ours[0]:,}"
+        L += f"; best fast standard tool (decode under 0.1 s) {fs[1]} {fs[0]:,}" if fs else ""
+        L += f"; smallest of all {allbest[1]} {allbest[0]:,}." if allbest[1] != ours[1] else "; ours is the smallest of all tools."
+        hy = tl["Exchange->Blosc2 hybrid"]; bl = tl["Blosc2 (best)"]
+        if hy[0] < bl[0] and hy[1] < bl[1]: L += f" The hybrid beats Blosc2 on both size ({hy[0]:,} vs {bl[0]:,}) and decode ({hy[1]} vs {bl[1]} ms)."
+        out.append(L)
+    out.append("Biased set note: the order-0 rANS coder was smaller than the Exchange on all four files (972,061 vs 1,011,727 bytes in total) but decodes about 9x slower than the hybrid; paq8px is smallest on three files but takes minutes to decode. On the 5-bit file the Exchange and the hybrid beat paq8px outright.")
+    return out
+
 def main():
     sets = totals()
     pdf = PdfPages(os.path.join(HERE, 'Harrington-Benchmark-Charts.pdf'))
@@ -182,8 +265,9 @@ def main():
      "How to read the dot charts. Each dot is one tool's total over a set. Up and down is size (lower is smaller); left to right is speed in MB of original data per second on a log scale (further right is faster). The dashed line joins the tools that nothing else beats on both size and speed; dots with a dark ring sit on it. Our tools are drawn larger with bold labels. The line charts show each file separately.",
      "Data sources. All three of Goodwin's sets were run fresh, one run of all 14 tools per file on the same machine (29 Oct 2026), so speeds compare directly. Peak memory is the highest of compression and decode across the set's files.",
      "Timing notes. Times are wall clock including program start-up, so on small files the fast tools all look about the same; sizes are exact. lpaq1-h's compression time is the sum of its six tries (it keeps the best). ZPAQ sizes have its 1,015-byte per-file archive header removed, as in Goodwin's review. On the biased and radio sets decode times are earlier in-process measurements and compression times were mostly not recorded, so those two sets have decode charts only; ZPAQ's radio decode time is an estimate.",
-     "RESULTS"] + summary(sets)
+     "RESULTS"] + earlier_summary() + summary(sets)
     text_page(pdf, 'Benchmark Charts', intro, 'summary.png')
+    earlier(pdf)
     for sname, rows in sets.items():
         fig, axs = plt.subplots(1, 2, figsize=(14, 6.6)); fig.subplots_adjust(bottom=0.2, left=0.06, right=0.98, wspace=0.18)
         scatter(axs[0], rows, 'dt', 'Decompression speed, MB/s (log)', f'{sname}: size vs decode speed')
@@ -243,21 +327,6 @@ def main():
             ax.grid(True, color=GRID, lw=0.6); ax.legend(frameon=False, fontsize=8)
             for sp in ('top', 'right'): ax.spines[sp].set_visible(False)
             fig.subplots_adjust(bottom=0.25, left=0.08, right=0.98); save(fig, f'{sname.split()[0].lower()}_vs_zpaq.png', pdf)
-    # earlier sets: decode only
-    for sname, d in X.items():
-        if sname.startswith('_'): continue
-        rows = {}
-        for n, t in d['tools'].items():
-            rows[n] = dict(kind=t['kind'], orig=d['orig'], comp=t['comp'], dt=(t['dt_ms'] / 1000 if t.get('dt_ms') else None))
-        missing = [n for n, r in rows.items() if not r['dt']]
-        fig, ax = plt.subplots(figsize=(11, 6.6)); fig.subplots_adjust(bottom=0.24, left=0.07, right=0.98)
-        scatter(ax, rows, 'dt', 'Decompression speed, MB/s (log)', f'{sname}: size vs decode speed')
-        note = 'Compression times were not recorded for this set; decode times are earlier in-process measurements.'
-        if missing:
-            note += ' Size only (no decode time recorded): ' + '; '.join(f"{n} {rows[n]['comp']/rows[n]['orig']*100:.1f}%" for n in sorted(missing, key=lambda n: rows[n]['comp'])) + '.'
-        fig.text(0.06, 0.15, textwrap.fill(note, 170), fontsize=8, color=INK2, va='top')
-        legend(fig); fig.subplots_adjust(bottom=0.24, left=0.07, right=0.98)
-        save(fig, f"{sname.split()[0].lower()}_scatter.png", pdf)
     pdf.close(); print('ok', sorted(os.listdir(OUT)))
 
 if __name__ == '__main__': main()
