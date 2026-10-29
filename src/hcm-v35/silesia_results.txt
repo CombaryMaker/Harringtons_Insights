@@ -1,0 +1,6 @@
+samba    v3.4                    3,400,668 bytes  compress    62.9 s  decode    16.8 s  exact=True
+samba    v3.5                    3,400,668 bytes  compress    76.6 s  decode    17.5 s  exact=True
+samba    v3.5 parallel 16MB      3,443,819 bytes  compress    59.2 s  decode    13.9 s  exact=True
+mozilla  v3.4                   13,355,236 bytes  compress   180.8 s  decode    47.0 s  exact=True
+mozilla  v3.5                   13,351,973 bytes  compress   224.7 s  decode    50.0 s  exact=True
+mozilla  v3.5 parallel 16MB     13,412,925 bytes  compress   130.2 s  decode    32.7 s  exact=True

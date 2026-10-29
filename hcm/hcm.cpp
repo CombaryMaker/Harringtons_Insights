@@ -9,6 +9,9 @@
 // refines the result, and codes the bit with a 32-bit arithmetic coder.
 // The decoder runs the identical model, so the file needs nothing else.
 //
+// v3.5 (29 Oct 2026): parallel blocks (commands p = fast, q = max; HCM_BLOCK_MB sets the
+// block size, default 16) decoded on separate processor cores, and text/binary sections
+// inside one file (one model, contexts switch at each boundary; kept only if smaller).
 // v3.4 (29 Oct 2026): match recovery after one wrong byte, numeric contexts for 16-bit
 // samples in binary files, incompressible files stored unchanged, stricter check on old v2
 // files. Every older .hcm file decodes exactly as before.
@@ -33,6 +36,8 @@
 #include <string.h>
 #include <stdint.h>
 #include <time.h>
+#include <thread>
+#include <vector>
 #ifdef _WIN32
 #include <wchar.h>
 #include <windows.h>
@@ -947,6 +952,9 @@ struct Tables {
     uint16_t *apm; uint8_t *apm_ok; uint16_t row0[33];
     int32_t *mtab;
     uint32_t mmask;            // match table size - 1
+    // v3.5 sections: the file is split into text and binary stretches; one model runs
+    // through the whole file and only the text/binary contexts switch at each boundary.
+    int nsec; const uint32_t *sec_start; const uint8_t *sec_bin;
 };
 
 static void tables_free(Tables *t) {
@@ -1060,7 +1068,8 @@ static inline void train(int32_t *w, const int32_t *x, int err) {
 template <int DEC, int TWOMIX, int V33>
 static void run(Tables *t, uint8_t *buf, size_t n, Coder *cd, int isbin, int v34) {
     const int APMW = V33 ? APMW_V33 : APMW_V3, MMR = V33 ? MMR_V33 : MMR_V3, WSTRIDE = V33 ? 16 : NINP;
-    static RecState rs;
+    static thread_local RecState rs;
+    int si = 0;  // v3.5: current section
     if (V33) { rec_init(&rs); for (int c = 0; c < 256; c++) CLS[c] = (uint8_t)cls(c); }
     int wl = 0;                  // letters so far in the current word
     int64_t lnl = -1;            // position of the last newline
@@ -1196,6 +1205,11 @@ static void run(Tables *t, uint8_t *buf, size_t n, Coder *cd, int isbin, int v34
         last = byte;
         ctx_hashes(h, buf, nb, word, pword);
         if (V33) {
+            if (t->nsec) {   // v3.5: switch text/binary contexts at section boundaries
+                while (si + 1 < t->nsec && nb >= t->sec_start[si + 1]) si++;
+                isbin = t->sec_bin[si];
+                if (!isbin) rec_update(&rs, buf, nb);   // keep record detection warm through text
+            }
             if (isbin) {
                 rec_update(&rs, buf, nb); rec_swap(h, buf, nb, &rs);
                 if (v34) h[4] = num_ctx(buf, nb, rs.R);   // v3.4: the order-6 slot predicts 16-bit samples
@@ -1227,7 +1241,8 @@ enum { MODE_FAST = 0, MODE_MAX = 1 };
 // mode byte: bit 0 = max mode, bit 4 = binary file, bit 5 = v3.3 model.
 // Plain v3 files (bits 4-5 clear) decode exactly as before.
 // bit 1 = v3.4 model (match recovery; numeric contexts for binary files), bit 3 = stored raw.
-enum { FLAG_BIN = 16, FLAG_V33 = 32, FLAG_V34 = 2, FLAG_RAW = 8 };
+enum { FLAG_BIN = 16, FLAG_V33 = 32, FLAG_V34 = 2, FLAG_RAW = 8, FLAG_SEG = 64 };
+// bit 6 (v3.5) = sections: a table of text/binary stretches follows the header.
 static const int HEADER = 13;
 
 static inline void put32(uint8_t *p, uint32_t v) { p[0] = (uint8_t)(v >> 24); p[1] = (uint8_t)(v >> 16); p[2] = (uint8_t)(v >> 8); p[3] = (uint8_t)v; }
@@ -1244,9 +1259,11 @@ static void run_any(Tables *t, uint8_t *buf, size_t n, Coder *cd, int mb) {
     else     { if (mx) run<DEC, 1, 0>(t, buf, n, cd, 0, 0); else run<DEC, 0, 0>(t, buf, n, cd, 0, 0); }
 }
 
-static int encode_one(const uint8_t *data, size_t n, int mb, uint8_t **out, size_t *outn) {
+static int encode_one(const uint8_t *data, size_t n, int mb, uint8_t **out, size_t *outn,
+                      int nsec = 0, const uint32_t *ss = NULL, const uint8_t *sb = NULL) {
     Tables *t = (Tables *)malloc(sizeof(Tables));
     if (!t || tables_init(t, (mb & 1) ? 17 : 16, mb & 1, n, (mb & FLAG_V33) != 0)) { free(t); return -1; }
+    t->nsec = (mb & FLAG_SEG) ? nsec : 0; t->sec_start = ss; t->sec_bin = sb;
     uint8_t *buf = (uint8_t *)malloc(n ? n : 1);
     if (!buf) { tables_free(t); free(t); return -1; }
     memcpy(buf, data, n);
@@ -1256,6 +1273,13 @@ static int encode_one(const uint8_t *data, size_t n, int mb, uint8_t **out, size
     put32(hdr + 5, (uint32_t)n);
     put32(hdr + 9, crc32(data, n));
     for (int i = 0; i < HEADER; i++) bw_put(&w, hdr[i], 8);
+    if (mb & FLAG_SEG) {   // v3.5 section table: count, then start (32 bits) and binary flag (8 bits)
+        bw_put(&w, (uint32_t)nsec >> 8, 8); bw_put(&w, (uint32_t)nsec & 255, 8);
+        for (int i = 0; i < nsec; i++) {
+            for (int k = 24; k >= 0; k -= 8) bw_put(&w, (ss[i] >> k) & 255, 8);
+            bw_put(&w, sb[i], 8);
+        }
+    }
     Coder e = {0, TOP, 0, 0, &w, NULL};
     run_any<0>(t, buf, n, &e, mb);
     enc_finish(&e);
@@ -1290,6 +1314,34 @@ static int compress(const uint8_t *data, size_t n, int mode, uint8_t **out, size
         if (encode_one(data, n, mode | FLAG_V33 | FLAG_V34 | FLAG_BIN, &b, &bn)) { free(a); return -1; }
         if (bn < an) { free(a); a = b; an = bn; } else free(b);
     }
+    // v3.5 sections: mark 64 KB windows as text or binary, absorb stretches shorter than
+    // 256 KB into the one before, and if the file really mixes both, try one pass that
+    // switches contexts at each boundary. Kept only if smaller.
+    {
+        const size_t W = 65536, MINSEC = 4 * W;
+        size_t nw = (n + W - 1) / W;
+        if (nw >= 8) {
+            uint32_t *ss = (uint32_t *)malloc(nw * 4); uint8_t *sb = (uint8_t *)malloc(nw);
+            int ns = 0;
+            for (size_t i = 0; i < nw; i++) {
+                size_t a0 = i * W, l = n - a0 < W ? n - a0 : W;
+                uint8_t f = (uint8_t)(looks_binary(data + a0, l) != 0);
+                if (ns && sb[ns - 1] == f) continue;
+                if (ns && (size_t)(a0 - ss[ns - 1]) < MINSEC) {     // previous stretch too short:
+                    if (ns >= 2 && sb[ns - 2] == f) { ns--; continue; }  // merge back into the one before
+                    sb[ns - 1] = f; if (ns == 1) ss[0] = 0; continue;
+                }
+                ss[ns] = (uint32_t)a0; sb[ns] = f; ns++;
+            }
+            if (ns && n - ss[ns - 1] < MINSEC && ns >= 2) ns--;     // short tail joins the previous stretch
+            if (ns >= 2) {
+                if (encode_one(data, n, mode | FLAG_V33 | FLAG_V34 | FLAG_SEG, &b, &bn, ns, ss, sb) == 0) {
+                    if (bn < an) { free(a); a = b; an = bn; } else free(b);
+                }
+            }
+            free(ss); free(sb);
+        }
+    }
     // incompressible: store the bytes unchanged (13-byte header only)
     if (an >= (size_t)HEADER + n) {
         free(a);
@@ -1306,8 +1358,8 @@ static int compress(const uint8_t *data, size_t n, int mode, uint8_t **out, size
 static int decompress(const uint8_t *blob, size_t bn, uint8_t **out, size_t *outn) {
     if (!is_v3(blob, bn)) return -2;
     int mb = blob[4];
-    if (mb & ~(1 | FLAG_BIN | FLAG_V33 | FLAG_V34 | FLAG_RAW)) return -2;
-    if ((mb & (FLAG_BIN | FLAG_V34)) && !(mb & FLAG_V33)) return -2;
+    if (mb & ~(1 | FLAG_BIN | FLAG_V33 | FLAG_V34 | FLAG_RAW | FLAG_SEG)) return -2;
+    if ((mb & (FLAG_BIN | FLAG_V34 | FLAG_SEG)) && !(mb & FLAG_V33)) return -2;
     uint32_t n = get32(blob + 5), crc = get32(blob + 9);
     if (mb & FLAG_RAW) {   // stored unchanged
         if (mb & ~(FLAG_RAW | 1) || bn != (size_t)HEADER + n) return -2;
@@ -1319,13 +1371,22 @@ static int decompress(const uint8_t *blob, size_t bn, uint8_t **out, size_t *out
     if (n > 0x7FFFFFFFu || (uint64_t)n > ((uint64_t)bn + 16) * 4096) return -2;
     BitReader r = {blob + HEADER, (uint64_t)(bn - HEADER) * 8, 0};
     Coder d = {0, TOP, 0, 0, NULL, &r};
+    int nsec = 0; uint32_t *ss = NULL; uint8_t *sb = NULL;
+    if (mb & FLAG_SEG) {
+        nsec = (int)(br_get(&r, 8) << 8); nsec |= (int)br_get(&r, 8);
+        if (nsec < 1 || (size_t)nsec * 5 + 2 > bn) return -2;
+        ss = (uint32_t *)malloc((size_t)nsec * 4); sb = (uint8_t *)malloc((size_t)nsec);
+        if (!ss || !sb) { free(ss); free(sb); return -1; }
+        for (int i = 0; i < nsec; i++) { ss[i] = (uint32_t)br_get(&r, 32); sb[i] = (uint8_t)br_get(&r, 8); }
+    }
     d.v = br_get(&r, 32);
     Tables *t = (Tables *)malloc(sizeof(Tables));
-    if (!t || tables_init(t, (mb & 1) ? 17 : 16, mb & 1, n, (mb & FLAG_V33) != 0)) { free(t); return -1; }
+    if (!t || tables_init(t, (mb & 1) ? 17 : 16, mb & 1, n, (mb & FLAG_V33) != 0)) { free(t); free(ss); free(sb); return -1; }
+    t->nsec = nsec; t->sec_start = ss; t->sec_bin = sb;
     uint8_t *buf = (uint8_t *)malloc(n ? n : 1);
     if (!buf) { tables_free(t); free(t); return -1; }
     run_any<1>(t, buf, n, &d, mb);
-    tables_free(t); free(t);
+    tables_free(t); free(t); free(ss); free(sb);
     if (crc32(buf, n) != crc) { free(buf); return -5; }
     *out = buf;
     *outn = n;
@@ -1485,8 +1546,51 @@ static double seconds_since(clock_t t0) {
     return (double)(clock() - t0) / CLOCKS_PER_SEC;
 }
 
+// ---- v3.5 parallel blocks: "HCMP" + 32-bit block size + 32-bit block count, then each
+// block's compressed length (32 bits) and its ordinary HCM3 stream. Blocks are compressed
+// and decompressed on separate processor cores; each block has its own model.
+static int par_threads(void) { unsigned h = std::thread::hardware_concurrency(); return h ? (int)h : 2; }
+static int compress_par(const uint8_t *data, size_t n, int mode, size_t B, uint8_t **out, size_t *outn) {
+    size_t nb = n ? (n + B - 1) / B : 1;
+    std::vector<uint8_t *> bl(nb, (uint8_t *)NULL); std::vector<size_t> bln(nb, 0); std::vector<int> rc(nb, 0);
+    int T = par_threads();
+    for (size_t s = 0; s < nb; s += (size_t)T) {
+        std::vector<std::thread> th;
+        for (size_t i = s; i < nb && i < s + (size_t)T; i++)
+            th.emplace_back([&, i] { size_t a = i * B, l = n - a < B ? n - a : B; rc[i] = v3::compress(data + a, l, mode, &bl[i], &bln[i]); });
+        for (auto &x : th) x.join();
+    }
+    size_t tot = 12 + 4 * nb; for (size_t i = 0; i < nb; i++) { if (rc[i]) return -1; tot += bln[i]; }
+    uint8_t *o = (uint8_t *)malloc(tot); if (!o) return -1;
+    o[0] = 'H'; o[1] = 'C'; o[2] = 'M'; o[3] = 'P'; v3::put32(o + 4, (uint32_t)B); v3::put32(o + 8, (uint32_t)nb);
+    size_t p = 12 + 4 * nb;
+    for (size_t i = 0; i < nb; i++) { v3::put32(o + 12 + 4 * i, (uint32_t)bln[i]); memcpy(o + p, bl[i], bln[i]); p += bln[i]; free(bl[i]); }
+    *out = o; *outn = tot; return 0;
+}
+static int decompress_par(const uint8_t *blob, size_t bn, uint8_t **out, size_t *outn) {
+    if (bn < 12) return -2;
+    size_t nb = v3::get32(blob + 8); if (nb == 0 || 12 + 4 * nb > bn) return -2;
+    std::vector<size_t> off(nb), len(nb); size_t p = 12 + 4 * nb;
+    for (size_t i = 0; i < nb; i++) { len[i] = v3::get32(blob + 12 + 4 * i); off[i] = p; p += len[i]; if (p > bn) return -2; }
+    std::vector<uint8_t *> o(nb, (uint8_t *)NULL); std::vector<size_t> on(nb, 0); std::vector<int> rc(nb, 0);
+    int T = par_threads();
+    for (size_t s = 0; s < nb; s += (size_t)T) {
+        std::vector<std::thread> th;
+        for (size_t i = s; i < nb && i < s + (size_t)T; i++)
+            th.emplace_back([&, i] { rc[i] = v3::is_v3(blob + off[i], len[i]) ? v3::decompress(blob + off[i], len[i], &o[i], &on[i]) : -2; });
+        for (auto &x : th) x.join();
+    }
+    size_t tot = 0; int bad = 0;
+    for (size_t i = 0; i < nb; i++) { if (rc[i]) bad = rc[i]; tot += on[i]; }
+    if (bad) { for (size_t i = 0; i < nb; i++) free(o[i]); return bad; }
+    uint8_t *r = (uint8_t *)malloc(tot ? tot : 1); if (!r) return -1;
+    size_t q = 0; for (size_t i = 0; i < nb; i++) { memcpy(r + q, o[i], on[i]); q += on[i]; free(o[i]); }
+    *out = r; *outn = tot; return 0;
+}
+
 // Restores either format. Returns 0, -1 (memory), -2 (not HCM), -5 (damaged).
 static int decompress_any(const uint8_t *blob, size_t bn, uint8_t **out, size_t *outn) {
+    if (bn >= 4 && blob[0] == 'H' && blob[1] == 'C' && blob[2] == 'M' && blob[3] == 'P') return decompress_par(blob, bn, out, outn);
     if (v3::is_v3(blob, bn)) return v3::decompress(blob, bn, out, outn);
     return v2::hcm_decompress(blob, bn, out, outn);
 }
@@ -1501,6 +1605,7 @@ static void report_error(int code) {
 // Compress one file to OUT (or to an automatic name when OUT is NULL),
 // checking that it decodes back exactly before saving it.
 
+static size_t g_par_block = 0;   // v3.5: block size for parallel mode (0 = single stream)
 static int do_compress(const pchar *in, const pchar *out_given, int mode) {
     char a[32], b[32];
     uint8_t *data = NULL, *blob = NULL, *back = NULL;
@@ -1509,7 +1614,8 @@ static int do_compress(const pchar *in, const pchar *out_given, int mode) {
     int rc = read_file(in, &data, &n);
     if (rc) { report_error(rc); return 1; }
     clock_t t0 = clock();
-    if (v3::compress(data, n, mode, &blob, &bn)) { printf("  Not enough memory.\n"); free(data); return 1; }
+    if ((g_par_block && n > g_par_block) ? compress_par(data, n, mode, g_par_block, &blob, &bn)
+                                         : v3::compress(data, n, mode, &blob, &bn)) { printf("  Not enough memory.\n"); free(data); return 1; }
     double tc = seconds_since(t0);
     t0 = clock();
     rc = decompress_any(blob, bn, &back, &backn);
@@ -1598,12 +1704,18 @@ static int run(int argc, pchar **argv, const pchar *self) {
     v3::init_tables();
     v3::crc_init();
     // command line: hcm c IN OUT | hcm x IN OUT | hcm d IN OUT
+    // v3.5 parallel blocks: p = fast, q = max; block size in MB from HCM_BLOCK_MB (default 16)
+    if (argc == 4 && (is_word(argv[1], 'p') || is_word(argv[1], 'q'))) {
+        const char *e = getenv("HCM_BLOCK_MB"); long mb = e ? atol(e) : 16; if (mb < 1) mb = 16;
+        g_par_block = (size_t)mb << 20;
+        return do_compress(argv[2], argv[3], is_word(argv[1], 'q') ? v3::MODE_MAX : v3::MODE_FAST);
+    }
     if (argc == 4 && (is_word(argv[1], 'c') || is_word(argv[1], 'x') || is_word(argv[1], 'd'))) {
         if (is_word(argv[1], 'd')) return do_decompress(argv[2], argv[3]);
         return do_compress(argv[2], argv[3], is_word(argv[1], 'x') ? v3::MODE_MAX : v3::MODE_FAST);
     }
     int mode = self && name_has_max(self) ? v3::MODE_MAX : v3::MODE_FAST;
-    printf("HCM v3.4  (Harrington Compression Method)  -  %s mode\n", mode == v3::MODE_MAX ? "max" : "fast");
+    printf("HCM v3.5  (Harrington Compression Method)  -  %s mode\n", mode == v3::MODE_MAX ? "max" : "fast");
     printf("Copyright (c) 2026 Michael Harrington. MIT License.\n\n");
     int failures = 0;
     if (argc < 2) {
