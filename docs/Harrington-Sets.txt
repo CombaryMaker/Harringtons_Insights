@@ -1,0 +1,54 @@
+HARRINGTON SETS
+Multi-core for compressors that only ever had one core.
+Michael Harrington, Harrington's Insights, 29 October 2026. Original work; MIT license.
+
+WHAT IT IS
+Harrington Sets lets slow compressors that have always run on a single processor core use every core in the
+machine. Instead of cutting a file into equal chunks, it reads the file on the spot, gathers like data from
+anywhere in the file into its own streams, sets aside the parts that cannot be compressed, and gives each
+stream its own model and its own core.
+
+HOW IT WORKS
+1. The file is read in 64 KB windows, and each window is measured on the spot: share of control bytes,
+   letters, digits, spaces, high bytes and zeros, plus byte entropy. No format description is needed.
+2. Exclusion: windows that are random or already compressed (entropy above 7.99 bits per byte) are excluded
+   to a raw set that is stored as-is and never modelled.
+3. The remaining windows are grouped into up to three sets of like data (k-means on the measurements).
+   Runs shorter than 512 KB join their neighbour; sets under 1 MB fold into the largest set.
+4. Each set's windows are joined in file order into one stream with its own model. Large streams are split
+   into blocks so every core stays busy, and each block runs on its own core.
+5. Layered exclusion map: map one says "set one, or excluded"; map two sorts only the excluded windows into
+   set two or set three (or raw). Stored as run lengths, about 5 bytes per run, it puts every window back in
+   its exact place when the file is decoded.
+
+ORIGINALITY
+Harrington Sets is an original work with loose ties to earlier ideas, all of which operate differently:
+- Equal-chunk parallel blocks (pigz, pbzip2, xz -T, zstd -T, ZPAQ blocks, pcompress) cut the file blindly.
+- Archivers such as FreeArc, 7-Zip and RAR group whole files by name or extension.
+- OpenZL, Parquet and ORC split data into streams from a format description or schema written in advance.
+- Logzip clusters lines, but only for text logs.
+Harrington Sets parses on the spot, with no format knowledge, regroups like windows from anywhere in a
+file into shared streams, excludes incompressible data through a layered map, and decodes the streams in
+parallel inside a context-mixing compressor. To the author's knowledge no existing tool does this.
+Tools that already decode in milliseconds gain little and are left as they are.
+
+RESULTS (one run, wall clock, a 2-core machine; every file decoded back exactly)
+Sizes are 1,000,000 bits down to X.
+  samba (21,606,400 bytes), HCM fast
+    single stream (v3.4)        157,393   compress 62.9 s   decode 16.8 s
+    equal 16 MB blocks (v3.5)   159,390   compress 59.2 s   decode 13.9 s
+    Harrington Sets (v3.6)      157,643   compress 42.5 s   decode  9.7 s   <- 1.73x faster decode, +0.16% size
+  mozilla (51,220,480 bytes): about equal to equal blocks (261,999 vs 261,866; decode 35.4 vs 32.7 s)
+  Three randomly picked medium files (2 MB blocks): 1.5x to 1.9x faster decode for 0.5% to 4.3% more size
+  lpaq1-h with the same treatment: 1.6x to 1.9x faster decode
+More cores give more speed; these tests had only two.
+
+HOW TO USE (HCM v3.6, source hcm/hcm.cpp)
+  hcm s INPUT OUTPUT     Harrington Sets, fast mode
+  hcm t INPUT OUTPUT     Harrington Sets, max mode
+  hcm d INPUT OUTPUT     decompress (recognises Harrington Sets files automatically)
+  HCM_BLOCK_MB sets the largest block size in MB (default 16).
+
+MORE
+  Book: Harringtons-Insights.pdf, Introduction and Section 10.9; charts in Appendix G.12
+  Results and notes: src/hcm-v36/NOTES.txt, src/hcm-v36/silesia_results.txt, src/hcm-v36/random5_results.txt
