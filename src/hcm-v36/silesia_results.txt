@@ -1,0 +1,26 @@
+samba    v3.6 sets    3,411,208 bytes  compress    42.0 s  decode    10.4 s  exact=True
+sets: 330 windows, 8 runs, 4 blocks
+  set   0    10049536 ->    1060655
+  set   0    10049536 ->    1052650
+  set   2     1310720 ->    1101202
+  set 255      196608 ->     196621
+mozilla  v3.6 sets   13,480,459 bytes  compress   132.9 s  decode    35.1 s  exact=True
+sets: 782 windows, 257 runs, 6 blocks
+  set   0     9029632 ->    1366781
+  set   0     9029632 ->    1512073
+  set   1     4521984 ->     547597
+  set   2    13369344 ->    4440637
+  set   2    13369344 ->    3711479
+  set 255     1900544 ->    1900557
+mozilla  v3.6 sets raw>7.99 minrun 8:   13,419,759 bytes  compress   135.9 s  decode    35.4 s  exact=True
+sets: 782 windows, 8 runs, 5 blocks
+  set   0     5439488 ->    2054874
+  set   1     2527232 ->     458737
+  set   2    14417920 ->    4347351
+  set   2    14417920 ->    3251583
+  set   2    14417920 ->    3307129
+samba    v3.6 sets raw>7.99 minrun 8:    3,406,084 bytes  compress    42.5 s  decode     9.7 s  exact=True
+sets: 330 windows, 3 runs, 3 blocks
+  set   0    10246144 ->    1418024
+  set   0    10246144 ->    1062066
+  set   2     1114112 ->     925944

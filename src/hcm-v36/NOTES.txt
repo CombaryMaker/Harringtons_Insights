@@ -1,0 +1,35 @@
+HCM v3.6 "sets" mode (29 October 2026) - Michael Harrington's exclusion idea. Source: hcm/hcm.cpp.
+Commands: s = fast, t = max. Decompress (d) recognises the "HCMS" format automatically.
+
+HOW IT WORKS
+The file is read in 64 KB windows. Windows that are random or already compressed (byte entropy above
+7.99 bits per byte) are excluded to a raw set and stored, never modelled. The remaining windows are
+grouped into up to 3 sets by their byte statistics (control, letters, digits, spaces, high bytes, zeros,
+entropy; k-means). Runs shorter than 8 windows (512 KB) take the label of the run before them, and
+sets under 1 MB are folded into the largest set. Each set's windows are joined in file order and
+compressed with their own HCM model; large sets are split into 16 MB blocks; every block runs on its
+own processor core. A run-length map of the labels (5 bytes per run) puts every window back.
+
+RESULTS (Silesia, fast mode, one run, wall clock, 2-core cloud machine, all decoded exactly)
+                       size (bytes)   compress   decode   1,000,000 bits down to
+samba (21,606,400)
+  v3.4 single stream     3,400,668     62.9 s    16.8 s   157,393
+  v3.5 parallel blocks   3,443,819     59.2 s    13.9 s   159,390
+  v3.6 sets (first try)  3,411,208     42.0 s    10.4 s   157,880
+  v3.6 sets (tuned)      3,406,084     42.5 s     9.7 s   157,643   <- 1.73x faster decode for +0.16% size
+mozilla (51,220,480)
+  v3.4 single stream    13,355,236    180.8 s    47.0 s   260,739
+  v3.5 parallel blocks  13,412,925    130.2 s    32.7 s   261,866
+  v3.6 sets (first try) 13,480,459    132.9 s    35.1 s   263,184   (257 runs; 1.9 MB stored raw)
+  v3.6 sets (tuned)     13,419,759    135.9 s    35.4 s   261,999
+Compression ratios: samba v3.4 6.354, v3.6 tuned 6.343; mozilla v3.4 3.835, v3.6 tuned 3.817.
+
+OBSERVATIONS
+- samba: a clear win over parallel blocks on both size and speed, and close to single-stream size.
+- mozilla: about the same as plain parallel blocks (0.05% larger, 8% slower decode). Its largest set
+  is 43 MB of code, cut into three blocks, and with only 2 cores the 5 blocks decode in 3 rounds, so the
+  slowest round sets the time. On 4+ cores this would improve.
+- The first try's raw rule (7.95 bits/byte) excluded 1.9 MB that HCM could still shrink a little, and
+  without smoothing mozilla split into 257 runs; both hurt. Tuned settings fixed both.
+- Not yet tried: warming each set's model with a shared sample, more than 3 sets, choosing sets by
+  trial compression instead of byte statistics.

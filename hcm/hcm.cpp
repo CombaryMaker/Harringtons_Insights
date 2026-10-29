@@ -9,6 +9,10 @@
 // refines the result, and codes the bit with a 32-bit arithmetic coder.
 // The decoder runs the identical model, so the file needs nothing else.
 //
+// v3.6 (29 Oct 2026): sets mode (commands s = fast, t = max), Michael Harrington's exclusion idea:
+// 64 KB windows that are random/already compressed are excluded to a raw set; the rest are grouped
+// into up to 3 sets by byte statistics; each set gets its own model, in parallel; a run-length map
+// restores the order. Runs under 8 windows join their neighbour; raw only above 7.99 bits/byte.
 // v3.5 (29 Oct 2026): parallel blocks (commands p = fast, q = max; HCM_BLOCK_MB sets the
 // block size, default 16) decoded on separate processor cores, and text/binary sections
 // inside one file (one model, contexts switch at each boundary; kept only if smaller).
@@ -36,6 +40,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <time.h>
+#include <math.h>
 #include <thread>
 #include <vector>
 #ifdef _WIN32
@@ -1588,9 +1593,169 @@ static int decompress_par(const uint8_t *blob, size_t bn, uint8_t **out, size_t 
     *out = r; *outn = tot; return 0;
 }
 
+
+// ---- v3.6 sets ("HCMS"): Michael Harrington's exclusion idea. The file is read in 64 KB
+// windows; windows that look already compressed or random are excluded to a raw set (stored,
+// never modelled); the rest are grouped into up to 3 sets by their byte statistics (k-means).
+// Each set's windows are joined in file order and compressed with its own model, large sets
+// split into blocks, all blocks on separate cores. A run-length map of set labels puts every
+// window back in its place.
+// Layout: "HCMS" n(32) W(32) runs(32) {label(8) count(32)}* blocks(32) {set(8) len(32)}* data
+static const size_t SET_W = 65536;
+static void win_features(const uint8_t *d, size_t l, double *f, double *ent) {
+    size_t h[256] = {0};
+    for (size_t i = 0; i < l; i++) h[d[i]]++;
+    double e = 0; size_t ctl = 0, alpha = 0, digit = 0, space = 0, high = 0, zero = h[0];
+    for (int c = 0; c < 256; c++) {
+        if (!h[c]) continue;
+        double q = (double)h[c] / l; e -= q * log2(q);
+        if (c >= 128) high += h[c];
+        else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) alpha += h[c];
+        else if (c >= '0' && c <= '9') digit += h[c];
+        else if (c == ' ' || c == '\n' || c == '\r' || c == '\t') space += h[c];
+        else if (c < 32 || c == 127) ctl += h[c];
+    }
+    double L = (double)l;
+    f[0] = ctl / L; f[1] = alpha / L; f[2] = digit / L; f[3] = space / L; f[4] = high / L; f[5] = zero / L; f[6] = e / 8.0;
+    *ent = e;
+}
+static int compress_sets(const uint8_t *data, size_t n, int mode, size_t B, uint8_t **out, size_t *outn) {
+    const size_t W = SET_W, nw = (n + W - 1) / W;
+    const int D = 7, RAW = 255;
+    std::vector<double> F(nw * D); std::vector<uint8_t> lab(nw, 0);
+    std::vector<size_t> idx;
+    for (size_t i = 0; i < nw; i++) {
+        size_t a = i * W, l = n - a < W ? n - a : W; double e;
+        win_features(data + a, l, &F[i * D], &e);
+        static const double RAWE = getenv("HCM_RAWENT") ? atof(getenv("HCM_RAWENT")) : 7.99;
+        if (e > RAWE && l >= 4096) lab[i] = RAW; else idx.push_back(i);
+    }
+    // k-means (k up to 3) on the modelled windows; farthest-point start, so the result is deterministic
+    int K = idx.size() >= 48 ? 3 : (idx.size() >= 16 ? 2 : 1);
+    std::vector<double> C(K * D);
+    if (!idx.empty()) {
+        for (int d = 0; d < D; d++) C[d] = F[idx[0] * D + d];
+        for (int k = 1; k < K; k++) {
+            double best = -1; size_t bi = idx[0];
+            for (size_t j : idx) {
+                double m = 1e9;
+                for (int c = 0; c < k; c++) { double s = 0; for (int d = 0; d < D; d++) { double t = F[j * D + d] - C[c * D + d]; s += t * t; } if (s < m) m = s; }
+                if (m > best) { best = m; bi = j; }
+            }
+            for (int d = 0; d < D; d++) C[k * D + d] = F[bi * D + d];
+        }
+        for (int it = 0; it < 20; it++) {
+            std::vector<double> S(K * D, 0); std::vector<size_t> cnt(K, 0);
+            for (size_t j : idx) {
+                int bk = 0; double bm = 1e18;
+                for (int c = 0; c < K; c++) { double s = 0; for (int d = 0; d < D; d++) { double t = F[j * D + d] - C[c * D + d]; s += t * t; } if (s < bm) { bm = s; bk = c; } }
+                lab[j] = (uint8_t)bk; cnt[bk]++; for (int d = 0; d < D; d++) S[bk * D + d] += F[j * D + d];
+            }
+            for (int c = 0; c < K; c++) if (cnt[c]) for (int d = 0; d < D; d++) C[c * D + d] = S[c * D + d] / cnt[c];
+        }
+        // sets under 1 MB are folded into the largest set (too small to be worth their own model)
+        std::vector<size_t> cnt(K, 0); for (size_t j : idx) cnt[lab[j]]++;
+        int big = 0; for (int c = 1; c < K; c++) if (cnt[c] > cnt[big]) big = c;
+        for (size_t j : idx) if (cnt[lab[j]] * W < (1u << 20)) lab[j] = (uint8_t)big;
+    }
+    // smoothing: a run shorter than MINRUN windows takes the label of the run before it
+    {
+        static const long MINRUN = getenv("HCM_MINRUN") ? atol(getenv("HCM_MINRUN")) : 8;
+        if (MINRUN > 1) for (int pass = 0; pass < 2; pass++) {
+            size_t i = 0;
+            while (i < nw) {
+                size_t j = i; while (j < nw && lab[j] == lab[i]) j++;
+                if ((long)(j - i) < MINRUN && i > 0) for (size_t k = i; k < j; k++) lab[k] = lab[i - 1];
+                i = j;
+            }
+        }
+    }
+    // gather each set's windows in file order, cut into blocks of at most B bytes
+    struct Blk { uint8_t set; std::vector<uint8_t> raw; uint8_t *z; size_t zn; int rc; };
+    std::vector<Blk> blks;
+    for (int s = 0; s < 256; s++) {
+        std::vector<uint8_t> buf;
+        for (size_t i = 0; i < nw; i++) if (lab[i] == s) { size_t a = i * W, l = n - a < W ? n - a : W; buf.insert(buf.end(), data + a, data + a + l); }
+        if (buf.empty()) continue;
+        size_t nb = (buf.size() + B - 1) / B, per = (buf.size() + nb - 1) / nb;
+        for (size_t k = 0; k < nb; k++) {
+            size_t a = k * per, l = buf.size() - a < per ? buf.size() - a : per;
+            Blk b; b.set = (uint8_t)s; b.raw.assign(buf.begin() + a, buf.begin() + a + l); b.z = NULL; b.zn = 0; b.rc = 0; blks.push_back(std::move(b));
+        }
+    }
+    int T = par_threads();
+    for (size_t s = 0; s < blks.size(); s += (size_t)T) {
+        std::vector<std::thread> th;
+        for (size_t i = s; i < blks.size() && i < s + (size_t)T; i++)
+            th.emplace_back([&, i] {
+                Blk &b = blks[i];
+                if (b.set == RAW) {   // excluded: stored as an HCM3 raw stream, never modelled
+                    size_t l = b.raw.size(); b.z = (uint8_t *)malloc(13 + l); if (!b.z) { b.rc = -1; return; }
+                    b.z[0] = 'H'; b.z[1] = 'C'; b.z[2] = 'M'; b.z[3] = '3'; b.z[4] = (uint8_t)(v3::FLAG_RAW | (mode & 1));
+                    v3::put32(b.z + 5, (uint32_t)l); v3::put32(b.z + 9, v3::crc32(b.raw.data(), l)); memcpy(b.z + 13, b.raw.data(), l); b.zn = 13 + l;
+                } else b.rc = v3::compress(b.raw.data(), b.raw.size(), mode, &b.z, &b.zn);
+            });
+        for (auto &x : th) x.join();
+    }
+    // run-length map of labels
+    std::vector<std::pair<uint8_t, uint32_t>> runs;
+    for (size_t i = 0; i < nw; i++) { if (!runs.empty() && runs.back().first == lab[i]) runs.back().second++; else runs.push_back({lab[i], 1}); }
+    size_t tot = 16 + runs.size() * 5 + 4 + blks.size() * 5;
+    for (auto &b : blks) { if (b.rc) return -1; tot += b.zn; }
+    uint8_t *o = (uint8_t *)malloc(tot); if (!o) return -1;
+    size_t p = 0;
+    o[0] = 'H'; o[1] = 'C'; o[2] = 'M'; o[3] = 'S'; v3::put32(o + 4, (uint32_t)n); v3::put32(o + 8, (uint32_t)W); v3::put32(o + 12, (uint32_t)runs.size()); p = 16;
+    for (auto &r : runs) { o[p] = r.first; v3::put32(o + p + 1, r.second); p += 5; }
+    v3::put32(o + p, (uint32_t)blks.size()); p += 4;
+    for (auto &b : blks) { o[p] = b.set; v3::put32(o + p + 1, (uint32_t)b.zn); p += 5; }
+    for (auto &b : blks) { memcpy(o + p, b.z, b.zn); p += b.zn; free(b.z); }
+    if (getenv("HCM_VERBOSE")) {
+        fprintf(stderr, "sets: %zu windows, %zu runs, %zu blocks\n", nw, runs.size(), blks.size());
+        for (auto &b : blks) fprintf(stderr, "  set %3d  %10zu -> %10zu\n", b.set, b.raw.size(), b.zn);
+    }
+    *out = o; *outn = tot; return 0;
+}
+static int decompress_sets(const uint8_t *blob, size_t bn, uint8_t **out, size_t *outn) {
+    if (bn < 20) return -2;
+    size_t n = v3::get32(blob + 4), W = v3::get32(blob + 8), nr = v3::get32(blob + 12), p = 16;
+    if (W == 0 || p + nr * 5 + 4 > bn) return -2;
+    std::vector<uint8_t> lab; lab.reserve((n + W - 1) / W);
+    for (size_t i = 0; i < nr; i++) { uint8_t l = blob[p]; size_t c = v3::get32(blob + p + 1); p += 5; if (lab.size() + c > (n + W - 1) / W) return -2; lab.insert(lab.end(), c, l); }
+    if (lab.size() != (n + W - 1) / W) return -2;
+    size_t nb = v3::get32(blob + p); p += 4; if (p + nb * 5 > bn) return -2;
+    std::vector<uint8_t> bs(nb); std::vector<size_t> bl(nb), bo(nb);
+    for (size_t i = 0; i < nb; i++) { bs[i] = blob[p]; bl[i] = v3::get32(blob + p + 1); p += 5; }
+    for (size_t i = 0; i < nb; i++) { bo[i] = p; p += bl[i]; if (p > bn) return -2; }
+    std::vector<uint8_t *> o(nb, (uint8_t *)NULL); std::vector<size_t> on(nb, 0); std::vector<int> rc(nb, 0);
+    int T = par_threads();
+    for (size_t s = 0; s < nb; s += (size_t)T) {
+        std::vector<std::thread> th;
+        for (size_t i = s; i < nb && i < s + (size_t)T; i++)
+            th.emplace_back([&, i] { rc[i] = v3::is_v3(blob + bo[i], bl[i]) ? v3::decompress(blob + bo[i], bl[i], &o[i], &on[i]) : -2; });
+        for (auto &x : th) x.join();
+    }
+    for (size_t i = 0; i < nb; i++) if (rc[i]) { for (size_t k = 0; k < nb; k++) free(o[k]); return rc[i]; }
+    uint8_t *r = (uint8_t *)malloc(n ? n : 1); if (!r) return -1;
+    // walk each set's stream in order and put its windows back
+    std::vector<size_t> cur(nb, 0); int bad = 0;
+    for (size_t w = 0; w < lab.size() && !bad; w++) {
+        size_t a = w * W, l = n - a < W ? n - a : W, need = l, q = a;
+        for (size_t i = 0; i < nb && need; i++) {
+            if (bs[i] != lab[w] || cur[i] >= on[i]) continue;
+            size_t take = on[i] - cur[i] < need ? on[i] - cur[i] : need;
+            memcpy(r + q, o[i] + cur[i], take); cur[i] += take; q += take; need -= take;
+        }
+        if (need) bad = 1;
+    }
+    for (size_t i = 0; i < nb; i++) free(o[i]);
+    if (bad) { free(r); return -2; }
+    *out = r; *outn = n; return 0;
+}
+
 // Restores either format. Returns 0, -1 (memory), -2 (not HCM), -5 (damaged).
 static int decompress_any(const uint8_t *blob, size_t bn, uint8_t **out, size_t *outn) {
     if (bn >= 4 && blob[0] == 'H' && blob[1] == 'C' && blob[2] == 'M' && blob[3] == 'P') return decompress_par(blob, bn, out, outn);
+    if (bn >= 4 && blob[0] == 'H' && blob[1] == 'C' && blob[2] == 'M' && blob[3] == 'S') return decompress_sets(blob, bn, out, outn);
     if (v3::is_v3(blob, bn)) return v3::decompress(blob, bn, out, outn);
     return v2::hcm_decompress(blob, bn, out, outn);
 }
@@ -1606,6 +1771,7 @@ static void report_error(int code) {
 // checking that it decodes back exactly before saving it.
 
 static size_t g_par_block = 0;   // v3.5: block size for parallel mode (0 = single stream)
+static int g_sets = 0;           // v3.6: sets mode
 static int do_compress(const pchar *in, const pchar *out_given, int mode) {
     char a[32], b[32];
     uint8_t *data = NULL, *blob = NULL, *back = NULL;
@@ -1614,7 +1780,8 @@ static int do_compress(const pchar *in, const pchar *out_given, int mode) {
     int rc = read_file(in, &data, &n);
     if (rc) { report_error(rc); return 1; }
     clock_t t0 = clock();
-    if ((g_par_block && n > g_par_block) ? compress_par(data, n, mode, g_par_block, &blob, &bn)
+    if (g_sets ? compress_sets(data, n, mode, g_par_block ? g_par_block : ((size_t)16 << 20), &blob, &bn) :
+        (g_par_block && n > g_par_block) ? compress_par(data, n, mode, g_par_block, &blob, &bn)
                                          : v3::compress(data, n, mode, &blob, &bn)) { printf("  Not enough memory.\n"); free(data); return 1; }
     double tc = seconds_since(t0);
     t0 = clock();
@@ -1705,6 +1872,12 @@ static int run(int argc, pchar **argv, const pchar *self) {
     v3::crc_init();
     // command line: hcm c IN OUT | hcm x IN OUT | hcm d IN OUT
     // v3.5 parallel blocks: p = fast, q = max; block size in MB from HCM_BLOCK_MB (default 16)
+    // v3.6 sets: s = fast, t = max (block size from HCM_BLOCK_MB, default 16)
+    if (argc == 4 && (is_word(argv[1], 's') || is_word(argv[1], 't'))) {
+        const char *e = getenv("HCM_BLOCK_MB"); long mb = e ? atol(e) : 16; if (mb < 1) mb = 16;
+        g_par_block = (size_t)mb << 20; g_sets = 1;
+        return do_compress(argv[2], argv[3], is_word(argv[1], 't') ? v3::MODE_MAX : v3::MODE_FAST);
+    }
     if (argc == 4 && (is_word(argv[1], 'p') || is_word(argv[1], 'q'))) {
         const char *e = getenv("HCM_BLOCK_MB"); long mb = e ? atol(e) : 16; if (mb < 1) mb = 16;
         g_par_block = (size_t)mb << 20;
@@ -1715,7 +1888,7 @@ static int run(int argc, pchar **argv, const pchar *self) {
         return do_compress(argv[2], argv[3], is_word(argv[1], 'x') ? v3::MODE_MAX : v3::MODE_FAST);
     }
     int mode = self && name_has_max(self) ? v3::MODE_MAX : v3::MODE_FAST;
-    printf("HCM v3.5  (Harrington Compression Method)  -  %s mode\n", mode == v3::MODE_MAX ? "max" : "fast");
+    printf("HCM v3.6  (Harrington Compression Method)  -  %s mode\n", mode == v3::MODE_MAX ? "max" : "fast");
     printf("Copyright (c) 2026 Michael Harrington. MIT License.\n\n");
     int failures = 0;
     if (argc < 2) {
