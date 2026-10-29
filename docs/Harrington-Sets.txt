@@ -1,6 +1,7 @@
 HARRINGTON SETS
 Multi-core for compressors that only ever had one core.
-Michael Harrington, Harrington's Insights, 29 October 2026. Original work; MIT license.
+Michael Hugh Harrington, Harrington's Insights, 29 October 2026.
+Original work by Michael Hugh Harrington. Released under the MIT License (full text at the end of this document).
 
 WHAT IT IS
 Harrington Sets lets slow compressors that have always run on a single processor core use every core in the
@@ -43,6 +44,42 @@ Sizes are 1,000,000 bits down to X.
   lpaq1-h with the same treatment: 1.6x to 1.9x faster decode
 More cores give more speed; these tests had only two.
 
+EXPECTED RANGES (estimates from the two-core results above, not yet measured)
+Size increase: large mixed files about 0.1% to 1%; medium files about 0.5% to 5%; small files under about
+1 MB no change, since they fold into one set and get neither size loss nor speed gain.
+Speed: 2 cores 1.5x to 1.9x, which is near the two-core ceiling; 4 cores about 2.5x to 3.5x; 8 cores about
+4x to 6x on large files, with medium files topping out sooner because they have too few blocks to keep
+every core busy.
+
+LOW-COST MULTI-THREADING FOR SINGLE-CORE SOFTWARE
+A great deal of software is stuck on one core because it builds up state as it reads, such as an adaptive
+model, a dictionary or a learned context, and that work cannot simply be handed half to another core
+without breaking it. Harrington Sets gets around this cheaply. The sorting pass is a single quick read of
+64 KB windows measured on seven simple features, the map costs about 5 bytes per run, and the original
+program does not need to be rewritten, because each set simply gets its own copy of the same single-core
+engine. The limits seen so far are that each worker learns from less data, which is the 0.16% to 4.3% size
+cost measured in compression and would show up as a similar cost in other uses; that tools which are
+already parallel or already fast gain little; and that the input must be large enough to give at least as
+many blocks as there are cores.
+
+USES BEYOND COMPRESSION
+At its core Harrington Sets reads unknown data, sorts it by what it actually is with no format knowledge,
+sets aside what is not worth working on, sends each group to its own worker in parallel, and keeps a map
+that restores everything exactly. That pattern fits any slow process that learns from its input. Storage
+and backup systems could skip compressed or encrypted regions instantly and send each kind of data to the
+engine that suits it, saving processor time and energy at data-center scale. SSD controllers and hardware
+compression chips could carry the simple fixed-cost classifier in silicon and handle mixed data without
+knowing file formats. Network transfer and content delivery networks could split streams on the fly so
+text, binary and media each get the right treatment while incompressible data passes straight through. AI
+training pipelines could sort huge mixed datasets by content type before training or deduplication and
+process each group in parallel with its own model. Scientific data such as genomics, sensor logs and
+simulation output often mixes very different regions in one file, the same situation where Harrington Sets
+did best on samba. Databases and log platforms could gain column-like grouping from data with no schema,
+which OpenZL and Parquet can only do when the format is described in advance. Forensics already uses
+entropy scanning to find encrypted or packed regions (binwalk, file carvers), so that single use is the
+least new; the original contribution is the full combination of format-free sorting, the layered exclusion
+map and parallel per-set models.
+
 HOW TO USE (HCM v3.6, source hcm/hcm.cpp)
   hcm s INPUT OUTPUT     Harrington Sets, fast mode
   hcm t INPUT OUTPUT     Harrington Sets, max mode
@@ -52,3 +89,23 @@ HOW TO USE (HCM v3.6, source hcm/hcm.cpp)
 MORE
   Book: Harringtons-Insights.pdf, Introduction and Section 10.9; charts in Appendix G.12
   Results and notes: src/hcm-v36/NOTES.txt, src/hcm-v36/silesia_results.txt, src/hcm-v36/random5_results.txt
+
+LICENSE
+MIT License
+
+Copyright (c) 2026 Michael Hugh Harrington
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the Software without restriction, including without
+limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial
+portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
+EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN
+AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
+OR OTHER DEALINGS IN THE SOFTWARE.
