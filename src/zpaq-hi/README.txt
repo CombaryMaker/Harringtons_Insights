@@ -58,3 +58,12 @@ smaller blocks (-m51 = level 5 with 2 MB blocks). The STOCK zpaq 7.15 decoder re
   x-ray   432,631, 44.9 s  ->  438,089, 22.0 s
   dickens 205,223, 51.1 s  ->  222,108, 25.3 s
 Decoding about 2x faster on 2 cores; size cost 1.3% (x-ray) to 8% (dickens, text needs long history).
+
+STOCK ZPAQ ON THE SAME MACHINE (29 Oct 2026, same 3 files, -threads 2, exact) - stock_zpaq_same_machine.txt
+  (1,000,000 bits down to / decode)      stock one block   zpaq-hi one block   stock 2 MB blocks   zpaq-hi 2 MB blocks
+  reymont                                144,330 / 30.2 s  142,773 / 41.5 s    153,200 / 16.7 s    151,508 / 22.9 s
+  x-ray                                  433,042 / 41.1 s  432,631 / 44.9 s    438,503 / 18.1 s    438,089 / 22.0 s
+  dickens                                205,520 / 50.2 s  205,223 / 51.1 s    222,373 / 25.0 s    222,108 / 25.3 s
+Finding: the 2x multi-core speed comes from ZPAQ's own block feature - stock ZPAQ gets it too with smaller blocks.
+zpaq-hi stays 0.1% to 1.1% smaller than stock at the same block size, but decodes slower where its bigger model is
+chosen (reymont 16.7 -> 22.9 s). Not a breakthrough for zpaq-hi.
