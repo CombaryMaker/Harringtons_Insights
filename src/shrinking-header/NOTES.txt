@@ -1,0 +1,21 @@
+SHRINKING (DECLINING) HEADER - TIMING TEST, 29 October 2026
+Michael Hugh Harrington's shrinking header stores a permutation of N values with ceil(log2(remaining))
+bits per entry. Question tested: does it cost much decode time? Source: hdrbench.c (gcc -O2), one
+random permutation per size, 2-core cloud machine, every decode checked exact. Times are per table.
+
+N (table size)  header bytes  raw bytes  encode    decode, simple list  decode, Fenwick tree  raw read
+16              7             8          0.0002 ms 0.0001 ms            0.0002 ms             0.0001 ms
+256 (8-bit)     225           256        0.005 ms  0.004 ms             0.009 ms              0.002 ms
+4,096 (12-bit)  5,633         6,144      0.34 ms   0.20 ms              0.57 ms               0.04 ms
+65,536 (16-bit) 122,881       131,072    6.6 ms    71.7 ms              9.6 ms                0.76 ms
+
+OBSERVATIONS
+- 8-bit tables (the Harrington Exchange's usual case): about 4 microseconds to decode, nothing next to
+  a file that takes milliseconds. No real cost.
+- 12-bit tables: 0.2 ms, about 4% of the 5.1 ms Exchange decode of the 12-bit noise file. Small but
+  measurable; the header saves 511 bytes there.
+- 16-bit tables: the simple decoder removes each entry from a list, which is quadratic, and takes
+  72 ms. A Fenwick tree cuts that to 9.6 ms, but raw storage reads in 0.76 ms and the header saves
+  only 8,191 bytes (6%). For 16-bit tables raw storage, or the Fenwick decoder on large files only,
+  is the better choice.
+- The simple list decoder is faster than the Fenwick tree up to 4,096 entries; use it there.

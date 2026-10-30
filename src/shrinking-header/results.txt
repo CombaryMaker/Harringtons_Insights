@@ -1,0 +1,5 @@
+N       header_bytes raw_bytes  encode_ms  decode_naive_ms  decode_fenwick_ms  raw_copy_ms
+16      7            8          0.0002     0.0001           0.0002             0.0001     exact
+256     225          256        0.0053     0.0039           0.0087             0.0017     exact
+4096    5633         6144       0.3355     0.1968           0.5675             0.0360     exact
+65536   122881       131072     6.6232     71.7449          9.6107             0.7597     exact
