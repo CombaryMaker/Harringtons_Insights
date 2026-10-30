@@ -1,0 +1,49 @@
+HARRINGTON SETS AGAINST RECONSTRUCTIONS OF TWO IBM PATENT METHODS - 29 October 2026
+Michael Hugh Harrington. Research comparison only. The IBM-style code was built from the patent texts,
+used for this test, and then deleted; only these written results are kept.
+
+WHAT WAS COMPARED (all four use the same container, the same 64 KB windows, the same block size,
+the same run-length map cost and the same compressor: HCM v3.6 fast, one block per process, 2 cores)
+- Equal blocks: the file cut into equal blocks in file order (the standard method).
+- Harrington Sets: entropy exclusion above 7.99 bits/byte, k-means on seven byte features into at most
+  3 sets, run smoothing, sets under 1 MB folded (replica of hcm.cpp v3.6; labels matched HCM's own runs).
+- IBM-A, reconstruction of US8782019B2 (lapsed 2018): each window classed by format signature and
+  character distribution (text if 95% printable), joined to the most similar earlier context by byte-
+  histogram cosine similarity (0.90 or more), with compression-ratio feedback (zlib ratio within half to
+  double of the context's average) moving poor fits; up to 8 contexts. No raw exclusion.
+- IBM-B, reconstruction of US9792350B2 (active): four random 2 KB samples per window give classifying
+  heuristics (entropy, core character share, distinct-byte share, dominant-16 share, mean, spread,
+  repeat structure); a window joins the domain whose fingerprint is within 0.15 mean distance, else a new
+  domain. No raw exclusion.
+These are reconstructions from the patent texts; IBM's own products were not available, so their real
+behaviour may differ.
+
+RESULTS (Silesia files, one run each, wall clock, every file restored exactly; sizes in bytes)
+File (bytes)            Equal blocks      Harrington Sets   IBM-A (lapsed)    IBM-B (active)
+samba (21,606,400)      3,426,219 9.4 s   3,406,080 9.2 s   3,536,707 10.5 s  3,475,209 12.6 s
+mozilla (51,220,480)    13,460,278 26.0 s 13,419,755 28.8 s 13,489,282 24.9 s 13,511,618 25.8 s
+dickens (10,192,446)    2,297,338 5.8 s   2,319,435 4.7 s   2,297,338 5.4 s   2,297,338 5.7 s
+x-ray (8,474,240)       3,686,875 5.3 s   3,710,611 4.4 s   3,691,355 5.4 s   3,686,875 4.7 s
+reymont (6,627,202)     1,129,728 2.8 s   1,129,728 3.0 s   1,129,681 2.6 s   1,131,235 2.8 s
+(time shown = decode; compress times are in results.txt)
+
+Totals over the five files (1,000,000 bits down to X):
+  Equal blocks     24,000,438 bytes  244,601  compress 217.0 s  decode 49.3 s
+  Harrington Sets  23,985,609 bytes  244,450  compress 189.4 s  decode 50.1 s
+  IBM-A            24,144,363 bytes  246,068  compress 184.8 s  decode 48.8 s
+  IBM-B            24,102,275 bytes  245,639  compress 202.9 s  decode 51.6 s
+
+OBSERVATIONS
+- On the mixed files, Harrington Sets was the smallest of the four. samba: 130,627 bytes smaller than
+  IBM-A and 69,129 smaller than IBM-B, and decoded fastest. mozilla: 69,527 and 91,863 bytes smaller.
+- The IBM-style methods split mixed files into many more pieces (samba 76-92 runs and 5-8 streams,
+  mozilla 247-304 runs and 8-9 streams, against 3 and 8 runs for Sets). More, smaller streams each start
+  with an empty model, which costs size. Harrington Sets' run smoothing and 3-set cap avoid that.
+- On mozilla the IBM-style methods decoded faster (24.9-25.8 s against 28.8 s) because 10 blocks balance
+  better on 2 cores than 5; Sets' blocks were uneven.
+- On uniform files the IBM-style methods mostly left the file as one stream, so they equalled plain
+  blocks in size; Harrington Sets split dickens and x-ray into sets, costing about 1.0% and 0.6% in size
+  but decoding 15-20% faster. On reymont Sets made one stream and all four tied.
+- Over all five files Harrington Sets had the smallest total, 14,829 bytes under equal blocks, 158,754
+  under IBM-A and 116,666 under IBM-B. Decode totals were within 6% of each other, inside single-run noise.
+- Single runs on 2 cores; differences under about 10% in time are not significant.
