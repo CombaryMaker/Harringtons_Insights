@@ -40,3 +40,13 @@ TESTS (2-core cloud machine, every result restored exactly)
      4 sets incl. 3,679,406 bytes stored raw, compress 0.4 s, decompress 0.3 s.
   Also checked: {out}-style tool (cp), temp folder with spaces, failing tool, tampered file (CRC error),
      old HSW1 file decoded by 1.1, Windows command splitting simulated.
+
+VERSION 1.2 (30 October 2026) - container validation (from a ChatGPT review point, confirmed by test)
+- The decoder now checks the map, block table, raw length and total file length against each other before
+  running any decoder, and reports truncated or damaged files cleanly. Format unchanged (samba with xz -6
+  still 3,809,954 bytes; HSW1 files still decode).
+- Damaged-file test (corrupt_test.py, 8 cases on a 3 MB file): 1.1 printed a raw Python error on one case and
+  hung for over 120 s on a file with a forged run count; 1.2 gave a clean error on all 8.
+- Boundary test (make_edge.py + edge_test.sh, 16 files: 0 and 1 byte, 4095/4096, 65,535/65,536/65,537,
+  1 MiB -1/0/+1, 2 MiB+1, 3 MiB, 16 MiB+1, all-zero and random): 16 wrapper round trips with xz, all exact,
+  with 1.1 and again with 1.2.

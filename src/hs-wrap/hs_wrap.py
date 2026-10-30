@@ -7,7 +7,7 @@ set (stored, never compressed). The rest are grouped by k-means on seven byte fe
 short runs are smoothed and sets under 1 MB folded into the largest. Each set is joined in file order,
 cut into blocks of at most B MB, and every block is compressed by its own copy of the compressor, several
 at once (largest blocks first). A run-length map restores every window to its original place, and a CRC-32
-of the original is checked after decoding.
+of the original is checked after decoding; the container is validated before any decoder runs.
 
 Usage:
   hs_wrap.py c IN OUT --comp "COMPRESSOR {in} {out}" [--jobs N] [--block-mb B]
@@ -103,6 +103,19 @@ def decompress(a):
     R = [struct.unpack_from('<BI', d, p + 5 * i) for i in range(nr)]; p += 5 * nr
     B = [struct.unpack_from('<BQQ', d, p + 17 * i) for i in range(nbk)]; p += 17 * nbk
     rl, = struct.unpack_from('<Q', d, p); p += 8; raw = d[p:p + rl]; p += rl
+    # validate the container against the map before running any decoder
+    nw = (n + W - 1) // W; need = {}; i = 0
+    for s, cnt in R:
+        if s != RAW and s > 2: raise ValueError('bad set label in the map')
+        if cnt == 0 or i + cnt > nw: raise ValueError('the map does not match the file length')
+        need[s] = need.get(s, 0) + cnt * W - (nw * W - n if i + cnt == nw else 0); i += cnt
+    if i != nw: raise ValueError('the map does not match the file length')
+    if len(raw) != rl or rl != need.get(RAW, 0): raise ValueError('bad raw length')
+    got = {}
+    for s, ln, zl in B: got[s] = got.get(s, 0) + ln
+    if any(s == RAW for s, ln, zl in B) or got != {s: v for s, v in need.items() if s != RAW}:
+        raise ValueError('block table does not match the map')
+    if p + sum(zl for s, ln, zl in B) != len(d): raise ValueError('wrong file length (truncated or damaged)')
     with tempfile.TemporaryDirectory() as td:
         names = []
         for k, (s, ln, zl) in enumerate(B):
@@ -129,6 +142,7 @@ if __name__ == '__main__':
     a = ap.parse_args(); t = time.perf_counter()
     if not (a.comp if a.mode == 'c' else a.decomp): ap.error('--comp is needed to compress, --decomp to decompress')
     try: compress(a) if a.mode == 'c' else decompress(a)
+    except struct.error: sys.exit('error: truncated or damaged file')
     except (RuntimeError, ValueError, OSError) as e: sys.exit(f'error: {e}')
     print(f'{"compress" if a.mode == "c" else "decompress"} wall time {time.perf_counter() - t:.1f} s')
 

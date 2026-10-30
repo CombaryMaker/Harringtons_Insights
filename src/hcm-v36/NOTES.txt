@@ -41,3 +41,13 @@ RANDOM 5-FILE TEST (29 Oct 2026; seed 1793303107 picked from Canterbury + Silesi
   slightly faster (x-ray 4.5 s vs 5.0 s, reymont 2.8 s vs 3.3 s decode).
 - Small files (alice29.txt, ptt5): one block, no speed-up; sets mode adds about 30 bytes of map.
 - Smaller blocks cost more size: 2 MB blocks lose more than 16 MB blocks because each block starts empty.
+
+CHECKS, 30 October 2026
+- Boundary round trips (src/hs-wrap/make_edge.py + edge_test.sh): 16 files x modes c, x, p, s, t
+  (HCM_BLOCK_MB=1) = 80 round trips, all exact (0 and 1 byte, 4095/4096, 64 KB -1/0/+1, 1 MiB -1/0/+1,
+  2 MiB+1, 3 MiB, 16 MiB+1, all-zero, random).
+- Determinism: gcc and clang builds on x86-64 (SSE2 math) wrote byte-identical files for 14 files (Canterbury
+  11 + first 1 MiB of mr, x-ray, ooffice) in modes c and x. A build forced to x87 extended precision
+  (-mfpmath=387) wrote different files, and each build rejected the other's files through the CRC (no silent
+  error). Cause: the stretch/squash/rate tables are computed in floating point at start-up. Fix (not yet
+  made): ship the tables as integer constants.
