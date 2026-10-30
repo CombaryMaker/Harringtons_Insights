@@ -1,0 +1,256 @@
+{
+"file": "kennedy.xls",
+"orig": 1029744,
+"cands": [
+{
+"i": 11,
+"args": "-mm=LZMA -mx9 -md=20 -mfb=64 -mlc=3 -mlp=0 -mpb=0",
+"size": 46715,
+"ok": true,
+"c_cpu": 0.343974,
+"c_memKB": 18160,
+"d_cpu": 0.009141,
+"d_memKB": 13068
+},
+{
+"i": 12,
+"args": "-mm=LZMA -mx9 -md=20 -mfb=273 -mlc=3 -mlp=0 -mpb=0",
+"size": 46715,
+"ok": true,
+"c_cpu": 0.476549,
+"c_memKB": 18304,
+"d_cpu": 0.0078119999999999995,
+"d_memKB": 13132
+},
+{
+"i": 7,
+"args": "-mm=LZMA -mx9 -md=20 -mfb=64 -mlc=4 -mlp=0 -mpb=0",
+"size": 47065,
+"ok": true,
+"c_cpu": 0.274109,
+"c_memKB": 18120,
+"d_cpu": 0.008525999999999999,
+"d_memKB": 13060
+},
+{
+"i": 8,
+"args": "-mm=LZMA -mx9 -md=20 -mfb=273 -mlc=4 -mlp=0 -mpb=0",
+"size": 47065,
+"ok": true,
+"c_cpu": 0.444361,
+"c_memKB": 18084,
+"d_cpu": 0.008303999999999999,
+"d_memKB": 13096
+},
+{
+"i": 10,
+"args": "-mm=LZMA -mx9 -md=20 -mfb=273 -mlc=1 -mlp=0 -mpb=0",
+"size": 47158,
+"ok": true,
+"c_cpu": 0.49454299999999995,
+"c_memKB": 18128,
+"d_cpu": 0.009984,
+"d_memKB": 13088
+},
+{
+"i": 5,
+"args": "-mm=LZMA -mx9 -md=20 -mfb=64 -mlc=0 -mlp=0 -mpb=0",
+"size": 47354,
+"ok": true,
+"c_cpu": 0.30787699999999996,
+"c_memKB": 17996,
+"d_cpu": 0.010064,
+"d_memKB": 13132
+},
+{
+"i": 6,
+"args": "-mm=LZMA -mx9 -md=20 -mfb=273 -mlc=0 -mlp=0 -mpb=0",
+"size": 47354,
+"ok": true,
+"c_cpu": 0.48929999999999996,
+"c_memKB": 18100,
+"d_cpu": 0.00853,
+"d_memKB": 13084
+},
+{
+"i": 9,
+"args": "-mm=LZMA -mx9 -md=20 -mfb=64 -mlc=1 -mlp=0 -mpb=0",
+"size": 47354,
+"ok": true,
+"c_cpu": 0.324796,
+"c_memKB": 18148,
+"d_cpu": 0.007904,
+"d_memKB": 13128
+},
+{
+"i": 3,
+"args": "-mm=LZMA -mx9 -md=20 -mfb=64 -mlc=3 -mlp=0 -mpb=2",
+"size": 50552,
+"ok": true,
+"c_cpu": 0.38068599999999997,
+"c_memKB": 18108,
+"d_cpu": 0.009084,
+"d_memKB": 13048
+},
+{
+"i": 4,
+"args": "-mm=LZMA -mx9 -md=20 -mfb=273 -mlc=3 -mlp=0 -mpb=2",
+"size": 51152,
+"ok": true,
+"c_cpu": 0.5103179999999999,
+"c_memKB": 18156,
+"d_cpu": 0.009684,
+"d_memKB": 13084
+},
+{
+"i": 2,
+"args": "-mm=BZip2 -mx9 -mpass=10",
+"size": 119483,
+"ok": true,
+"c_cpu": 1.3772879999999998,
+"c_memKB": 15428,
+"d_cpu": 0.013892999999999999,
+"d_memKB": 13100
+},
+{
+"i": 13,
+"args": "-mm=PPMd -mo=4 -mmem=16m",
+"size": 123599,
+"ok": true,
+"c_cpu": 0.049476,
+"c_memKB": 13128,
+"d_cpu": 0.08820299999999999,
+"d_memKB": 13124
+},
+{
+"i": 14,
+"args": "-mm=PPMd -mo=4 -mmem=64m",
+"size": 123599,
+"ok": true,
+"c_cpu": 0.056996,
+"c_memKB": 13048,
+"d_cpu": 0.057970999999999995,
+"d_memKB": 13124
+},
+{
+"i": 17,
+"args": "-mm=PPMd -mo=8 -mmem=16m",
+"size": 131419,
+"ok": true,
+"c_cpu": 0.12183,
+"c_memKB": 15016,
+"d_cpu": 0.08981099999999999,
+"d_memKB": 14912
+},
+{
+"i": 18,
+"args": "-mm=PPMd -mo=8 -mmem=64m",
+"size": 131419,
+"ok": true,
+"c_cpu": 0.07530599999999998,
+"c_memKB": 14944,
+"d_cpu": 0.13921299999999998,
+"d_memKB": 15056
+},
+{
+"i": 19,
+"args": "-mm=PPMd -mo=10 -mmem=16m",
+"size": 131442,
+"ok": true,
+"c_cpu": 0.090679,
+"c_memKB": 16864,
+"d_cpu": 0.092579,
+"d_memKB": 16960
+},
+{
+"i": 20,
+"args": "-mm=PPMd -mo=10 -mmem=64m",
+"size": 131442,
+"ok": true,
+"c_cpu": 0.07919899999999999,
+"c_memKB": 16912,
+"d_cpu": 0.14662499999999998,
+"d_memKB": 16932
+},
+{
+"i": 15,
+"args": "-mm=PPMd -mo=6 -mmem=16m",
+"size": 135560,
+"ok": true,
+"c_cpu": 0.066204,
+"c_memKB": 14952,
+"d_cpu": 0.074553,
+"d_memKB": 14932
+},
+{
+"i": 16,
+"args": "-mm=PPMd -mo=6 -mmem=64m",
+"size": 135560,
+"ok": true,
+"c_cpu": 0.100466,
+"c_memKB": 14864,
+"d_cpu": 0.080521,
+"d_memKB": 14868
+},
+{
+"i": 23,
+"args": "-mm=PPMd -mo=16 -mmem=16m",
+"size": 173131,
+"ok": true,
+"c_cpu": 0.11270899999999999,
+"c_memKB": 21160,
+"d_cpu": 0.135312,
+"d_memKB": 21152
+},
+{
+"i": 24,
+"args": "-mm=PPMd -mo=16 -mmem=64m",
+"size": 173131,
+"ok": true,
+"c_cpu": 0.123655,
+"c_memKB": 21056,
+"d_cpu": 0.141575,
+"d_memKB": 21132
+},
+{
+"i": 21,
+"args": "-mm=PPMd -mo=12 -mmem=16m",
+"size": 173132,
+"ok": true,
+"c_cpu": 0.18141599999999997,
+"c_memKB": 21064,
+"d_cpu": 0.19239099999999998,
+"d_memKB": 21220
+},
+{
+"i": 22,
+"args": "-mm=PPMd -mo=12 -mmem=64m",
+"size": 173132,
+"ok": true,
+"c_cpu": 0.16988499999999998,
+"c_memKB": 21024,
+"d_cpu": 0.118211,
+"d_memKB": 21048
+},
+{
+"i": 1,
+"args": "-mm=Deflate64 -mx9 -mpass=15 -mfb=257",
+"size": 176031,
+"ok": true,
+"c_cpu": 1.156819,
+"c_memKB": 13100,
+"d_cpu": 0.0077209999999999996,
+"d_memKB": 13076
+},
+{
+"i": 0,
+"args": "-mm=Deflate -mx9 -mpass=15 -mfb=258",
+"size": 176724,
+"ok": true,
+"c_cpu": 1.110022,
+"c_memKB": 13128,
+"d_cpu": 0.0061589999999999995,
+"d_memKB": 13048
+}
+]
+}

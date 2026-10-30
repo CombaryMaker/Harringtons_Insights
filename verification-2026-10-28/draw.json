@@ -1,0 +1,118 @@
+{
+ "seed": 2360932695,
+ "utc": "2026-10-28T09:42:24.493904Z",
+ "rule": "k=1 if wins<=2, 2 if wins==3, else 3; random.Random(seed).sample over sorted win list, methods in registry order",
+ "pool_sizes": {
+  "record_delta (Mutated, Ch4)": 11,
+  "activity_map + gzip (Original/Mutated, Ch8)": 1,
+  "xz-hi (Modified, Ch5/18)": 21,
+  "lzma-hi (Modified, Ch5)": 18,
+  "7z-hi (Modified, Ch5)": 20,
+  "zstd-hi (Modified, Ch5)": 14,
+  "brotli-hi (Modified, Ch5)": 11,
+  "bzip2-hi (Modified, Ch5)": 11,
+  "RAR filter search (Modified, Ch5) - user: one win only": 1,
+  "PDF row filters (Modified, Ch6)": 53,
+  "HCM v3.3 (Original, Ch10) - wins vs all Tier1-4 rivals": 9,
+  "hcm-trit v2 pointer (Original, Ch11) - smaller than v3.3": 22,
+  "HCM-Bin v1 (Original, Ch12) - rebuilt wins": 1,
+  "Harrington Exchange + juggle (Original, Ch15)": 3,
+  "Harrington shrinking header (Original, Ch14)": 1,
+  "Detected column layout Parquet/ORC (Mutated, Ch17)": 16,
+  "jxl-hi (Modified, Ch16)": 9,
+  "JPEG-LS tuned (Modified, Ch16)": 1,
+  "FLAC block size (Modified, Ch16)": 5,
+  "WebP lossless search (Modified, Ch16)": 4
+ },
+ "draw": {
+  "record_delta (Mutated, Ch4)": [
+   "kennedy.xls|snappy",
+   "kennedy.xls|zstd -22",
+   "x-ray|zstd -19"
+  ],
+  "activity_map + gzip (Original/Mutated, Ch8)": [
+   "kennedy.xls|gzip -9"
+  ],
+  "xz-hi (Modified, Ch5/18)": [
+   "hdfs.log",
+   "openstack.log",
+   "xz-0 mr"
+  ],
+  "lzma-hi (Modified, Ch5)": [
+   "sao",
+   "x-ray",
+   "xml"
+  ],
+  "7z-hi (Modified, Ch5)": [
+   "asyoulik.txt",
+   "fields.c",
+   "kennedy.xls"
+  ],
+  "zstd-hi (Modified, Ch5)": [
+   "counties2023.jsonl|22",
+   "plrabn12.txt|9",
+   "ptt5|3"
+  ],
+  "brotli-hi (Modified, Ch5)": [
+   "asyoulik.txt|5",
+   "sum|8",
+   "xargs.1|11"
+  ],
+  "bzip2-hi (Modified, Ch5)": [
+   "plrabn12.txt",
+   "sum",
+   "xargs.1"
+  ],
+  "RAR filter search (Modified, Ch5) - user: one win only": [
+   "sao"
+  ],
+  "PDF row filters (Modified, Ch6)": [
+   "highlights.pdf",
+   "issue16316.pdf",
+   "tracemonkey_with_editable_annotations.pdf"
+  ],
+  "HCM v3.3 (Original, Ch10) - wins vs all Tier1-4 rivals": [
+   "cp.html",
+   "fields.c",
+   "lcet10.txt"
+  ],
+  "hcm-trit v2 pointer (Original, Ch11) - smaller than v3.3": [
+   "cp.html",
+   "ptt5",
+   "xml"
+  ],
+  "HCM-Bin v1 (Original, Ch12) - rebuilt wins": [
+   "kennedy.xls"
+  ],
+  "Harrington Exchange + juggle (Original, Ch15)": [
+   "kennedy.xls|lz4 -12",
+   "kennedy.xls|zstd -22"
+  ],
+  "Harrington shrinking header (Original, Ch14)": [
+   "256-entry permutation"
+  ],
+  "Detected column layout Parquet/ORC (Mutated, Ch17)": [
+   "mr|orc zlib",
+   "mr|orc zstd",
+   "sao|parquet zstd"
+  ],
+  "jxl-hi (Modified, Ch16)": [
+   "MR2_UNCR|e7-P5-gd-I0",
+   "RG3_UNCR|e7-P15-g0-I100",
+   "x-ray|e7-P15-g1-I100"
+  ],
+  "JPEG-LS tuned (Modified, Ch16)": [
+   "x-ray|T=12,32,64 RESET=255"
+  ],
+  "FLAC block size (Modified, Ch16)": [
+   "george",
+   "jackson",
+   "theo"
+  ],
+  "WebP lossless search (Modified, Ch16)": [
+   "01|-m 5 -q 75",
+   "10|-m 4 -q 50",
+   "12|-m 4 -q 100"
+  ]
+ }
+}

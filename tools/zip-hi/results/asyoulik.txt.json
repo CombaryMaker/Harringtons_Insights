@@ -1,0 +1,236 @@
+{
+"file": "asyoulik.txt",
+"orig": 125179,
+"cands": [
+{
+"i": 15,
+"args": "-mm=PPMd -mo=8 -mmem=16m",
+"size": 36268,
+"ok": true,
+"c_cpu": 0.018296,
+"c_memKB": 13092,
+"d_cpu": 0.018219,
+"d_memKB": 13068
+},
+{
+"i": 16,
+"args": "-mm=PPMd -mo=8 -mmem=64m",
+"size": 36268,
+"ok": true,
+"c_cpu": 0.016295999999999998,
+"c_memKB": 13044,
+"d_cpu": 0.017267,
+"d_memKB": 13104
+},
+{
+"i": 13,
+"args": "-mm=PPMd -mo=6 -mmem=16m",
+"size": 36302,
+"ok": true,
+"c_cpu": 0.014431,
+"c_memKB": 13080,
+"d_cpu": 0.016996999999999998,
+"d_memKB": 13072
+},
+{
+"i": 14,
+"args": "-mm=PPMd -mo=6 -mmem=64m",
+"size": 36302,
+"ok": true,
+"c_cpu": 0.016869,
+"c_memKB": 13100,
+"d_cpu": 0.016701,
+"d_memKB": 13040
+},
+{
+"i": 11,
+"args": "-mm=PPMd -mo=4 -mmem=16m",
+"size": 36693,
+"ok": true,
+"c_cpu": 0.011899,
+"c_memKB": 13128,
+"d_cpu": 0.011646,
+"d_memKB": 13064
+},
+{
+"i": 12,
+"args": "-mm=PPMd -mo=4 -mmem=64m",
+"size": 36693,
+"ok": true,
+"c_cpu": 0.010945,
+"c_memKB": 13072,
+"d_cpu": 0.012169,
+"d_memKB": 13120
+},
+{
+"i": 17,
+"args": "-mm=PPMd -mo=10 -mmem=16m",
+"size": 37688,
+"ok": true,
+"c_cpu": 0.016869,
+"c_memKB": 13064,
+"d_cpu": 0.017999,
+"d_memKB": 13116
+},
+{
+"i": 18,
+"args": "-mm=PPMd -mo=10 -mmem=64m",
+"size": 37688,
+"ok": true,
+"c_cpu": 0.016496999999999998,
+"c_memKB": 13092,
+"d_cpu": 0.017200999999999998,
+"d_memKB": 13072
+},
+{
+"i": 19,
+"args": "-mm=PPMd -mo=12 -mmem=16m",
+"size": 38017,
+"ok": true,
+"c_cpu": 0.017464999999999998,
+"c_memKB": 13092,
+"d_cpu": 0.018174,
+"d_memKB": 13124
+},
+{
+"i": 20,
+"args": "-mm=PPMd -mo=12 -mmem=64m",
+"size": 38017,
+"ok": true,
+"c_cpu": 0.014995999999999999,
+"c_memKB": 13064,
+"d_cpu": 0.017803,
+"d_memKB": 13020
+},
+{
+"i": 21,
+"args": "-mm=PPMd -mo=16 -mmem=16m",
+"size": 38276,
+"ok": true,
+"c_cpu": 0.0171,
+"c_memKB": 13116,
+"d_cpu": 0.016412,
+"d_memKB": 13128
+},
+{
+"i": 22,
+"args": "-mm=PPMd -mo=16 -mmem=64m",
+"size": 38276,
+"ok": true,
+"c_cpu": 0.014978,
+"c_memKB": 13064,
+"d_cpu": 0.021247,
+"d_memKB": 13120
+},
+{
+"i": 2,
+"args": "-mm=BZip2 -mx9 -mpass=10",
+"size": 39718,
+"ok": true,
+"c_cpu": 0.211669,
+"c_memKB": 13056,
+"d_cpu": 0.006996,
+"d_memKB": 13092
+},
+{
+"i": 3,
+"args": "-mm=LZMA -mx9 -md=17 -mfb=64 -mlc=3 -mlp=0 -mpb=2",
+"size": 44702,
+"ok": true,
+"c_cpu": 0.041461,
+"c_memKB": 13100,
+"d_cpu": 0.005141,
+"d_memKB": 13040
+},
+{
+"i": 4,
+"args": "-mm=LZMA -mx9 -md=17 -mfb=273 -mlc=3 -mlp=0 -mpb=2",
+"size": 44703,
+"ok": true,
+"c_cpu": 0.031651,
+"c_memKB": 13088,
+"d_cpu": 0.005489,
+"d_memKB": 13116
+},
+{
+"i": 7,
+"args": "-mm=LZMA -mx9 -md=17 -mfb=64 -mlc=4 -mlp=0 -mpb=0",
+"size": 44757,
+"ok": true,
+"c_cpu": 0.032236,
+"c_memKB": 13100,
+"d_cpu": 0.0049429999999999995,
+"d_memKB": 13100
+},
+{
+"i": 8,
+"args": "-mm=LZMA -mx9 -md=17 -mfb=273 -mlc=4 -mlp=0 -mpb=0",
+"size": 44761,
+"ok": true,
+"c_cpu": 0.034333999999999996,
+"c_memKB": 13084,
+"d_cpu": 0.004964,
+"d_memKB": 13072
+},
+{
+"i": 6,
+"args": "-mm=LZMA -mx9 -md=17 -mfb=273 -mlc=0 -mlp=0 -mpb=0",
+"size": 44778,
+"ok": true,
+"c_cpu": 0.038172,
+"c_memKB": 13044,
+"d_cpu": 0.006724,
+"d_memKB": 13068
+},
+{
+"i": 10,
+"args": "-mm=LZMA -mx9 -md=17 -mfb=273 -mlc=1 -mlp=0 -mpb=0",
+"size": 44778,
+"ok": true,
+"c_cpu": 0.02954,
+"c_memKB": 13120,
+"d_cpu": 0.0053219999999999995,
+"d_memKB": 13124
+},
+{
+"i": 5,
+"args": "-mm=LZMA -mx9 -md=17 -mfb=64 -mlc=0 -mlp=0 -mpb=0",
+"size": 44781,
+"ok": true,
+"c_cpu": 0.027409,
+"c_memKB": 13128,
+"d_cpu": 0.005423,
+"d_memKB": 13072
+},
+{
+"i": 9,
+"args": "-mm=LZMA -mx9 -md=17 -mfb=64 -mlc=1 -mlp=0 -mpb=0",
+"size": 44781,
+"ok": true,
+"c_cpu": 0.029883999999999997,
+"c_memKB": 13128,
+"d_cpu": 0.004993,
+"d_memKB": 13044
+},
+{
+"i": 1,
+"args": "-mm=Deflate64 -mx9 -mpass=15 -mfb=257",
+"size": 45586,
+"ok": true,
+"c_cpu": 0.284103,
+"c_memKB": 13104,
+"d_cpu": 0.0032259999999999997,
+"d_memKB": 13128
+},
+{
+"i": 0,
+"args": "-mm=Deflate -mx9 -mpass=15 -mfb=258",
+"size": 46718,
+"ok": true,
+"c_cpu": 0.290443,
+"c_memKB": 13064,
+"d_cpu": 0.003545,
+"d_memKB": 13064
+}
+]
+}

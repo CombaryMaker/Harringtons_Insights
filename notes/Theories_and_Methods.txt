@@ -1,0 +1,244 @@
+HARRINGTON THEORIES AND METHODS — DATA COMPRESSION AND ENCODING
+Compiled 2026-10-26 from saved notes and past chats.
+Includes every theory or method with at least some success, even ones judged too small.
+Sizes are "1,000,000 bits down to X bits" unless shown as bytes.
+
+======================================================================
+1. COMBARY (number system)
+======================================================================
+Idea: Split ternary into two sources. 0 and 1 are read as normal binary;
+each 2 is a positional/location marker, and where the 2s sit encodes data.
+A 2 can be a physical location on a device or a time-based variation in a
+transmission.
+Layouts: interleaved blocks (binary block, then combination block, repeating)
+for live streams, or all binary up front with all combinations at the back
+for short or stored transmissions. Header tracks the null padding added at
+the end.
+Status:
+- Lossless (one-to-one mapping). Confirmed.
+- Correction: patterns of 2s across 4 positions number 2^4 = 16 (not 24),
+  which maps cleanly onto 4 bits.
+- Ceiling: no scheme beats log2(3) = about 1.585 bits per trit on random data.
+- Patent previously filed on the Combary storage method.
+- Related prior art: WOM codes, combinatorial number systems,
+  pulse-position modulation, constrained coding.
+
+======================================================================
+2. HaBiTS (binary <-> ternary conversion, built on Combary)
+======================================================================
+Idea: Variable, Huffman-style binary/ternary conversion. Avoids fixed-block
+slack; leftover code states get reused. Works on live streamed data with no
+header (fixed rule: take X trits, convert, repeat).
+Status / results:
+- Mechanism is legitimate. Advantage is on non-uniform data or as a cleaner
+  use of spare states.
+- Benchmark to beat: USB4 v2 / Thunderbolt 5 PAM3 (11 bits in 7 trits,
+  ~99.2% efficient); GDDR7 PAM3 (3 bits in 2 trits, ~94.6%).
+- Streaming caveat: needs sync markers or ECC if a trit is dropped.
+- In compression: back end B (BWT > MTF > zero runs > Huffman > HaBiTS
+  5-trit) = 21.70% of original on 200 KB text, #5 of the top 10.
+- Per-context Huffman > HaBiTS 5-trit: 23.74% (4-byte), 24.38% (3-byte),
+  27.79% (2-byte).
+- As a transform before HCM v3 it hurt (all 11 files 227,086-246,558 vs
+  147,504 direct).
+
+======================================================================
+3. 0/1 BALANCE THEORY (core insight of HCM)
+======================================================================
+Idea: The balance of 0s and 1s drives compression; push data toward
+lopsided streams and it gets cheap to code.
+Status: Correct once reframed as CONDITIONAL balance, measured per context
+rather than globally. This is the foundation of the context-balance coder
+and every HCM version since (v2, v3, v3.1-v3.3, hcm-trit, HCM-Bin).
+
+======================================================================
+4. SWAP / SUBSTITUTION (Sort) — methods 1 and 2
+======================================================================
+Idea: Rank patterns by frequency; swap the most common into the codes with
+the most 1s (ordered so each places its 0 in a different position:
+1111, 1110, 1011, 1101, 0111) and the rarest into codes heavy with 0s
+(0000, 0001, 0100, 0010, 1000).
+Method 1 = top-k only (4, 8, 16, 32, 64); method 2 = full table; on 4-bit
+and 8-bit patterns.
+Results:
+- Under balance-only coding the substitution did nearly all the work:
+  text 924,188 -> 479,774; executable 519,176 -> 366,301.
+- Under real compressors (xz, ZPAQ, HCM) it lost.
+- 1,024-bit block remap switching: found 5.6% instead of 5.1%; per-block
+  records cut net to 3.9%.
+- "Linearish" variant: a swap that renumbers values so neighbors are
+  numerically close can help before delta / linear-prediction coders
+  (images, audio, sensor logs). Test candidates: ptt5, sum.
+- Swap table (top-x bytes -> 0..x-1) before gzip: ptt5 52,377 -> 52,276
+  bytes (x = 64). Only gain found in front of zstd/lz4/gzip.
+
+======================================================================
+5. HARRINGTON SHRINKING-INDEX HEADER / PERMUTATION-HEADER TRICK
+======================================================================
+Idea: When storing a swap table, fewer choices remain as entries are written,
+so each later entry needs fewer bits (8 choices left = 3 bits, 4 left =
+2 bits, last one free).
+Results (legit, weak tool):
+- Full 8-bit table: 2,048 bits -> 1,793 bits (256 -> 225 bytes).
+  Full factorial / Lehmer index (known method) = 1,684 bits (211 bytes).
+- Quad Exchange's 10 stored swaps: 40 bits -> 38 bits.
+- Leave out k entries of a permutation: send ceil(log2 k!) bits.
+  16-bit table: 2 left out saves 31 bits, 16 saves 211.
+- Harrington header beats 4-bit raw Huffman lengths on text
+  (alice 888 vs 1,024 bits); loses on binaries.
+- Fit: JPEG custom Huffman tables (~84 bytes/file), as a new format only.
+- Adopted for every swap table in the experiments.
+
+======================================================================
+6. HARRINGTON JUGGLE (trigger sort)
+======================================================================
+Idea: A trigger (e.g. 01) moves the data after it to "another line".
+Lines are appended odd + (evens, reversed). Triggers can be any size if
+they follow Shannon-Fano/Huffman or equal bit-length. Reversible by reading
+triggers backwards.
+Results:
+- Lossless (10,117 decode tests, no failures, in the HCM Search Lab).
+- On real compressors it lost: it routes by position and separates bytes
+  from the bytes that predict them.
+- Juggles added at most a few hundred bits on top of substitution under
+  balance-only coding.
+- Nibble juggle (hi/lo nibble streams, lo reversed) on kennedy.xls:
+  zstd 64,815 -> 34,368 bytes. Real gain on that file.
+- Cousin: Burrows-Wheeler transform (sorts by context instead of position).
+
+======================================================================
+7. HARRINGTON EXCHANGE (HE) / QUAD EXCHANGE
+======================================================================
+Idea: A swap followed by a juggle; a presort with mechanisms. Variant picks
+the swap table after testing, swapping x best and y worst.
+Quad Exchange = true 16-value permutation; stores Swap1-Swap10 (40 bits),
+rebuilds last 6 by rule.
+Results:
+- 8-bit HE + juggle on kennedy.xls: zstd 64,815 -> 42,858 bytes.
+- Lost on small files by ~230-256 bytes (mostly the table).
+- Quad Exchange alone never helped.
+- Full HE split rule was withheld pending peer review, so never fully tested.
+
+======================================================================
+8. HARRINGTON SORT SWAP (16-bit table spec)
+======================================================================
+Idea: 16-bit table-generation spec for swap tables.
+Status: Specified; feeds the permutation-header results above
+(16-bit table: whole 65,536-entry table ~94,539 bits).
+
+======================================================================
+9. NESTED / CHAINED SEARCH (HCM Search Lab)
+======================================================================
+Idea: Try huge numbers of chains (35 > 45 > 55 nested; patterns like
+Sort > Juggle > Sort > HaBiTS > Sort) and keep the best.
+Results:
+- With an ideal bit-context coder on an executable:
+  Sub8-top64 > HaBiTS x3 went 305,616 -> 237,141. Real, but ZPAQ on the
+  untouched file reached 116,588.
+- Synthetic log: Juggle > Sort > HaBiTS 283,051 -> 226,640 under a weak
+  bit-context coder; did not survive real compressors.
+- Lesson: picking the best of N costs ~log2(N) bits to record. Choices the
+  decoder can work out from already-decoded data cost nothing, which is why
+  context modeling won.
+
+======================================================================
+10. TERNARY INSIDE THE CODER (hcm-trit)
+======================================================================
+Idea: Code each byte as 6 base-3 digits; trit value swaps (e.g. 1,0,2 ->
+0,2,1) choose which value is split off first; flip bits (XOR 255) first.
+Results:
+- Value swaps changed results by up to ~3%; XOR 255 helped binaries.
+- hcm-trit v1: ptt5 45,083 -> 43,748 bytes; kennedy 53,899 -> 53,007;
+  sum 10,930 -> 10,910. Text 0.4-1% worse.
+- Conventional ternary (6 base-3 digits/byte) ~0.5% better on kennedy.xls
+  and ptt5 in a simple CM engine.
+- Hybrid tree (top 4 bits binary, low nibble ternary): under 0.1% change.
+
+======================================================================
+11. TERNARY POINTER ("2 = pointer")
+======================================================================
+Idea: 0 and 1 mean normal bit path; 2 is a pointer meaning "the next byte is
+the one predicted / already seen".
+Results (biggest ternary success):
+- On HCM v3 fast: all 11 files 147,504 -> 145,901, then 145,307; every file
+  better or tied. kennedy 53,899 -> 50,070 bytes.
+- Speed-recovered 5-order version 145,827 at ~v3 speed.
+- Becomes hcm-trit v2; with later upgrades 123,857 (best overall HCM).
+- On a bzip2 rebuild: real bzip2 -9 193,081 -> 179,074 (pointer added
+  ~1.2% beyond control).
+- Exclusion on "no" is essential (without it 159,768).
+
+======================================================================
+12. COMBARY ACTIVITY MAP
+======================================================================
+Idea: Use Combary 2s to mark active positions in a fixed record length:
+packed flags (1 = byte differs from one record back) + literals of the
+active bytes.
+Results:
+- gzip on kennedy.xls: 209,721 -> 35,558 bytes, and decodes faster.
+  Passes no-pain. Night's biggest discrete win.
+- lz4: 324,136 -> 39,997 bytes but decode slower (fails no-pain).
+- ptt5 gzip: saved 342 bytes but slower (fails).
+- 13-bit mask per record variant: worse.
+- Combary 2 as a cut marker (segment lengths): no gain.
+
+======================================================================
+13. HARRINGTON RECORD-LENGTH DETECTION
+======================================================================
+Idea: Record the spacing between repeats of each byte value; the most
+frequent spacing is the record length (kennedy = 13, ptt5 = 216). No
+format parsing.
+Results:
+- Record delta on kennedy.xls: zstd 64,815 -> 26,398; lz4 324,136 ->
+  43,654; gzip 209,721 -> 42,972 bytes. Faster decode on all three
+  (with SIMD reverse-delta).
+- xz-hi: delta at detected distance took kennedy 51,868 -> 23,656 bytes.
+- Drives HCM-Bin v1 and the v3.1 binary record swap.
+- Originality: delta is known; automatic distance choice is the contribution.
+
+======================================================================
+14. RECORD / LINE / WORD CONTEXTS (HCM model ideas)
+======================================================================
+- Record contexts (row above, rows above 1-3, row above + last byte):
+  HCM v3.1 all 11 147,504 -> 128,467. kennedy 16,763 bytes in HCM-Bin v1
+  (beats ZPAQ 16,822).
+- Mixer chosen by word position: v3.2 127,681.
+- Line-position (column) context: v3.3 125,763; wins 9 of 11.
+
+======================================================================
+15. NO-PAIN RULE
+======================================================================
+"No loss of compression or decode time is allowed, only gains to either or
+both." Produced HCM-tuned xz (175,424 -> 164,663, all files faster) and
+HCM-tuned bzip2 (193,081 -> 189,235, all files faster).
+
+======================================================================
+16. COMBARY STORAGE / WORM (encoding theory, hardware)
+======================================================================
+Idea: Choosing k marked locations among N positions encodes log2 C(N,k)
+bits. Any storage device can be a mix of WORM and read/write, often set at
+the factory.
+SSD version: deliberate damage ("gaps") whose locations encode data, read by
+a two-stage ECC (map the damage pattern, then normal data).
+Findings:
+- Cell-level damage can give net gain; block/page-level gives net loss.
+- 2D planar NAND easier than 3D NAND for single-cell marks.
+- Practical method: targeted program/erase cycling for asymmetric wear (no
+  external voltage; NAND makes its own via charge pumps).
+- Self-test planned on Micron MT29F8G08 SLC chips with ESP32, T48,
+  Raspberry Pi; control and test runs one at a time.
+- Target pitch: hospital medical-device code security.
+
+======================================================================
+17. COMBARY ENCRYPTION
+======================================================================
+An encryption routine built on Combary. Not tested here; would need public
+cryptanalysis before acceptance.
+
+======================================================================
+LEARNED FROM OTHERS (not original, kept for reference)
+======================================================================
+- cmix English dictionary before HCM: v3.3 fast 125,763 -> 120,010
+  (GPL-3, English-only).
+- paq8px "lite" model set: ~2x faster for 107,768 vs 107,450.
+- zopfli for gzip: ruled out as not original.

@@ -1,0 +1,11 @@
+COMPRESSION SECTION TEXT (paste into compression.html)
+
+Harrington's Insights
+
+Over the past weeks I have turned my compression ideas into working, tested software and a full book. My own compressor, HCM (the Harrington Compression Method), beats ZPAQ at its strongest setting on the Canterbury corpus while decoding more than three times faster, and the Harrington Exchange, which I first designed for biased random data, is the smallest practical compressor I have tested on that kind of data. I have also modified many of the standard tools that the world already uses, including xz, 7-Zip, LZMA, bzip2, zstd, Brotli, FLAC, JPEG XL and ZPAQ, so that they produce smaller files that the normal, unmodified decoders still read, and my record-detection method makes spreadsheets, medical images and other structured data dramatically smaller and faster to open. My newest method, Harrington Sets, lets compressors that have always run on a single processor core use every core in the machine, by reading a file on the spot, gathering like pieces from anywhere in the file into their own streams and setting aside the parts that cannot be compressed, with each stream handled by its own core. Every result was decompressed and checked byte for byte, and the code, the raw numbers and the test scripts are all public.
+
+The book, Harrington's Insights: Improvements, Concepts, Strategies, Successes and Failures in Data Compression, covers all of it, including the methods that failed, and it is free to read here:
+https://github.com/CombaryMaker/Harringtons_Insights/blob/main/Harringtons-Insights.pdf
+
+All of my compression software, results and charts are on GitHub:
+https://github.com/CombaryMaker/Harringtons_Insights

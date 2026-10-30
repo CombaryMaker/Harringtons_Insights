@@ -1,0 +1,83 @@
+TITLE: Two lossless-compression transforms I believe are original: Combary (value-free positional markers) and the Harrington Exchange (frequency-ranked slot permutation at arbitrary bit widths)
+
+*Written with Claude: I'm heading to work and didn't have time to write it up myself. All numbers are from my own measurements; code and data provenance available on request.*
+
+---
+
+## 1. Combary
+
+**Object.** A string z in {0,1,2}^n decomposes bijectively into (C, b), where C = {i : z_i = 2} and b is the binary payload at the other positions. The 2 is value-free: it carries information only through position. So one stream carries a binary payload of n − k bits plus a side channel of log2 C(n, k) bits — the same quantity enumerative coding (Cover 1973) computes. It was built to carry two data types in one ternary medium (four of my patents cover storage, transmission and encryption uses). The compression question is when coding a positional marker costs less than the information it isolates:
+
+E[cost(C | model)] < E[bits saved coding b given C]
+
+Three mechanisms follow from that inequality.
+
+**A — "points elsewhere": ternary pointer in a context-mixing coder.** Before byte x_t, form a candidate c_t: the match-model prediction, or else the last follower of the order-4 context. First code the event e_t = [x_t = c_t]. On a miss, code x_t through the normal binary decomposition with c_t excluded. Key choices (Canterbury total, 2,810,784 B):
+
+* P(e_t) is a logistic mix of the model's own probability of c_t, match/repeat state and flag history. With a fixed escape table instead: 418,135 B, worse than the 414,602 B baseline.
+* Exclusion is essential. Without it: 449,073 B, worse than having no pointer at all.
+* The model updates on the true byte either way, so the pointer can never degrade the predictor.
+* In the rebuilt HCM, every Canterbury file is equal or smaller. Max mode: 350,434 → 348,244 B; best-of 347,696 B. Silesia (fast mode): 42.93 → 42.53 MB. Decode +11–13%.
+* Transplanted into an RLE→BWT→MTF pipeline with MTF rank 0 as c_t: 503,338 B, against 509,516 B for an equally contexted control and 542,709 B for bzip2 -9.
+
+Prior art: LZP (Bloom 1996) is the closest ancestor, a hashed-context prediction with a flag and optional exclusion. PPM escape/exclusion and paq8's match model are also near. The differences: here the flag's probability comes from the full CM distribution's prediction of c_t, it acts as a decision layer *on top of* an unchanged model rather than replacing modelling, and the same principle carries across back ends.
+
+**B — "position is active": activity map.** Given a record length R detected from a byte-spacing histogram, emit flags F_i = [x_i ≠ x_(i−R)], packed one bit per byte, and literals L = the changed bytes, stored raw (not as deltas). Compress both with a stock back end. kennedy.xls (1,029,744 B, R = 13):
+
+* gzip -9: 209,721 → 35,558 B, and decodes faster than plain gzip.
+* LZ4: 324,136 → 39,997 B. Snappy: 422,640 → 69,635 B. Both slower to decode.
+
+Ablations: packed per-byte flags beat 13-bit record masks and a frequency-ranked mask codebook; storing literals as deltas was larger on every file. Compared with JBIG's row skipping (TPGDON) and database change masks: byte granularity, a record stride inferred from the data, and any back end.
+
+**C — "cut here": segment markers.** Lost in every configuration, because block boundaries rarely match real changes in the data, so H(C) exceeded the gain. This is the same inequality failing, so it supports the principle rather than undermining it.
+
+---
+
+## 2. The Harrington Exchange
+
+**Definition.** Choose a juggle width J (2–24) and a swap width S (1 to J−1); both may be odd. Parse the bit string into J-bit symbols.
+
+1. Take the K = 256 most frequent symbols.
+2. Order all J-bit patterns by the Hamming weight of their leading S bits, then by the weight of their trailing bits.
+3. Map the ranked symbols onto the first K patterns, and complete this to a bijection by sending displaced targets back to the freed sources. Its support is at most 2K, and the header is K·J bits because the decoder regenerates the targets.
+4. Split each mapped symbol into stream A (leading S bits) and stream B (the rest), and compress each separately with zstd.
+
+**What it computes.** A behaves like a data-adaptive *slot* and B like *extra bits*, the same factorisation as Deflate length codes, LZMA's posSlot, or Rice/Elias-γ coding. The difference is that the slots come from frequency rank over an arbitrary-width parse, not from numeric magnitude, and both fields are LZ- and entropy-coded. Separate coding pays H(A) + H(B) instead of H(A) + H(B|A), so it wins when ranking makes H(A) small and I(A;B) ≈ 0: memoryless or weakly dependent biased sources packed at non-byte widths.
+
+**Ablation** (real container, all round trips verified, zstd -19, bytes):
+
+| Data | zstd | xz -9e | best known | Full | Split only | Rename only |
+|---|---|---|---|---|---|---|
+| 12-bit Gaussian, packed (524,288) | 430,664 | 403,956 | 368,027 | **324,507** | 368,065 | 399,859 |
+| NIST SP 800-90B biased bits (125,000) | 22,172 | 21,772 | 22,558 | **19,722** | 22,375 | 25,909 |
+| NIST biased bytes (1,000,000) | 327,568 | 334,836 | 323,054 | **321,128** | 321,353 | 322,942 |
+| 5-bit geometric (524,289) | 401,571 | 398,376 | **345,655** | 346,370 | 346,363 | 345,698 |
+| Real x-ray packed to 12 bits (525,000) | 452,101 | 421,472 | 360,945 | 358,593 | **342,496** | 438,477 |
+| Real 24-bit EEG, BDF (1,048,576) | 526,856 | 345,184 | **323,516** | 335,895 | 334,882 | 532,373 |
+
+("Best known" = unpack to bytes plus byte shuffle, plain byte shuffle, or unpack; bitshuffle was also worse.)
+
+**Readings.**
+
+* On biased sources the permutation does work that splitting cannot: −11.8% (12-bit) and −11.9% (biased bits) beyond split-only. The biased-bit result also beats xz and bitshuffle.
+* Rename-only is worse than plain, so the gain is synergistic: ranking creates the slot field and the split exploits it.
+* Reversing stream B, part of the original design, is inert.
+* Across a full 276-point (S, J) sweep, J locks to the true symbol width when one exists (12-bit: best 8/12). Biased bits show a broad optimum around 13/21–16/24.
+* It fails on real images. Frequency ranking destroys numeric adjacency, so split-only wins there. The usable rule is a selector: rank for near-memoryless skewed sources, split-only for magnitude-structured data.
+* Decode speed (C, median of 15): 12-bit source 5.1 ms vs zstd 0.89 ms vs xz 19.2 ms, i.e. smaller and 3.8× faster than xz. Biased bits: 1.49 vs 0.12 vs 1.13 ms.
+
+**Prior art.**
+
+* Bitshuffle and HDF5/Blosc shuffle: fixed planes, no alphabet permutation.
+* MTF and symbol ranking: recency, no slot/offset split.
+* Deflate, LZMA and Rice slot codes: magnitude classes.
+* CCSDS 121/123: fixed residual mapping.
+* Canonical Huffman: frequency ordering internal to the coder.
+
+I found no exact match for a frequency-ranked permutation onto a prefix-weight target order, completed to a cheap bijection, combined with a free (S, J) split at arbitrary widths. A formal literature and patent search is still pending. I claim the combination and its demonstrated regime, not the individual operations.
+
+---
+
+**Common thread:** both treat *where* information sits as separately codable — Combary splits value from position, the Exchange splits frequency class from offset. Gains appear when the separated part is cheap relative to what it isolates, and vanish or reverse when it isn't. The negative results fit that rule.
+
+Sources: Canterbury and Silesia corpora; NIST SP800-90B_EntropyAssessment sample data; MNE testing data (BDF). Synthetic data seed: 2360932695.

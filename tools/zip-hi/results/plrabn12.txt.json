@@ -1,0 +1,236 @@
+{
+"file": "plrabn12.txt",
+"orig": 481861,
+"cands": [
+{
+"i": 13,
+"args": "-mm=PPMd -mo=6 -mmem=16m",
+"size": 132354,
+"ok": true,
+"c_cpu": 0.06781799999999999,
+"c_memKB": 13132,
+"d_cpu": 0.06844,
+"d_memKB": 13120
+},
+{
+"i": 14,
+"args": "-mm=PPMd -mo=6 -mmem=64m",
+"size": 132354,
+"ok": true,
+"c_cpu": 0.06347599999999999,
+"c_memKB": 13124,
+"d_cpu": 0.06640399999999999,
+"d_memKB": 13104
+},
+{
+"i": 15,
+"args": "-mm=PPMd -mo=8 -mmem=16m",
+"size": 132819,
+"ok": true,
+"c_cpu": 0.084923,
+"c_memKB": 14304,
+"d_cpu": 0.068449,
+"d_memKB": 14304
+},
+{
+"i": 16,
+"args": "-mm=PPMd -mo=8 -mmem=64m",
+"size": 132819,
+"ok": true,
+"c_cpu": 0.062814,
+"c_memKB": 14404,
+"d_cpu": 0.072409,
+"d_memKB": 14396
+},
+{
+"i": 11,
+"args": "-mm=PPMd -mo=4 -mmem=16m",
+"size": 134777,
+"ok": true,
+"c_cpu": 0.037948,
+"c_memKB": 13080,
+"d_cpu": 0.030569,
+"d_memKB": 13088
+},
+{
+"i": 12,
+"args": "-mm=PPMd -mo=4 -mmem=64m",
+"size": 134777,
+"ok": true,
+"c_cpu": 0.038479,
+"c_memKB": 13084,
+"d_cpu": 0.039375,
+"d_memKB": 13100
+},
+{
+"i": 17,
+"args": "-mm=PPMd -mo=10 -mmem=16m",
+"size": 135869,
+"ok": true,
+"c_cpu": 0.068687,
+"c_memKB": 14364,
+"d_cpu": 0.07531399999999999,
+"d_memKB": 14328
+},
+{
+"i": 18,
+"args": "-mm=PPMd -mo=10 -mmem=64m",
+"size": 135869,
+"ok": true,
+"c_cpu": 0.086185,
+"c_memKB": 14400,
+"d_cpu": 0.09241999999999999,
+"d_memKB": 14540
+},
+{
+"i": 19,
+"args": "-mm=PPMd -mo=12 -mmem=16m",
+"size": 137372,
+"ok": true,
+"c_cpu": 0.070323,
+"c_memKB": 14412,
+"d_cpu": 0.069838,
+"d_memKB": 14288
+},
+{
+"i": 20,
+"args": "-mm=PPMd -mo=12 -mmem=64m",
+"size": 137372,
+"ok": true,
+"c_cpu": 0.063257,
+"c_memKB": 14460,
+"d_cpu": 0.07797299999999999,
+"d_memKB": 14484
+},
+{
+"i": 21,
+"args": "-mm=PPMd -mo=16 -mmem=16m",
+"size": 138036,
+"ok": true,
+"c_cpu": 0.077599,
+"c_memKB": 14432,
+"d_cpu": 0.104318,
+"d_memKB": 14428
+},
+{
+"i": 22,
+"args": "-mm=PPMd -mo=16 -mmem=64m",
+"size": 138036,
+"ok": true,
+"c_cpu": 0.071459,
+"c_memKB": 14444,
+"d_cpu": 0.10119799999999998,
+"d_memKB": 14344
+},
+{
+"i": 2,
+"args": "-mm=BZip2 -mx9 -mpass=10",
+"size": 145468,
+"ok": true,
+"c_cpu": 0.968057,
+"c_memKB": 13096,
+"d_cpu": 0.020637,
+"d_memKB": 13104
+},
+{
+"i": 3,
+"args": "-mm=LZMA -mx9 -md=19 -mfb=64 -mlc=3 -mlp=0 -mpb=2",
+"size": 165635,
+"ok": true,
+"c_cpu": 0.167763,
+"c_memKB": 13096,
+"d_cpu": 0.012001,
+"d_memKB": 13100
+},
+{
+"i": 4,
+"args": "-mm=LZMA -mx9 -md=19 -mfb=273 -mlc=3 -mlp=0 -mpb=2",
+"size": 165643,
+"ok": true,
+"c_cpu": 0.157827,
+"c_memKB": 13104,
+"d_cpu": 0.011677,
+"d_memKB": 13048
+},
+{
+"i": 8,
+"args": "-mm=LZMA -mx9 -md=19 -mfb=273 -mlc=4 -mlp=0 -mpb=0",
+"size": 165649,
+"ok": true,
+"c_cpu": 0.146016,
+"c_memKB": 13108,
+"d_cpu": 0.012596,
+"d_memKB": 13096
+},
+{
+"i": 7,
+"args": "-mm=LZMA -mx9 -md=19 -mfb=64 -mlc=4 -mlp=0 -mpb=0",
+"size": 165656,
+"ok": true,
+"c_cpu": 0.189274,
+"c_memKB": 13120,
+"d_cpu": 0.011562,
+"d_memKB": 13124
+},
+{
+"i": 5,
+"args": "-mm=LZMA -mx9 -md=19 -mfb=64 -mlc=0 -mlp=0 -mpb=0",
+"size": 166026,
+"ok": true,
+"c_cpu": 0.18695299999999998,
+"c_memKB": 13076,
+"d_cpu": 0.015257999999999999,
+"d_memKB": 13132
+},
+{
+"i": 9,
+"args": "-mm=LZMA -mx9 -md=19 -mfb=64 -mlc=1 -mlp=0 -mpb=0",
+"size": 166026,
+"ok": true,
+"c_cpu": 0.19926799999999997,
+"c_memKB": 13108,
+"d_cpu": 0.012149,
+"d_memKB": 13104
+},
+{
+"i": 6,
+"args": "-mm=LZMA -mx9 -md=19 -mfb=273 -mlc=0 -mlp=0 -mpb=0",
+"size": 166038,
+"ok": true,
+"c_cpu": 0.185004,
+"c_memKB": 13120,
+"d_cpu": 0.012978,
+"d_memKB": 13084
+},
+{
+"i": 10,
+"args": "-mm=LZMA -mx9 -md=19 -mfb=273 -mlc=1 -mlp=0 -mpb=0",
+"size": 166038,
+"ok": true,
+"c_cpu": 0.197126,
+"c_memKB": 13068,
+"d_cpu": 0.014912,
+"d_memKB": 13120
+},
+{
+"i": 1,
+"args": "-mm=Deflate64 -mx9 -mpass=15 -mfb=257",
+"size": 177529,
+"ok": true,
+"c_cpu": 1.31179,
+"c_memKB": 13100,
+"d_cpu": 0.008125,
+"d_memKB": 13096
+},
+{
+"i": 0,
+"args": "-mm=Deflate -mx9 -mpass=15 -mfb=258",
+"size": 184715,
+"ok": true,
+"c_cpu": 1.376365,
+"c_memKB": 13044,
+"d_cpu": 0.00641,
+"d_memKB": 13068
+}
+]
+}

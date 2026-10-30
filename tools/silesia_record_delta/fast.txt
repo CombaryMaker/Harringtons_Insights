@@ -1,0 +1,84 @@
+FILE dickens 10192446 d=69 gain=0.007
+RES dickens gzip-1 plain 4620004 48.90 delta 8622194 80.40
+RES dickens zstd-1 plain 4261734 8.61 delta 8530518 11.31
+RES dickens lz4-fast plain 6403052 3.86 delta 10231269 1.95
+RES dickens xz-0 plain 4162208 250.89 delta 8517060 512.09
+FILE dickens 10192446 d=69 gain=0.007
+RES dickens zstd-3 plain 3663504 9.83 delta 8490008 12.16
+FILE mozilla 51220480 d=96 gain=0.060
+RES mozilla gzip-1 plain 20689153 242.51 delta 32628521 289.40
+RES mozilla zstd-1 plain 19968503 57.25 delta 32133199 64.34
+RES mozilla lz4-fast plain 26374675 18.43 delta 37122499 16.37
+RES mozilla xz-0 plain 15653780 1122.98 delta 28342948 1808.48
+FILE mozilla 51220480 d=96 gain=0.060
+RES mozilla zstd-3 plain 18227296 59.83 delta 30605723 75.93
+FILE mr 9970564 d=2 gain=0.313
+RES mr gzip-1 plain 3849267 41.00 delta 3563254 43.02
+RES mr zstd-1 plain 3813409 8.54 delta 3298618 9.91
+RES mr lz4-fast plain 5425551 3.14 delta 5050190 5.52
+RES mr xz-0 plain 3291020 217.57 delta 3115428 215.27
+FILE mr 9970564 d=2 gain=0.313
+RES mr zstd-3 plain 3547526 9.33 delta 3273937 10.69
+FILE nci 33553445 d=70 gain=0.371
+RES nci gzip-1 plain 4683017 68.46 delta 6470054 94.40
+RES nci zstd-1 plain 2848578 18.07 delta 4306530 27.26
+RES nci lz4-fast plain 5427457 7.48 delta 7487191 13.36
+RES nci xz-0 plain 2702488 198.54 delta 3848984 279.78
+FILE nci 33553445 d=70 gain=0.371
+RES nci zstd-3 plain 2833843 19.50 delta 3978300 28.24
+FILE ooffice 6152192 d=48 gain=0.037
+RES ooffice gzip-1 plain 3291205 43.08 delta 5312087 36.64
+RES ooffice zstd-1 plain 3593224 7.89 delta 5433439 4.61
+RES ooffice lz4-fast plain 4338588 2.15 delta 5628192 1.16
+RES ooffice xz-0 plain 2785576 188.56 delta 5090540 355.71
+FILE ooffice 6152192 d=48 gain=0.037
+RES ooffice zstd-3 plain 3126146 8.60 delta 5288337 3.95
+FILE osdb 10085684 d=2 gain=0.068
+RES osdb gzip-1 plain 4082115 42.35 delta 4966574 43.40
+RES osdb zstd-1 plain 3729819 8.20 delta 5038658 11.31
+RES osdb lz4-fast plain 5241663 3.41 delta 6452704 4.73
+RES osdb xz-0 plain 3480512 222.04 delta 4415384 282.64
+FILE osdb 10085684 d=2 gain=0.068
+RES osdb zstd-3 plain 3501457 8.18 delta 4426380 11.50
+FILE reymont 6627202 d=7 gain=0.040
+RES reymont gzip-1 plain 2395111 28.63 delta 4149987 47.96
+RES reymont zstd-1 plain 2149170 5.42 delta 4320091 10.23
+RES reymont lz4-fast plain 3157660 2.80 delta 5526116 4.86
+RES reymont xz-0 plain 2025012 132.65 delta 3407028 212.85
+FILE reymont 6627202 d=7 gain=0.040
+RES reymont zstd-3 plain 1937973 5.84 delta 3534120 10.05
+FILE samba 21606400 d=38 gain=0.121
+RES samba gzip-1 plain 6354529 75.80 delta 12748718 114.49
+RES samba zstd-1 plain 5487600 15.34 delta 12084610 24.79
+RES samba lz4-fast plain 7631657 6.57 delta 14141406 9.43
+RES samba xz-0 plain 4932992 352.09 delta 11187888 743.52
+FILE samba 21606400 d=38 gain=0.121
+RES samba zstd-3 plain 4955117 15.61 delta 11351649 27.04
+FILE sao 7251944 d=28 gain=0.056
+RES sao gzip-1 plain 5564114 43.39 delta 5951004 50.84
+RES sao zstd-1 plain 6250010 9.80 delta 6235116 10.33
+RES sao lz4-fast plain 6790191 1.56 delta 7209590 3.85
+RES sao xz-0 plain 4966836 353.14 delta 5340092 357.79
+FILE sao 7251944 d=28 gain=0.056
+RES sao zstd-3 plain 5527504 11.05 delta 6013570 13.96
+FILE webster 41458703 d=11 gain=0.019
+RES webster gzip-1 plain 15095757 175.97 delta 28321426 280.51
+RES webster zstd-1 plain 13661986 36.77 delta 28494510 69.19
+RES webster lz4-fast plain 19952826 16.94 delta 33396378 28.09
+RES webster xz-0 plain 12748808 800.35 delta 25529924 1648.34
+FILE webster 41458703 d=11 gain=0.019
+RES webster zstd-3 plain 12096850 42.28 delta 26171276 70.48
+FILE x-ray 8474240 d=2 gain=0.013
+RES x-ray gzip-1 plain 6025572 58.90 delta 5313865 56.29
+RES x-ray zstd-1 plain 6772118 9.27 delta 5025007 7.69
+RES x-ray lz4-fast plain 8377118 0.94 delta 7886120 3.78
+RES x-ray xz-0 plain 5193904 330.96 delta 4666844 301.64
+FILE x-ray 8474240 d=2 gain=0.013
+RES x-ray zstd-3 plain 6085208 12.11 delta 4897376 12.18
+FILE xml 5345280 d=7 gain=0.042
+RES xml gzip-1 plain 972555 16.27 delta 1490648 22.25
+RES xml zstd-1 plain 693317 3.11 delta 1281541 6.18
+RES xml lz4-fast plain 1176288 1.87 delta 1729448 4.93
+RES xml xz-0 plain 647404 45.93 delta 1020368 72.99
+FILE xml 5345280 d=7 gain=0.042
+RES xml zstd-3 plain 635299 3.16 delta 1069959 6.13

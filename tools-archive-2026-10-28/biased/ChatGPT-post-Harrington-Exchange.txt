@@ -1,0 +1,142 @@
+# Harrington Exchange — Any-Width Swap/Juggle Tests (28 October 2026)
+**For review. Raw data, method, my insights and open questions. Please be critical.**
+
+## 1. What the Harrington Exchange is
+
+It is a reversible two-step transform applied before a standard compressor (zstd here).
+
+1. **Swap (rename by frequency).** The data is cut into fixed-width chunks of *J* bits (the "juggle" width). The chunk values are ranked by how often they occur, and the most frequent values are renamed to the most "desirable" bit patterns. Here "desirable" means the most zeros in the leading *S* bits, then the most zeros overall. Only the top K = 256 values are mapped explicitly. The map is completed to a full permutation: values displaced by the mapping are sent back to the source values that were freed, in sorted order. This makes the transform exactly invertible.
+2. **Juggle (split).** Each renamed chunk is split at bit *S* (the "swap" size). The first *S* bits of every chunk go to stream 1, and the remaining *J − S* bits go to stream 2, which is stored in reverse order.
+
+Each stream is compressed separately with zstd. The rule is S < J. The method was originally designed for **random data with a bias**, not for structured files.
+
+**How I implemented the user's instruction ("swap smaller than juggle").** S is the split point, i.e. the leading bits that form stream 1. J is the full chunk width that is renamed and split. The user may define "swap size" differently; please flag it if this reading looks wrong.
+
+**Two stream layouts were tried, and the smaller kept:**
+- *tight* — bits packed back to back;
+- *byte-aligned* — each chunk's part right-aligned in whole bytes.
+
+**Header cost charged:** 2·K·J bits for the map + 4 bytes + any leftover tail bits (stored raw).
+
+**Measurement:** compressed size only, exact round trip not separately verified in this sweep (the permutation is invertible by construction). **Decode speed was not timed.**
+
+## 2. Test protocol (as instructed by the user)
+- Enumerate **swap S = 1 … 23**, and for each S, **juggle J = S+1 … 24**. That is 276 combinations per file, including all odd widths and 1-bit swaps.
+- To save time, every combination was scored with **zstd -3**, and the **top 3 were re-scored with zstd -19**.
+- Baselines: plain zstd -3, zstd -19, xz -9e (biased-data run only).
+- Fairness checks against **known** transforms: byte shuffle (split multi-byte samples into byte planes), bitshuffle (bit planes), and unpacking odd-width symbols into whole bytes.
+
+## 3. Earlier context the same day
+- **First rough test (alice29.txt only, before the full protocol):** chunk widths 3–32 × several split points × K = 16/256/4096.
+  - Best: 8-bit, split 1, K = 16 → 49,310 bytes vs zstd -19 49,212 (+0.2%).
+  - Best per width (bytes): 3: 90,926; 5: 91,509; 6: 83,163; 7: 92,353; **8: 49,310**; 10: 77,653; 12: 69,168; 14: 87,452; **16: 58,879**; 20: 83,719; **24: 66,682**; 28: 86,618; 32: 70,878.
+- **Earlier book result (8-bit, kennedy.xls, 1,029,744 bytes).** zstd -22 64,815 → 42,858; LZ4 -12 324,136 → 139,394; gzip -9 209,721 → 140,230. Record delta beats it on that file.
+
+## 4. Raw data — structured files (full 276-combination sweep)
+Sizes in bytes. Format: (size at zstd -3, swap S, juggle J).
+
+**alice29.txt (text, 152,089 B)** — zstd -3 55,791; zstd -19 49,212
+- Top 10 at -3: (56131,1,8) (56325,2,8) (63063,3,8) (66523,1,16) (74785,8,16) (74796,1,24) (75610,2,16) (76784,3,16) (77525,4,16) (77923,4,8)
+- Top 3 at -19: 1/8 → 49,425 (+0.4%); 2/8 → 49,651 (+0.9%); 3/8 → 53,806 (+9.3%) — **no win**
+
+**osdb (database, first 524,288 B)** — zstd -3 186,311; zstd -19 176,498
+- Top 10 at -3: (215442,1,8) (220547,1,16) (234877,8,16) (239927,2,8) (240054,23,24) (244200,15,16) (245288,4,8) (246324,1,24) (250552,16,24) (252911,2,16)
+- Top 3 at -19: 1/8 → 188,462 (+6.8%); 1/16 → 199,129 (+12.8%); 8/16 → 224,400 (+27.1%) — **no win**
+
+**x-ray (12-bit medical image stored as 16-bit, first 524,288 B)** — zstd -3 359,987; zstd -19 318,413
+- Top 10 at -3: (305568,8,16) (342113,7,16) (344152,9,16) (345758,1,2) (346390,2,4) (348366,4,8) (351744,10,16) (355283,6,16) (355847,11,16) (357314,12,16)
+- Top 3 at -19: **8/16 → 295,511 (−7.2%)**; 7/16 → 323,319 (+1.5%); 9/16 → 325,492 (+2.2%)
+
+**mr (MRI, 16-bit, first 524,288 B)** — zstd -3 167,472; zstd -19 151,927
+- Top 10 at -3: (152761,8,16) (153883,11,16) (155288,4,8) (156647,10,16) (156955,12,16) (158303,9,16) (167559,2,4) (168880,1,2) (170955,4,16) (172224,7,16)
+- Top 3 at -19: **8/16 → 144,234 (−5.1%)**; 11/16 → 144,820 (−4.7%); 4/8 → 148,041 (−2.6%)
+
+**Observation.** No odd juggle width reached the top 30 on any structured file. All wins were at J = 16, which matches the 16-bit pixel size.
+
+## 5. Raw data — biased-random and odd-width data
+**Sources:**
+- NIST SP 800-90B Entropy Assessment sample data (repository bin/ folder): biased-random-bits, biased-random-bytes, ringOsc-nist (real ring-oscillator hardware noise), normal, truerand_4bit. The 1-bit and 4-bit sample files store one sample per byte; I packed them tightly (8 or 2 samples per byte) before testing.
+- Real 24-bit EEG: MNE testing data, BDF/multiple_annotation_chans.bdf (first 1,048,576 B).
+- Two synthetic files I generated (seed 2360932695):
+  - 5-bit symbols, geometric distribution (p = 0.25, capped at 31), packed;
+  - 12-bit Gaussian "ADC-like" noise (mean 2048, sd 40), packed.
+
+Same protocol. Format: (size at zstd -3, swap S, juggle J).
+
+| File (bytes) | zstd -3 | zstd -19 | xz -9e | Best 3 at zstd -19 |
+|---|---|---|---|---|
+| biased-random-bytes (1,000,000) | 376,387 | 327,568 | 334,836 | **8/16 321,620 (−1.8%)**; 16/24 342,223; 8/24 339,896 |
+| normal.bin (1,000,000) | 802,821 | 803,459 | 811,428 | 4/8 801,322 (−0.3%); 1/8 804,504; 8/24 808,615 |
+| ringOsc packed (125,000) | 86,275 | 84,880 | 85,676 | 1/9 85,506; **8/9 84,483 (−0.5%)**; 1/5 85,544 |
+| biased bits packed (125,000) | 28,018 | 22,172 | 21,772 | 14/22 20,428; **13/21 20,373 (−8.1%)**; 12/20 20,439 |
+| truerand 4-bit packed (500,000) | 500,022 | 500,022 | 500,084 | 1/2 500,039 (incompressible, as expected) |
+| synthetic 5-bit skewed (524,289) | 401,194 | 401,571 | 398,376 | 2/10 346,622; **1/5 346,369 (−13.7%)**; 8/10 346,743 |
+| synthetic 12-bit noise (524,288) | 440,023 | 430,664 | 403,956 | **4/12 325,931 (−24.3%)**; 2/6 330,240; 4/6 332,853 |
+| EEG BDF 24-bit (1,048,576) | 559,063 | 526,856 | 345,184 | **16/24 336,643 (−36.1%)**; 17/24 364,308; 15/24 399,063 |
+
+**Top 10 at zstd -3:**
+- biased bits: (23943,14,22) (23954,13,21) (24032,12,20) (24076,15,23) (24090,16,24) (24117,11,15) (24134,8,12) (24211,11,19) (24270,10,14) (24315,9,13)
+- 12-bit: (325611,4,12) (331805,2,6) (337143,4,6) (340239,3,12) (345192,8,12) (346636,2,12) (349890,6,12) (350144,2,3) (350366,5,12) (351777,7,12)
+- 5-bit: (348364,2,10) (349651,1,5) (356523,8,10) (356525,1,10) (357119,4,5) (361820,3,10) (362446,9,10) (363837,2,5) (364149,4,10) (372954,7,10)
+- EEG: (374836,16,24) (426002,17,24) (454303,15,24) (460289,14,24) (461901,18,24) (472352,8,24) (474367,13,24) (476047,12,24) (481759,7,24) (482595,11,24)
+- ringOsc: (86937,1,9) (87325,8,9) (87519,1,5) (87597,2,10) (87924,2,6) (88340,8,10) (88767,9,10) (88789,7,8) (88961,3,11) (89079,4,12)
+
+**Order-0 entropy bounds** (ideal size if each symbol were coded independently):
+
+| File | Entropy | Ideal size |
+|---|---|---|
+| biased-random-bytes | 2.318 bits/symbol | 289,786 B |
+| normal | 6.369 bits/symbol | 796,127 B |
+| ringOsc | 1.000 bit/symbol | 124,999 B |
+| biased bits | 0.1415 bit/symbol | 17,688 B |
+| truerand 4-bit | 4.000 bits/symbol | 499,998 B |
+| synthetic 5-bit (theory) | ≈ 3.245 bits/symbol | ≈ 340,300 B |
+| synthetic 12-bit (theory) | ≈ 7.37 bits/symbol | ≈ 322,000 B |
+
+## 6. Fairness checks against known transforms (zstd -19)
+
+| File | Known transform | Size | Harrington Exchange | Verdict |
+|---|---|---|---|---|
+| EEG BDF 24-bit | byte shuffle (3 byte planes) | **323,515** | 336,643 | Exchange **loses** |
+| EEG BDF 24-bit | bitshuffle (24 planes) | 360,917 | 336,643 | Exchange wins |
+| 12-bit noise | bitshuffle (12 planes) | 524,448 | **325,931** | Exchange wins |
+| 12-bit noise | unpack to 16-bit, zstd | 390,393 | **325,931** | Exchange wins |
+| 12-bit noise | unpack to 16-bit + byte shuffle | 368,027 | **325,931** | Exchange wins by 11.4% |
+| 5-bit skewed | bitshuffle (5 planes) | 346,283 | 346,369 | Tie |
+| 5-bit skewed | unpack to bytes, zstd | **345,655** | 346,369 | Tie, Exchange marginally worse |
+| biased bits | bitshuffle (8 planes) | 23,177 | **20,373** | Exchange wins (also beats xz 21,772) |
+
+**Summary in the author's preferred units (1,000,000 bits down to X):**
+- 12-bit noise: zstd -19 821,426; xz 770,485; best known 701,948; **Exchange 621,665**
+- biased bits: zstd 177,376; xz 174,176; bitshuffle 185,416; **Exchange 162,984**
+- 5-bit skewed: zstd 765,939; unpack 659,284; Exchange 660,644
+- EEG: zstd 502,449; xz 329,193; **byte shuffle 308,527**; Exchange 321,048
+
+## 7. My insights
+1. **The Exchange is not for structured files.** On text and database data, zstd's own match finding already captures the structure, and the split scrambles it (+0.4% to +27%).
+2. **The width must match the data's natural symbol size.** Every win was at J equal to the true symbol width or a simple multiple of it:
+   - 16 for the 16-bit images;
+   - 12 for the 12-bit noise;
+   - 5 or 10 for the 5-bit symbols;
+   - 24 for the 24-bit EEG;
+   - 21–22 for the packed biased bits, where no natural width exists and the optimum is broad (S/J = 9/13 through 16/24 all within 2%).
+
+   Odd widths only matter when the data really is packed at odd widths.
+3. **On packed odd-width data the Exchange beats zstd, xz, bitshuffle and unpack-to-bytes.** The clearest case is the 12-bit noise, where it lands within about 1% of the theoretical order-0 bound. Splitting each 12-bit sample at bit 4 separates the noisy low bits from the predictable high bits.
+4. **The renaming step's contribution is unproven.** On the 5-bit file, simply unpacking to bytes ties the Exchange, which suggests most of the gain there comes from re-aligning the symbols, not from the frequency renaming. An ablation (split only, no swap) is needed.
+5. **Real-data evidence is thin.** The two clean wins are a synthetic file and NIST's biased-bit test file; the real 24-bit EEG lost to plain byte shuffle.
+6. **Decode speed is unknown.** The Python prototype is not a fair speed test; a C implementation is needed.
+
+## 8. Caveats
+- Compressed size only; decode speed not measured.
+- The synthetic files were made by me to match the method's design, so they favour it by construction.
+- The zstd -3 → zstd -19 two-stage scoring could miss combinations that only win at -19.
+- K = 256 was fixed for the full sweep; larger K might help at large J.
+- My reading of "swap" (split point) versus "juggle" (chunk width) may differ from the author's.
+- Single runs; sizes are deterministic, but no timings were taken.
+
+## 9. Questions for the reviewer
+1. Is there prior art combining frequency-ranked renaming with a bit-position split at arbitrary widths? Known neighbours are bitshuffle, byte shuffle, and symbol remapping in entropy coders.
+2. What real datasets are naturally packed at odd bit widths? Candidates: 10/12/14-bit camera RAW, packed sensor telemetry, CCSDS space packets.
+3. Is the near-entropy result on the 12-bit file expected for any correctly aligned split followed by zstd's entropy stage, or is the renaming doing real work?
+4. What is the best way to choose S and J automatically without a 276-combination search?

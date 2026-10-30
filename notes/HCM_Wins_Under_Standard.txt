@@ -1,0 +1,289 @@
+HCM / HARRINGTON INSIGHTS — WINS UNDER THE COMPRESSION TIER STANDARD v1.1
+Compiled 2026-10-26
+
+======================================================================
+HOW TO READ THIS FILE
+======================================================================
+Sizes: "1,000,000 bits down to X" (per-million), with exact bytes where kept.
+Every result listed decoded back to the original exactly (byte for byte).
+
+Classes:
+  Original = your code and methods (your decoder)
+  Mutated  = their engine underneath, but needs a new decoder
+  Modified = their format; the stock decoder reads it unchanged
+
+Standards:
+  No-Pain = smaller with no slower decode, faster with no larger size, or both
+  BGS-1   = 10% smaller or 1.25x faster decode; other metric may regress up to 5%
+  BGS-2   = 25% smaller or 2x faster decode; other metric may regress up to 15%
+  BGS-3   = 50% smaller or 10x faster decode; no fixed regression limit
+            (a Tier BGS-3 also needs no tested rival in its tier to dominate it)
+  Decode times within 3% count as equal.
+
+Award record format: Award / Coverage / Corpus or file
+  All awards below are Baseline awards (beat one named compressor setting).
+  No Tier awards yet: no tier's strongest rivals have been tested side by side.
+
+Tiers (decode multiple M = decode time / lz4 decode time, same machine):
+  1 Speedsters        M up to 2
+  2 Mainstream        M over 2, up to 10
+  3 Medium Sluggers   M over 10, up to 100
+  4 Heavy             M over 100, up to 3,000
+  5 Insane            M over 3,000
+  All tiers below are PROVISIONAL: set from the parent compressor's measured
+  multiple on Silesia (lz4 1.0, zstd -1 2.7, zstd -3 3.0, gzip -1 12.8,
+  xz -0 61.0). Each pipeline's own M is NOT measured yet. HCM is an estimate.
+
+Test files:
+  kennedy.xls  Canterbury corpus, Excel spreadsheet, 1,029,744 bytes, record length 13
+  ptt5         Canterbury corpus, fax image, 513,216 bytes, record length 216
+  Canterbury   all 11 Canterbury corpus files
+  x-ray        Silesia corpus, medical X-ray image, 8,474,240 bytes, record length 2
+  mr           Silesia corpus, MRI image, 9,970,564 bytes, record length 2
+
+======================================================================
+PART 1 — BIG GAIN AWARDS (15)
+======================================================================
+
+----------------------------------------------------------------------
+BGS-3 AWARDS (7)
+----------------------------------------------------------------------
+
+[1] lz4 -12 + record delta (13) — kennedy.xls
+    Class: Mutated        Tier: 1 (provisional)
+    Test: Canterbury record-delta front-end test, Oct 26
+    Size: 314,773 -> 42,393 per million (324,136 -> 43,654 bytes), 86.5% smaller
+    Decode: 770 -> 725 microseconds (faster; needs SIMD reverse delta)
+    Award: Baseline BGS-3 / Local / kennedy.xls  (also No-Pain)
+
+[2] lz4 + Combary activity map — kennedy.xls
+    Class: Mutated        Tier: 1 (provisional)
+    Test: Combary activity-map test, Oct 26
+    Size: 314,773 -> 38,842 per million (324,136 -> 39,997 bytes), 87.7% smaller
+    Decode: 739 -> about 1,000 microseconds (1.35x slower; BGS-3 has no fixed limit)
+    Award: Baseline BGS-3 / Local / kennedy.xls  (NOT No-Pain)
+    Note: tier depends on measuring the full pipeline's M.
+
+[3] zstd -22 + record delta (13) — kennedy.xls
+    Class: Mutated        Tier: 2 (provisional; may move to Tier 1 when measured)
+    Test: Canterbury record-delta front-end test, Oct 26
+    Size: 62,943 -> 25,635 per million (64,815 -> 26,398 bytes), 59.3% smaller
+    Decode: 1,359 -> 520 microseconds (2.6x faster)
+    Award: Baseline BGS-3 + BGS-2 speed / Local / kennedy.xls  (also No-Pain)
+
+[4] gzip -9 + Combary activity map — kennedy.xls
+    Class: Mutated        Tier: 3 (provisional)
+    Test: Combary activity-map test, Oct 26
+    Size: 203,663 -> 34,531 per million (209,721 -> 35,558 bytes), 83.0% smaller
+    Decode: 2,148 -> about 1,313-1,476 microseconds (about 1.5x faster)
+    Award: Baseline BGS-3 + BGS-1 speed / Local / kennedy.xls  (also No-Pain)
+
+[5] gzip -9 + record delta (13) — kennedy.xls
+    Class: Mutated        Tier: 3 (provisional)
+    Test: Canterbury record-delta front-end test, Oct 26
+    Size: 203,663 -> 41,731 per million (209,721 -> 42,972 bytes), 79.5% smaller
+    Decode: 2,179 -> 1,054 microseconds (2.07x faster)
+    Award: Baseline BGS-3 + BGS-2 speed / Local / kennedy.xls  (also No-Pain)
+
+[6] xz-hi (HCM-tuned xz, delta filter at 13) — kennedy.xls
+    Class: Modified (stock xz decodes it)   Tier: 3 (provisional)
+    Test: No-pain xz search, Oct 25
+    Size: 50,370 -> 22,973 per million (51,868 -> 23,656 bytes), 54.4% smaller
+    Decode: faster (every Canterbury file decoded faster)
+    Award: Baseline BGS-3 / Local / kennedy.xls  (also No-Pain)
+
+[7] HCM-Bin v1 vs ZPAQ -m5 — ptt5
+    Class: Original       Tier: 4 (estimate)
+    Test: HCM binary mode test, Oct 25
+    Size: 55,655 -> 53,823 per million (28,563 -> 27,623 bytes), 3.3% smaller
+    Decode: 3.29 s -> 0.26 s (12.7x faster)
+    Award: Baseline BGS-3 speed / Local / ptt5  (also No-Pain vs ZPAQ)
+
+----------------------------------------------------------------------
+BGS-2 AWARDS (3)
+----------------------------------------------------------------------
+
+[8] zstd -1 + record delta (2) — x-ray
+    Class: Mutated        Tier: 2 (provisional)
+    Test: Silesia fast-level test, Oct 26
+    Size: 799,142 -> 592,974 per million (6,772,118 -> 5,025,007 bytes), 25.8% smaller
+    Decode: 9.27 -> 7.69 ms (faster)
+    Award: Baseline BGS-2 / Local / Silesia x-ray  (also No-Pain)
+
+[9] HCM v3.3 fast vs ZPAQ -m5 — all 11 Canterbury files
+    Class: Original       Tier: 4 (estimate)
+    Test: HCM v3.3 Canterbury run, Oct 25
+    Size: 128,716 -> 125,763 per million, 2.3% smaller
+    Decode: about 6x faster than ZPAQ -m5 (v3 fast measured 6.3-6.5x)
+    Award: Baseline BGS-2 speed / General / Canterbury (11 files)  (also No-Pain)
+    Note: crosses tiers (ZPAQ -m5 sits in Tier 5).
+
+[10] HCM-Bin v1 vs ZPAQ -m5 — kennedy.xls
+    Class: Original       Tier: 4 (estimate)
+    Test: HCM binary mode test, Oct 25
+    Size: 16,336 -> 16,279 per million (16,822 -> 16,763 bytes), 0.35% smaller
+    Decode: 6.35 s -> 0.79 s (8x faster)
+    Award: Baseline BGS-2 speed / Local / kennedy.xls  (also No-Pain)
+
+----------------------------------------------------------------------
+BGS-1 AWARDS (5)
+----------------------------------------------------------------------
+
+[11] zstd -3 + record delta (2) — x-ray
+    Class: Mutated        Tier: 2 (provisional)
+    Test: Silesia fast-level test, Oct 26
+    Size: 718,083 -> 577,913 per million (6,085,208 -> 4,897,376 bytes), 19.5% smaller
+    Decode: 12.11 -> 12.18 ms (equal, within 3%)
+    Award: Baseline BGS-1 / Local / Silesia x-ray  (No-Pain as a provisional tie)
+
+[12] gzip -9 + record delta (2) — x-ray
+    Class: Mutated        Tier: 3 (provisional)
+    Test: Silesia top-level test, Oct 26 (sequential timing)
+    Size: 712,476 -> 601,113 per million (6,037,695 -> 5,093,976 bytes), 15.6% smaller
+    Decode: 56.61 -> 51.17 ms (faster)
+    Award: Baseline BGS-1 / Local / Silesia x-ray  (also No-Pain)
+
+[13] gzip -1 + record delta (2) — x-ray
+    Class: Mutated        Tier: 3 (provisional)
+    Test: Silesia fast-level test, Oct 26
+    Size: 711,046 -> 627,061 per million (6,025,572 -> 5,313,865 bytes), 11.8% smaller
+    Decode: 58.90 -> 56.29 ms (faster)
+    Award: Baseline BGS-1 / Local / Silesia x-ray  (also No-Pain)
+
+[14] xz -0 + record delta (2) — x-ray
+    Class: Mutated        Tier: 3 (provisional)
+    Test: Silesia fast-level test, Oct 26
+    Size: 612,905 -> 550,709 per million (5,193,904 -> 4,666,844 bytes), 10.1% smaller
+    Decode: 330.96 -> 301.64 ms (faster)
+    Award: Baseline BGS-1 / Local / Silesia x-ray  (also No-Pain)
+
+[15] xz-hi (HCM-tuned xz) — all 11 Canterbury files
+    Class: Modified (stock xz decodes it)   Tier: 3 (provisional)
+    Test: No-pain xz search, Oct 25
+    Size: 175,424 -> 164,663 per million, 6.1% smaller
+    Decode: 32.1 -> 24.8 ms total (1.29x faster); every file smaller and faster
+    Award: Baseline BGS-1 speed / General / Canterbury (11 files)  (also No-Pain)
+
+----------------------------------------------------------------------
+SELF-BASELINE AWARDS (4) — beating your own earlier version
+(ruled to count, 2026-10-26)
+----------------------------------------------------------------------
+
+[S1] HCM v3.1 vs HCM v3 (fast) — kennedy.xls
+    Class: Original       Tier: 4 (estimate)
+    Test: binary-only record swap, Oct 25
+    Size: 53,899 -> 18,674 bytes, 65.4% smaller (ptt5 45,083 -> 27,973, 38.0%;
+          sum 10,930 -> 9,757, 10.7%)
+    Decode: same speed (same number of contexts); text output identical to v3
+    Award: Baseline BGS-3 / Local / kennedy.xls
+           (ptt5: Baseline BGS-2 / Local / ptt5; sum: Baseline BGS-1 / Local / sum)
+
+[S2] HCM v3.3 vs HCM v3 (fast) — all 11 Canterbury files
+    Class: Original       Tier: 4 (estimate)
+    Test: HCM v3.3 strict no-pain check, Oct 25
+    Size: 147,504 -> 125,763 per million, 14.7% smaller; per-file fallback to v3,
+          so no file is worse
+    Decode: 1.85-1.87 s vs 1.88 s (no loss)
+    Award: Baseline BGS-1 / General / Canterbury (11 files)  (also No-Pain)
+
+[S3] HCM v3.1 vs HCM v3 (fast) — all 11 Canterbury files
+    Class: Original       Tier: 4 (estimate)
+    Size: 147,504 -> 128,467 per million, 12.9% smaller
+    Decode: same speed
+    Award: Baseline BGS-1 / General / Canterbury (11 files)  (superseded by S2)
+
+[S4] HCM v3 vs HCM v2 (C++) — all 11 Canterbury files
+    Class: Original       Tier: 4 (estimate)
+    Test: HCM v3 build, Oct 25
+    Size: 148,355 -> 147,504 per million, 0.6% smaller
+    Decode: 4.10x faster (compress 3.96x faster); memory 121 MB -> 42 MB
+    Award: Baseline BGS-2 speed / General / Canterbury (11 files)  (also No-Pain)
+
+======================================================================
+PART 2 — NO-PAIN WINS BELOW BIG GAIN (under 10% / under 1.25x)
+======================================================================
+
+[17] bzip2-hi (HCM-tuned bzip2) — all 11 Canterbury files
+    Class: Modified (stock bzip2 decodes it)
+    Size: 193,081 -> 189,235 per million (2.0% smaller); every file smaller
+    Decode: 59.7 -> 55.4 ms (1.08x faster); every file faster
+    kennedy.xls: 126,517 -> 117,002 per million (130,280 -> 120,482 bytes)
+    Award: No-Pain / General / Canterbury (11 files)
+
+[18] gzip -9 + record delta (2) — mr
+    Class: Mutated   Size: 369,187 -> 333,278 (9.7% smaller)
+    Decode: 37.50 -> 36.28 ms
+    Award: No-Pain / Local / Silesia mr  (just under BGS-1's 10%)
+
+[19] xz -9e + record delta (2) — mr
+    Class: Mutated   Size: 276,002 -> 261,855 (5.1% smaller)
+    Decode: 190.66 -> 158.31 ms
+    Award: No-Pain / Local / Silesia mr
+
+[20] zstd -19 + record delta (2) — x-ray
+    Class: Mutated   Size: 605,343 -> 567,146 (6.3% smaller)
+    Decode: 14.65 -> 12.75 ms
+    Award: No-Pain / Local / Silesia x-ray
+
+[21] xz -9e + record delta (2) — x-ray
+    Class: Mutated   Size: 529,991 -> 501,700 (5.3% smaller)
+    Decode: 343.27 -> 297.76 ms
+    Award: No-Pain / Local / Silesia x-ray
+
+[22] xz -0 + record delta (2) — mr
+    Class: Mutated   Size: 330,074 -> 312,463 (5.3% smaller)
+    Decode: 217.57 -> 215.27 ms
+    Award: No-Pain / Local / Silesia mr
+
+[23] Record delta with per-file fallback — whole Silesia corpus (12 files)
+    Class: Mutated
+    gzip -9:  319,742 -> 313,600     zstd -19: 249,563 -> 248,035
+    xz -9e:   228,633 -> 226,836     gzip -1:  366,250 -> 362,891
+    zstd -1:  345,522 -> 337,279     xz -0:    295,324 -> 292,009
+    Decode: changed only where the file won No-Pain; others untouched
+    Award: No-Pain / General / Silesia (12 files)
+
+[24] Record delta with per-file fallback — Canterbury (10 files, SHA1SUM excluded)
+    Class: Mutated
+    Totals (bytes): zstd -22 516,140 -> 477,733; lz4 -12 935,419 -> 654,947;
+                    gzip -9 730,625 -> 563,886
+    Decode: only kennedy.xls changes, and it decodes faster on all three
+    Award: No-Pain / General / Canterbury (10 files)
+    Note: lz4's total is 30.0% smaller and gzip's 22.8%, which would reach
+          BGS-2 and BGS-1 at corpus level; coverage counts it as one file
+          (kennedy) doing all the work.
+
+[25] Swap table (top 64 bytes) + shrinking header — ptt5 with gzip -9
+    Class: Mutated   Size: 52,377 -> 52,276 bytes (0.2% smaller)
+    Decode: not checked
+    Award: none yet (decode time unmeasured)
+
+======================================================================
+PART 3 — TESTED BUT NO WIN UNDER THE STANDARD
+======================================================================
+- zstd -1 + record delta on mr: 13.5% smaller, decode 16% slower (over BGS-1's 5%)
+- zstd -3 + record delta on mr: 7.7% smaller, decode 15% slower
+- gzip -1 + record delta on mr: 7.4% smaller, decode 5% slower
+- lz4 -12 + record delta on x-ray: 15.9% smaller, decode 1.7x slower
+- lz4 fast + record delta on mr and x-ray: smaller, decode much slower
+- zstd -19 / lz4 -12 + record delta on mr: smaller, decode slower
+- Activity map on ptt5 with gzip: 342 bytes smaller, decode slower
+- Ternary pointer on bzip2 rebuild: 193,081 -> 179,074 (7.3% smaller), decode 1.8x slower
+- hcm-trit v2 vs HCM v3: 147,504 -> 145,307, decode about 29% slower
+- Record delta on text, executables (mozilla, ooffice, samba), osdb, sao: worse; skipped by fallback
+- Harrington Exchange, Juggle, HaBiTS, swap chains before real compressors: worse
+
+======================================================================
+SUMMARY
+======================================================================
+Big Gain awards: 19 (8 BGS-3, 4 BGS-2, 7 BGS-1), all Baseline
+  (15 against other compressors + 4 against your own earlier versions;
+   counting S1's ptt5 and sum awards as part of S1)
+  By class: Original 7, Mutated 10, Modified 2
+  By coverage: General 5 (all on Canterbury), Local 14
+No-Pain-only wins: 8 (items 17-24)
+Tier awards: 0 (rivals not yet tested side by side)
+Strongest areas: Mutated front ends on structured binaries (kennedy.xls,
+  x-ray); HCM's decode speed against ZPAQ.
+Biggest gaps: six of seven BGS-3 awards rest on kennedy.xls; no pipeline has
+  a measured M yet; HCM untested against bzip3, BSC, PPMd.

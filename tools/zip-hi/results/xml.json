@@ -1,0 +1,236 @@
+{
+"file": "xml",
+"orig": 5345280,
+"cands": [
+{
+"i": 22,
+"args": "-mm=PPMd -mo=16 -mmem=64m",
+"size": 378791,
+"ok": true,
+"c_cpu": 0.331533,
+"c_memKB": 58236,
+"d_cpu": 0.330603,
+"d_memKB": 57804
+},
+{
+"i": 19,
+"args": "-mm=PPMd -mo=12 -mmem=16m",
+"size": 393449,
+"ok": true,
+"c_cpu": 0.22928,
+"c_memKB": 23488,
+"d_cpu": 0.306215,
+"d_memKB": 23496
+},
+{
+"i": 20,
+"args": "-mm=PPMd -mo=12 -mmem=64m",
+"size": 398077,
+"ok": true,
+"c_cpu": 0.275008,
+"c_memKB": 41912,
+"d_cpu": 0.327436,
+"d_memKB": 41532
+},
+{
+"i": 21,
+"args": "-mm=PPMd -mo=16 -mmem=16m",
+"size": 408286,
+"ok": true,
+"c_cpu": 0.23996399999999998,
+"c_memKB": 23700,
+"d_cpu": 0.262725,
+"d_memKB": 23404
+},
+{
+"i": 18,
+"args": "-mm=PPMd -mo=10 -mmem=64m",
+"size": 410877,
+"ok": true,
+"c_cpu": 0.20940499999999998,
+"c_memKB": 33640,
+"d_cpu": 0.24697999999999998,
+"d_memKB": 33344
+},
+{
+"i": 17,
+"args": "-mm=PPMd -mo=10 -mmem=16m",
+"size": 430594,
+"ok": true,
+"c_cpu": 0.253747,
+"c_memKB": 23876,
+"d_cpu": 0.297352,
+"d_memKB": 23616
+},
+{
+"i": 8,
+"args": "-mm=LZMA -mx9 -md=23 -mfb=273 -mlc=4 -mlp=0 -mpb=0",
+"size": 434490,
+"ok": true,
+"c_cpu": 3.16709,
+"c_memKB": 71584,
+"d_cpu": 0.047390999999999996,
+"d_memKB": 13132
+},
+{
+"i": 4,
+"args": "-mm=LZMA -mx9 -md=23 -mfb=273 -mlc=3 -mlp=0 -mpb=2",
+"size": 435255,
+"ok": true,
+"c_cpu": 2.462229,
+"c_memKB": 71684,
+"d_cpu": 0.042036,
+"d_memKB": 13068
+},
+{
+"i": 15,
+"args": "-mm=PPMd -mo=8 -mmem=16m",
+"size": 436236,
+"ok": true,
+"c_cpu": 0.23435799999999998,
+"c_memKB": 23820,
+"d_cpu": 0.24473199999999998,
+"d_memKB": 23580
+},
+{
+"i": 16,
+"args": "-mm=PPMd -mo=8 -mmem=64m",
+"size": 436236,
+"ok": true,
+"c_cpu": 0.20296699999999998,
+"c_memKB": 25488,
+"d_cpu": 0.219927,
+"d_memKB": 25116
+},
+{
+"i": 6,
+"args": "-mm=LZMA -mx9 -md=23 -mfb=273 -mlc=0 -mlp=0 -mpb=0",
+"size": 437037,
+"ok": true,
+"c_cpu": 2.71812,
+"c_memKB": 71664,
+"d_cpu": 0.039753,
+"d_memKB": 13044
+},
+{
+"i": 10,
+"args": "-mm=LZMA -mx9 -md=23 -mfb=273 -mlc=1 -mlp=0 -mpb=0",
+"size": 437037,
+"ok": true,
+"c_cpu": 2.660291,
+"c_memKB": 71676,
+"d_cpu": 0.037760999999999996,
+"d_memKB": 13104
+},
+{
+"i": 2,
+"args": "-mm=BZip2 -mx9 -mpass=10",
+"size": 439383,
+"ok": true,
+"c_cpu": 10.000003,
+"c_memKB": 15872,
+"d_cpu": 0.10079199999999999,
+"d_memKB": 13060
+},
+{
+"i": 7,
+"args": "-mm=LZMA -mx9 -md=23 -mfb=64 -mlc=4 -mlp=0 -mpb=0",
+"size": 454411,
+"ok": true,
+"c_cpu": 1.5715999999999999,
+"c_memKB": 71648,
+"d_cpu": 0.037781999999999996,
+"d_memKB": 13048
+},
+{
+"i": 3,
+"args": "-mm=LZMA -mx9 -md=23 -mfb=64 -mlc=3 -mlp=0 -mpb=2",
+"size": 455038,
+"ok": true,
+"c_cpu": 1.776837,
+"c_memKB": 71524,
+"d_cpu": 0.048026,
+"d_memKB": 13072
+},
+{
+"i": 5,
+"args": "-mm=LZMA -mx9 -md=23 -mfb=64 -mlc=0 -mlp=0 -mpb=0",
+"size": 457044,
+"ok": true,
+"c_cpu": 1.479611,
+"c_memKB": 71596,
+"d_cpu": 0.037017,
+"d_memKB": 13032
+},
+{
+"i": 9,
+"args": "-mm=LZMA -mx9 -md=23 -mfb=64 -mlc=1 -mlp=0 -mpb=0",
+"size": 457044,
+"ok": true,
+"c_cpu": 1.5825209999999998,
+"c_memKB": 71664,
+"d_cpu": 0.038141999999999995,
+"d_memKB": 13060
+},
+{
+"i": 13,
+"args": "-mm=PPMd -mo=6 -mmem=16m",
+"size": 496555,
+"ok": true,
+"c_cpu": 0.188592,
+"c_memKB": 19828,
+"d_cpu": 0.194425,
+"d_memKB": 19356
+},
+{
+"i": 14,
+"args": "-mm=PPMd -mo=6 -mmem=64m",
+"size": 496555,
+"ok": true,
+"c_cpu": 0.16494,
+"c_memKB": 19416,
+"d_cpu": 0.212447,
+"d_memKB": 19076
+},
+{
+"i": 1,
+"args": "-mm=Deflate64 -mx9 -mpass=15 -mfb=257",
+"size": 598365,
+"ok": true,
+"c_cpu": 28.622189000000002,
+"c_memKB": 13104,
+"d_cpu": 0.019292999999999998,
+"d_memKB": 13104
+},
+{
+"i": 11,
+"args": "-mm=PPMd -mo=4 -mmem=16m",
+"size": 606802,
+"ok": true,
+"c_cpu": 0.175728,
+"c_memKB": 13912,
+"d_cpu": 0.177171,
+"d_memKB": 13368
+},
+{
+"i": 12,
+"args": "-mm=PPMd -mo=4 -mmem=64m",
+"size": 606802,
+"ok": true,
+"c_cpu": 0.17368699999999998,
+"c_memKB": 13568,
+"d_cpu": 0.176734,
+"d_memKB": 13108
+},
+{
+"i": 0,
+"args": "-mm=Deflate -mx9 -mpass=15 -mfb=258",
+"size": 630801,
+"ok": true,
+"c_cpu": 24.884071,
+"c_memKB": 13120,
+"d_cpu": 0.023835,
+"d_memKB": 13044
+}
+]
+}

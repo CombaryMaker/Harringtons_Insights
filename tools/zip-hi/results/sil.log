@@ -1,0 +1,12 @@
+dickens 2268508 -mm=PPMd -mo=8 -mmem=64m dec 1.36s 71MB
+mozilla 13309321 -mm=LZMA -mx9 -md=26 -mfb=273 -mlc=3 -mlp=0 -mpb=2 dec 1.02s 54MB
+mr 2298976 -mm=PPMd -mo=6 -mmem=64m dec 0.82s 45MB
+nci 1446220 -mm=LZMA -mx9 -md=25 -mfb=273 -mlc=4 -mlp=0 -mpb=0 dec 0.15s 38MB
+ooffice 2419567 -mm=LZMA -mx9 -md=23 -mfb=273 -mlc=4 -mlp=0 -mpb=0 dec 0.19s 12MB
+osdb 2369785 -mm=PPMd -mo=10 -mmem=64m dec 1.54s 69MB
+reymont 1022713 -mm=PPMd -mo=12 -mmem=64m dec 0.77s 71MB
+samba 3726508 -mm=LZMA -mx9 -md=25 -mfb=273 -mlc=4 -mlp=0 -mpb=0 dec 0.26s 27MB
+sao 4415023 -mm=LZMA -mx9 -md=23 -mfb=64 -mlc=0 -mlp=2 -mpb=2 dec 0.29s 13MB
+webster 6392189 -mm=PPMd -mo=8 -mmem=256m dec 4.93s 157MB
+x-ray 3848954 -mm=PPMd -mo=4 -mmem=64m dec 1.94s 57MB
+xml 378791 -mm=PPMd -mo=16 -mmem=64m dec 0.33s 56MB
