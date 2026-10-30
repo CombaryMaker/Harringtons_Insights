@@ -1,0 +1,25 @@
+HARRINGTON SETS WRAPPER (hs_wrap.py) - 30 October 2026
+Michael Hugh Harrington. MIT License. Runs any single-core compressor through Harrington Sets: 64 KB windows,
+entropy exclusion above 7.99 bits/byte, k-means into at most 3 sets, run smoothing, blocks of at most B MB,
+one compressor copy per block on separate cores, run-length map to restore order. The compressor is unchanged.
+
+  compress:    hs_wrap.py c IN OUT --comp "paq8px -1 {in} {out}" --decomp "paq8px -d {in} {out}" --jobs N --block-mb B
+  decompress:  hs_wrap.py d IN OUT --decomp "paq8px -d {in} {out}" --jobs N
+  (a command without {out} is read from standard output, e.g. --comp "xz -6 -c {in}")
+
+VERIFICATION (2-core cloud machine, one run each, every result restored exactly)
+  samba (21,606,400 bytes) with xz -6:       3,809,950 bytes, compress 5.0 s, decompress 0.2 s
+  samba with HCM v3.6 fast:                  3,406,128 bytes, compress 43.8 s, decompress 10.1 s
+     (HCM's own built-in sets mode gave 3,406,084 bytes: the wrapper adds 44 bytes and no time)
+
+FIRST paq8px TEST (paq8px v217, level -1; first 3 MB of samba; wrapper with 1 MB blocks so both cores work)
+                              bytes     1,000,000 bits down to   ratio   compress   decompress
+  paq8px single stream        336,626   107,010                  9.345   563.1 s    567.8 s
+  paq8px through wrapper      372,718   118,483                  8.440   363.3 s    364.8 s
+
+OBSERVATIONS
+- About 1.55 times faster on 2 cores, but 10.7% larger. The 1 MB blocks were chosen only to force both cores
+  to work on a small sample; each paq8px block starts with an empty model and paq8px learns slowly, so tiny
+  blocks cost far more than with HCM. Real use needs much larger blocks (16 MB or more) on large files.
+- This 3 MB sample formed a single set (too small for grouping), so it measured plain parallel blocks only.
+- paq8px is very slow: about 5.6 KB/s per core at level -1 on this machine.
