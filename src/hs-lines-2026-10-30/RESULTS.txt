@@ -1,0 +1,42 @@
+HARRINGTON SETS ON NON-COMPRESSION SOFTWARE: jq AND river
+30 October 2026. 2-core cloud machine, wall clock, single-core tools left unmodified.
+Software here: hs_lines.py (line-record variant of the Harrington Sets wrapper), make_data.py (test data),
+filter.jq, river_score.py, auc.py, river_rust_stub.py. Michael Hugh Harrington, MIT License.
+
+WHAT CHANGED IN THE WRAPPER
+Windows are about 64 KB but end at a line end, and a marker line goes in front of each window so that every
+window's output can be put back in its original place. Everything else is the same method (7 features, raw
+exclusion, k-means up to 3 sets, folding, smoothing, equal blocks, parallel copies).
+
+TEST DATA (synthetic, made by make_data.py)
+JSON Lines, three sources (environment sensor, network counters, app log with text) in long sections of
+0.5-4 MB, 1% planted anomalies. jq file: 52,428,830 bytes, 726,497 records. river file: 62,914,565 bytes,
+918,169 records.
+
+jq 1.7 (filter.jq: builds a new record from each input record), 8 MB blocks, 3 runs each, median
+  Single core:      3.65 s
+  Equal blocks:     2.77 s   (7 blocks)          output identical to single
+  Harrington Sets:  2.62 s   (2 sets, 7 blocks)   output identical to single
+  Sets 1.39x faster than single, 5% faster than equal blocks.
+
+river (HalfSpaceTrees anomaly detector, scores each record then learns it), 8 MB blocks, one run each
+  Mode              Time     ROC AUC   Anomalies found in top 9,238 scores
+  Single core       27.4 s   0.518     11.4%
+  Equal blocks      23.9 s   0.632     22.4%   (8 blocks)
+  Harrington Sets   27.2 s   0.652     24.1%   (2 sets, 9 blocks)
+  Smaller run (12.6 MB, 4 MB blocks): single 5.8 s, AUC 0.574, 13.8%; blocks 6.5 s, 0.883, 38.3%;
+  sets 6.4 s, 0.873, 47.1%.
+
+NOTES
+- jq: works; correct output every time; speed-up is modest because jq is fast and the wrapper's reading and
+  reassembly in Python is a large part of the time. Grouping adds little speed for a tool that does not learn.
+- river: no real speed-up on 2 cores (each copy restarts Python and river, about 1 s, and 9 blocks on 2 cores
+  run in 5 rounds). The gain is in detection: split streams found about twice the anomalies of one stream,
+  and Sets beat equal blocks slightly on the large run. Much of that gain comes from splitting itself (each
+  copy rescales to cleaner data), not only from grouping.
+- The byte features separated the text source (app) from the numeric ones, but put the two numeric sources
+  (environment and network) in one set; their bytes look alike. A field-aware feature would split them.
+- river was run from its GitHub source because the package installer was blocked; its Rust extension could not
+  be built, so river_rust_stub.py stands in for it (HalfSpaceTrees and MinMaxScaler are pure Python and do not
+  use it).
+- Synthetic data built to be mixed; results on real logs may differ. Single runs on river.
