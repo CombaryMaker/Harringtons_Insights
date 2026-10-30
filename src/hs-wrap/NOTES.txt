@@ -23,3 +23,20 @@ OBSERVATIONS
   blocks cost far more than with HCM. Real use needs much larger blocks (16 MB or more) on large files.
 - This 3 MB sample formed a single set (too small for grouping), so it measured plain parallel blocks only.
 - paq8px is very slow: about 5.6 KB/s per core at level -1 on this machine.
+
+VERSION 1.1 (30 October 2026) - fixes found in an expert review of the write-up
+- Windows: commands were split with POSIX rules, which strip backslashes, so Windows paths broke
+  ("C:\Users\..." became "C:Users..."). Templates are now split first and {in}/{out} substituted inside
+  the tokens, Windows-style on Windows. This also fixes temporary folders whose path contains a space,
+  which failed on every system in 1.0.
+- A failing compressor now stops the run with its own error message (1.0 hid it).
+- Format HSW2 adds a CRC-32 of the original (4 bytes), checked after decoding; HSW1 files still decode.
+- Blocks are started largest first, so the slowest block never starts last (better use of cores).
+- Clear errors instead of assert; --comp / --decomp checked before starting.
+TESTS (2-core cloud machine, every result restored exactly)
+  samba (21,606,400 bytes) with xz -6: 3,809,954 bytes (1,000,000 bits down to 176,335; ratio 5.671),
+     compress 5.5 s, decompress 0.2 s. Exactly 4 bytes more than 1.0 (the CRC), so nothing else changed.
+  13,968,558-byte mixed file (text, random, zeros, program code), 1 MB blocks, bzip2: 5,790,230 bytes,
+     4 sets incl. 3,679,406 bytes stored raw, compress 0.4 s, decompress 0.3 s.
+  Also checked: {out}-style tool (cp), temp folder with spaces, failing tool, tampered file (CRC error),
+     old HSW1 file decoded by 1.1, Windows command splitting simulated.

@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
-"""Harrington Sets wrapper: gives any single-core compressor (cmix, paq8px, lpaq, ...) multi-core use.
-Original method by Michael Hugh Harrington, 2026. MIT License.
+"""Harrington Sets: multi-core use for any single-core compressor.
+Original method by Michael Hugh Harrington, 2026. Code under the MIT License (full text at end of file).
 
 The input is read in 64 KB windows. Windows with byte entropy above 7.99 bits/byte are excluded to a raw
 set (stored, never compressed). The rest are grouped by k-means on seven byte features into at most 3 sets,
 short runs are smoothed and sets under 1 MB folded into the largest. Each set is joined in file order,
 cut into blocks of at most B MB, and every block is compressed by its own copy of the compressor, several
-at once. A run-length map restores every window to its original place.
+at once (largest blocks first). A run-length map restores every window to its original place, and a CRC-32
+of the original is checked after decoding.
 
 Usage:
-  hs_wrap.py c IN OUT --comp "cmix -c {in} {out}" --decomp "cmix -d {in} {out}" [--jobs N] [--block-mb B]
-  hs_wrap.py d IN OUT --decomp "cmix -d {in} {out}" [--jobs N]
-Memory: peak is about jobs x the compressor's own memory (cmix needs about 32 GB per copy).
+  hs_wrap.py c IN OUT --comp "COMPRESSOR {in} {out}" [--jobs N] [--block-mb B]
+  hs_wrap.py d IN OUT --decomp "DECOMPRESSOR {in} {out}" [--jobs N]
+{in} and {out} become temporary block files; a template without {out} is read from standard output.
+Works on Linux, macOS and Windows (on Windows, quote program paths that contain spaces with double quotes).
+Memory: about jobs x the compressor's own memory, plus 2-3x the input for this script's buffers; temporary
+block files need about the input size again on disk.
 """
-import argparse, math, os, shlex, struct, subprocess, sys, tempfile, time
+import argparse, math, os, shlex, struct, subprocess, sys, tempfile, time, zlib
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np
-W = 65536; RAW = 255; MAGIC = b'HSW1'
+W = 65536; RAW = 255; MAGIC = b'HSW2'   # HSW2 = HSW1 + CRC-32 of the original
 def features(c):
     h = np.bincount(np.frombuffer(c, dtype=np.uint8), minlength=256); L = len(c)
     p = h[h > 0] / L; e = float(-(p * np.log2(p)).sum())
@@ -56,12 +60,20 @@ def runs(lab):
         while j < len(lab) and lab[j] == lab[i]: j += 1
         r.append((int(lab[i]), j - i)); i = j
     return r
+def split_cmd(tmpl, nt=os.name == 'nt'):
+    if not nt: return shlex.split(tmpl)
+    toks = shlex.split(tmpl, posix=False)   # keeps Windows backslashes; strip the quotes around a token
+    return [t[1:-1] if len(t) > 1 and t[0] == t[-1] == '"' else t for t in toks]
 def call(tmpl, src, dst):
-    args = shlex.split(tmpl.format(**{'in': src, 'out': dst}))
-    if '{out}' in tmpl:   # the compressor writes its own output file
-        subprocess.run(args, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    else:                 # the compressor writes to standard output
-        with open(dst, 'wb') as o: subprocess.run(args, check=True, stdout=o, stderr=subprocess.DEVNULL)
+    args = [t.replace('{in}', src).replace('{out}', dst) for t in split_cmd(tmpl)]
+    with open(os.devnull if '{out}' in tmpl else dst, 'wb') as o:   # no {out}: the tool writes to stdout
+        r = subprocess.run(args, stdout=o, stderr=subprocess.PIPE)
+    if r.returncode:
+        msg = r.stderr.decode(errors='replace').strip(); msg = msg if len(msg) <= 400 else msg[:200] + ' ... ' + msg[-200:]
+        raise RuntimeError(f'{args[0]} failed (exit {r.returncode}): {msg}')
+def run_all(tmpl, pairs, sizes, jobs):   # largest blocks first, so the slowest block never starts last
+    order = sorted(range(len(pairs)), key=lambda k: -sizes[k])
+    with ThreadPoolExecutor(jobs) as ex: list(ex.map(lambda k: call(tmpl, *pairs[k]), order))
 def compress(a):
     data = open(a.IN, 'rb').read(); lab = labels(data); R = runs(lab); nw = len(lab)
     blocks = []; raw = b''
@@ -74,18 +86,20 @@ def compress(a):
         names = []
         for k, (s, b) in enumerate(blocks):
             fn = os.path.join(td, f'b{k}'); open(fn, 'wb').write(b); names.append(fn)
-        with ThreadPoolExecutor(a.jobs) as ex: list(ex.map(lambda f: call(a.comp, f, f + '.z'), names))
+        run_all(a.comp, [(f, f + '.z') for f in names], [len(b) for s, b in blocks], a.jobs)
         zs = [open(f + '.z', 'rb').read() for f in names]
     with open(a.OUT, 'wb') as o:
-        o.write(MAGIC + struct.pack('<QII', len(data), len(R), len(blocks)))
+        o.write(MAGIC + struct.pack('<QIII', len(data), zlib.crc32(data), len(R), len(blocks)))
         for s, n in R: o.write(struct.pack('<BI', s, n))
         for (s, b), z in zip(blocks, zs): o.write(struct.pack('<BQQ', s, len(b), len(z)))
         o.write(struct.pack('<Q', len(raw))); o.write(raw)
         for z in zs: o.write(z)
     print(f'{len(data):,} -> {os.path.getsize(a.OUT):,} bytes; sets {sorted(set(lab.tolist()))}, runs {len(R)}, blocks {len(blocks)}, raw {len(raw):,}')
 def decompress(a):
-    d = open(a.IN, 'rb').read(); assert d[:4] == MAGIC, 'not a Harrington Sets wrapper file'
-    n, nr, nbk = struct.unpack_from('<QII', d, 4); p = 20
+    d = open(a.IN, 'rb').read()
+    if d[:4] == MAGIC: n, crc, nr, nbk = struct.unpack_from('<QIII', d, 4); p = 24
+    elif d[:4] == b'HSW1': (n, nr, nbk), crc, p = struct.unpack_from('<QII', d, 4), None, 20   # older files
+    else: raise ValueError('not a Harrington Sets wrapper file')
     R = [struct.unpack_from('<BI', d, p + 5 * i) for i in range(nr)]; p += 5 * nr
     B = [struct.unpack_from('<BQQ', d, p + 17 * i) for i in range(nbk)]; p += 17 * nbk
     rl, = struct.unpack_from('<Q', d, p); p += 8; raw = d[p:p + rl]; p += rl
@@ -93,16 +107,19 @@ def decompress(a):
         names = []
         for k, (s, ln, zl) in enumerate(B):
             fn = os.path.join(td, f'b{k}.z'); open(fn, 'wb').write(d[p:p + zl]); p += zl; names.append(fn)
-        with ThreadPoolExecutor(a.jobs) as ex: list(ex.map(lambda f: call(a.decomp, f, f[:-2]), names))
+        run_all(a.decomp, [(f, f[:-2]) for f in names], [ln for s, ln, zl in B], a.jobs)
         sb = {}
         for (s, ln, zl), f in zip(B, names):
-            b = open(f[:-2], 'rb').read(); assert len(b) == ln, 'block length mismatch'; sb.setdefault(s, []).append(b)
+            b = open(f[:-2], 'rb').read()
+            if len(b) != ln: raise ValueError(f'block length mismatch: {len(b)} bytes, expected {ln}')
+            sb.setdefault(s, []).append(b)
     sb = {s: b''.join(v) for s, v in sb.items()}
     if raw: sb[RAW] = raw
     pos = {s: 0 for s in sb}; out = bytearray(); i = 0
     for s, cnt in R:
         for _ in range(cnt):
             L = min(W, n - i * W); out += sb[s][pos[s]:pos[s] + L]; pos[s] += L; i += 1
+    if len(out) != n or (crc is not None and zlib.crc32(out) != crc): raise ValueError('restored data failed the CRC-32 check')
     open(a.OUT, 'wb').write(out)
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -110,5 +127,25 @@ if __name__ == '__main__':
     ap.add_argument('--comp', default=''); ap.add_argument('--decomp', default='')
     ap.add_argument('--jobs', type=int, default=os.cpu_count() or 2); ap.add_argument('--block-mb', type=int, default=16)
     a = ap.parse_args(); t = time.perf_counter()
-    compress(a) if a.mode == 'c' else decompress(a)
+    if not (a.comp if a.mode == 'c' else a.decomp): ap.error('--comp is needed to compress, --decomp to decompress')
+    try: compress(a) if a.mode == 'c' else decompress(a)
+    except (RuntimeError, ValueError, OSError) as e: sys.exit(f'error: {e}')
     print(f'{"compress" if a.mode == "c" else "decompress"} wall time {time.perf_counter() - t:.1f} s')
+
+# MIT License
+#
+# Copyright (c) 2026 Michael Hugh Harrington
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+# documentation files (the "Software"), to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+# to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+# the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+# THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+# CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+# IN THE SOFTWARE.

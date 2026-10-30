@@ -16,8 +16,10 @@ JSON Lines, three sources (environment sensor, network counters, app log with te
 jq 1.7 (filter.jq: builds a new record from each input record), 8 MB blocks, 3 runs each, median
   Single core:      3.65 s
   Equal blocks:     2.77 s   (7 blocks)          output identical to single
-  Harrington Sets:  2.62 s   (2 sets, 7 blocks)   output identical to single
-  Sets 1.39x faster than single, 5% faster than equal blocks.
+  Harrington Sets:  2.61 s   (2 sets, 7 blocks)   output identical to single
+  Sets 1.40x faster than single; the gap to equal blocks (about 5%) is within run-to-run noise.
+  (Medians of 3 runs after a warm-up run; single-core times varied 3.28-3.78 s across runs. Corrected
+  30 Oct 2026: earlier text said 2.62 s and 1.39x.)
 
 river (HalfSpaceTrees anomaly detector, scores each record then learns it), 8 MB blocks, one run each
   Mode              Time     ROC AUC   Anomalies found in top 9,238 scores
@@ -40,6 +42,9 @@ NOTES
   be built, so river_rust_stub.py stands in for it (HalfSpaceTrees and MinMaxScaler are pure Python and do not
   use it).
 - Synthetic data built to be mixed; results on real logs may differ. Single runs on river.
+- The three sources share the same three numeric fields (f1-f3), which mean different things per source.
+  That is what makes one model fail; a pipeline that keys fields by source would do far better with one
+  model. Sets had the best hit rate on both river runs; equal blocks had the better AUC on the small run.
 
 WHY THE ANOMALIES MATTER
 The anomalies are the 1% of records made abnormal on purpose (sensor 40 degrees instead of about 23, network
