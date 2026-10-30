@@ -1,0 +1,26 @@
+HCMX-CE: CANDIDATE ESTIMATOR WITHOUT THE TERNARY FLAG - 30 October 2026
+Michael Hugh Harrington. Mutant of hcmx (HCM v3.3 engine + ternary pointer). Test of Andrew Goodwin's point that
+the pointer's gain comes from the refinement mixer, not the ternary flag.
+
+WHAT CHANGED (px.inc, enabled with HCMX_CE=1 for both compress and decompress; test build only)
+The "is it the candidate?" flag is removed. Every byte is coded bit by bit as normal. While the bits still follow
+the candidate's path, a small 4-input mixer (model chance, an escape cell keyed by candidate type, match length,
+last two candidate outcomes and bit position, and a cell keyed by the previous 2 bytes, the candidate and bit)
+re-estimates the chance that the next bit equals the candidate's bit. Same candidates as the pointer.
+
+RESULTS, Canterbury (2,810,784 bytes), fast mode, binary files in binary mode, every file restored exactly.
+Decode = sum of per-file medians of 5 runs (includes program start-up; 2-core cloud machine).
+                         bytes      1,000,000 bits down to   compress   decode
+  v3.3, no pointer       353,494    125,763                   4.41 s     2.49 s
+  ternary pointer        351,302    124,984                   5.52 s     2.89 s
+  candidate estimator    351,848    125,178                   5.55 s     3.08 s
+
+OBSERVATIONS
+- Without any ternary flag, the estimator keeps about 75% of the pointer's size gain (1,646 of 2,192 bytes saved
+  against v3.3) - so most of the gain is indeed secondary estimation, as Andrew said.
+- It is NOT faster. It decodes about 7% slower than the pointer and 24% slower than v3.3. The pointer is faster
+  because on a correct guess it decodes one flag instead of eight bits; the estimator always decodes eight bits.
+  So the flag's real value is speed on hits (an ordinary escape flag), not compression.
+- The estimator wins on cp.html, grammar.lsp and xargs.1, ties elsewhere, and loses on ptt5.
+- Conclusion: neither version needs Combary or ternary framing. The pointer is best described as an escape flag
+  with a secondary estimator; the flag-free estimator is a simpler option that is smaller than v3.3 but slower.

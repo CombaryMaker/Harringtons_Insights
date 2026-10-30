@@ -1,0 +1,36 @@
+v3.3 (no pointer) alice29.txt 152089 36636 0.31 0.183
+v3.3 (no pointer) asyoulik.txt 125179 34348 0.22 0.123
+v3.3 (no pointer) cp.html 24603 6437 0.09 0.055
+v3.3 (no pointer) fields.c 11150 2522 0.04 0.023
+v3.3 (no pointer) grammar.lsp 3721 1048 0.01 0.008
+v3.3 (no pointer) kennedy.xls 1029744 18680 1.20 0.736
+v3.3 (no pointer) lcet10.txt 426754 89345 0.92 0.481
+v3.3 (no pointer) plrabn12.txt 481861 125047 0.90 0.492
+v3.3 (no pointer) ptt5 513216 28125 0.56 0.299
+v3.3 (no pointer) sum 38240 9822 0.14 0.081
+v3.3 (no pointer) xargs.1 4227 1484 0.02 0.013
+ternary pointer alice29.txt 152089 36571 0.39 0.194
+ternary pointer asyoulik.txt 125179 34279 0.39 0.198
+ternary pointer cp.html 24603 6430 0.10 0.066
+ternary pointer fields.c 11150 2507 0.04 0.034
+ternary pointer grammar.lsp 3721 1047 0.02 0.012
+ternary pointer kennedy.xls 1029744 17308 1.70 0.941
+ternary pointer lcet10.txt 426754 89014 0.94 0.494
+ternary pointer plrabn12.txt 481861 124867 1.18 0.576
+ternary pointer ptt5 513216 28054 0.63 0.296
+ternary pointer sum 38240 9741 0.12 0.070
+ternary pointer xargs.1 4227 1484 0.02 0.011
+candidate estimator alice29.txt 152089 36595 0.32 0.216
+candidate estimator asyoulik.txt 125179 34306 0.32 0.184
+candidate estimator cp.html 24603 6423 0.09 0.074
+candidate estimator fields.c 11150 2510 0.04 0.026
+candidate estimator grammar.lsp 3721 1046 0.02 0.011
+candidate estimator kennedy.xls 1029744 17315 1.72 0.950
+candidate estimator lcet10.txt 426754 89114 1.01 0.519
+candidate estimator plrabn12.txt 481861 125026 1.25 0.608
+candidate estimator ptt5 513216 28282 0.65 0.387
+candidate estimator sum 38240 9748 0.12 0.081
+candidate estimator xargs.1 4227 1483 0.02 0.019
+TOTAL v3.3 (no pointer)        353,494 bytes  1M bits-> 125,763  compress 4.41 s  decode 2.49 s
+TOTAL ternary pointer          351,302 bytes  1M bits-> 124,984  compress 5.52 s  decode 2.89 s
+TOTAL candidate estimator      351,848 bytes  1M bits-> 125,178  compress 5.55 s  decode 3.08 s
