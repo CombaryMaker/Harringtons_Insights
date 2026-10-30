@@ -9,7 +9,7 @@ bzip2 -9 output.
 usage: bz2_hi.py INPUT [OUTPUT]          (default OUTPUT = INPUT.bz2)
        set BZIP2_HI to the tuned binary if it is not ./source/bzip2
 """
-import os, subprocess, sys
+import bz2, os, subprocess, sys
 
 def main():
     if len(sys.argv) < 2:
@@ -22,6 +22,8 @@ def main():
         blob = subprocess.run([exe, '-%d' % level, '-c', src], capture_output=True, check=True).stdout
         if best is None or len(blob) < len(best[1]):
             best = (level, blob)
+    if bz2.decompress(best[1]) != open(src, 'rb').read():   # check with the stock libbz2 decoder before saving
+        print('error: round-trip check failed; nothing was written'); return 1
     with open(dst, 'wb') as f:
         f.write(best[1])
     print('%s -> %s  %d bytes (block size -%d)' % (src, dst, len(best[1]), best[0]))
