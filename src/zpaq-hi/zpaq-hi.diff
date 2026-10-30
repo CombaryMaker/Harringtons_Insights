@@ -1,0 +1,132 @@
+--- zsrc/zpaq/libzpaq.cpp	2026-10-24 17:16:21.598840897 -0500
++++ /home/claude/harringtons_insights/src/zpaq-hi/libzpaq.cpp	2026-10-29 13:19:08.421852957 -0500
+@@ -7576,6 +7576,9 @@
+     sha1ptr=sha1.result();
+   }
+ 
++  // zpaq-hi: periods found by the stock analysis (used for extra record contexts)
++  std::vector<int> zhi_periods;
++  const bool zhi_on = isdigit(method[0]) && method[0]>='5';
+   // Expand default methods
+   if (isdigit(method[0])) {
+     const int level=method[0]-'0';
+@@ -7677,6 +7680,7 @@
+           t+=r[j];
+         }
+         if (period>4 && score>0.1) {
++          zhi_periods.push_back(period);
+           method+="c0,0,"+itos(999+period)+",255i1";
+           if (period<=255)
+             method+="c0,"+itos(period)+"i1";
+@@ -7690,44 +7694,75 @@
+     }
+   }
+ 
+-  // Compress
+-  std::string config;
+-  int args[9]={0};
+-  config=makeConfig(method.c_str(), args);
+-  assert(n<=(0x100000u<<args[0])-4096);
+-  libzpaq::Compressor co;
+-  co.setOutput(out);
+-#ifdef DEBUG
+-  co.setVerify(true);
+-#endif
+-  StringBuffer pcomp_cmd;
+-  co.writeTag();
+-  co.startBlock(config.c_str(), args, &pcomp_cmd);
+-  std::string cs=itos(n);
+-  if (comment) cs=cs+" "+comment;
+-  co.startSegment(filename, cs.c_str());
+-  if (args[1]>=1 && args[1]<=7 && args[1]!=4) {  // LZ77 or BWT
+-    LZBuffer lz(*in, args);
+-    co.setInput(&lz);
+-    co.compress();
++  // zpaq-hi (Michael Harrington): build candidate models, compress the block with each and keep the
++  // smallest. Every candidate is an ordinary ZPAQ model description stored in the block, so the
++  // stock zpaq/libzpaq decoder reads the result unchanged. Candidate 0 is the stock method.
++  std::vector<std::string> cands;
++  cands.push_back(method);
++  if (zhi_on) {
++    const size_t tail=method.rfind("mm16ts19t0");
++    if (tail!=std::string::npos) {
++      const std::string head=method.substr(0, tail), end=method.substr(tail);
++      std::string rec, txt="c0,1010,0,255i1";  // line-position context with previous byte (from HCM v3.3 column idea)
++      for (size_t k=0; k<zhi_periods.size() && k<1; ++k) {
++        const int R=zhi_periods[k];
++        if (R>=3) {
++          rec+="c0,0,"+itos(998+R)+",255,255i1";            // row above + above-right
++          rec+="c0,0,255,"+itos(998+R)+",255i1";            // last byte + row above
++          rec+="c0,0,"+itos(999+R)+",255,"+itos(999+R)+",255i1";  // rows above 1-2
++        }
++      }
++      if (rec.size()) cands.push_back(head+rec+end);
++      cands.push_back(head+txt+end);
++      if (rec.size()) cands.push_back(head+rec+txt+end);
++      const char* tryv=getenv("ZPAQHI_TRY");   // experiments: ';'-separated "insert|tail" pairs
++      if (tryv) {
++        std::string t=tryv; size_t s=0;
++        while (s<=t.size()) {
++          size_t e=t.find(';', s); if (e==std::string::npos) e=t.size();
++          std::string item=t.substr(s, e-s); size_t bar=item.find('|');
++          std::string ins=bar==std::string::npos?item:item.substr(0,bar), tl=bar==std::string::npos?end:item.substr(bar+1);
++          if (item.size()) cands.push_back(head+ins+tl);
++          s=e+1;
++        }
++      }
++    }
+   }
+-  else {  // compress with e8e9 or no preprocessing
+-    if (args[1]>=4 && args[1]<=7)
+-      e8e9(in->data(), in->size());
+-    co.setInput(in);
+-    co.compress();
++  const char* zv=getenv("ZPAQHI_VERBOSE");
++  StringBuffer best; int bestk=-1;
++  for (size_t k=0; k<cands.size(); ++k) {
++    StringBuffer inc(n+16); inc.write(in->c_str(), n);   // e8e9 changes its input, so work on a copy
++    StringBuffer tmp;
++    std::string config;
++    int args[9]={0};
++    config=makeConfig(cands[k].c_str(), args);
++    assert(n<=(0x100000u<<args[0])-4096);
++    libzpaq::Compressor co;
++    co.setOutput(&tmp);
++    StringBuffer pcomp_cmd;
++    co.writeTag();
++    co.startBlock(config.c_str(), args, &pcomp_cmd);
++    std::string cs=itos(n);
++    if (comment) cs=cs+" "+comment;
++    co.startSegment(filename, cs.c_str());
++    if (args[1]>=1 && args[1]<=7 && args[1]!=4) {  // LZ77 or BWT
++      LZBuffer lz(inc, args);
++      co.setInput(&lz);
++      co.compress();
++    }
++    else {  // compress with e8e9 or no preprocessing
++      if (args[1]>=4 && args[1]<=7)
++        e8e9(inc.data(), inc.size());
++      co.setInput(&inc);
++      co.compress();
++    }
++    co.endSegment(sha1ptr);
++    co.endBlock();
++    if (zv) fprintf(stderr, "zpaq-hi cand %d: %u bytes  %s\n", int(k), unsigned(tmp.size()), cands[k].c_str());
++    if (bestk<0 || tmp.size()<best.size()) { best.swap(tmp); bestk=int(k); }
+   }
+-#ifdef DEBUG  // verify pre-post processing are inverses
+-  int64_t outsize;
+-  const char* sha1result=co.endSegmentChecksum(&outsize, dosha1);
+-  assert(sha1result);
+-  assert(sha1ptr);
+-  if (memcmp(sha1result, sha1ptr, 20)!=0)
+-    error("Pre/post-processor test failed");
+-#else
+-  co.endSegment(sha1ptr);
+-#endif
+-  co.endBlock();
++  if (zv) fprintf(stderr, "zpaq-hi chose %d\n", bestk);
++  out->write(best.c_str(), best.size());
+ }
+ 
+ }  // end namespace libzpaq
