@@ -40,3 +40,14 @@ NOTES
   be built, so river_rust_stub.py stands in for it (HalfSpaceTrees and MinMaxScaler are pure Python and do not
   use it).
 - Synthetic data built to be mixed; results on real logs may differ. Single runs on river.
+
+WHY THE ANOMALIES MATTER
+The anomalies are the 1% of records made abnormal on purpose (sensor 40 degrees instead of about 23, network
+latency 40 instead of about 12, app response 400 ms instead of about 120), standing in for failing sensors,
+network attacks or slowdowns. They measure whether the tool finds the problems, not only how fast it runs.
+One model watching the mixed stream had its sense of scale stretched by network values near 180,000, so a
+temperature spike looked like nothing, and it did barely better than chance. Split streams gave each copy a
+narrower mix, so the same spike stood out and the catch rate doubled; Harrington Sets did best by also
+separating the text-heavy app records. Use: one detector on a mixed feed with no per-source setup (security
+monitoring, sensor networks, fraud screening). Limit: 24% caught is still low, and a detector set up by hand
+for each known source would do far better; the advantage is needing no such setup.
