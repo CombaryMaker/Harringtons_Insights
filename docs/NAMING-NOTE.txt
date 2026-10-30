@@ -1,0 +1,18 @@
+NAMING NOTE - 30 October 2026
+Michael Hugh Harrington
+
+Some earlier names described mechanisms through my Combary and ternary ideas. An independent reviewer,
+Andrew Goodwin, showed that these mechanisms are known kinds of coding, and a test confirmed it. I did not
+understand this at first, so the names have changed to say what each mechanism actually does.
+
+  Earlier name                      Name now                 What it is
+  Ternary pointer ("2 = pointer")   Candidate escape flag    a yes/no flag for a guessed byte, plus a secondary
+                                                             estimator that refines its chance
+  Combary activity map              Change map               a change mask: one bit per byte saying whether it
+                                                             differs from the row above, plus the changed bytes
+  Combary (as a method)             Combary (as motivation)  the way of thinking that led to these ideas
+
+The code, file formats and results are unchanged; only the names and explanations are. Older files and folder
+names in this repository (hcm-trit, ternary-pointer, activity-map scripts) keep their original names so earlier
+results can still be reproduced. Details: book Section 1.9, Chapter 7 note and Section 11.9.
+I hold patents related to Combary and declare that interest.

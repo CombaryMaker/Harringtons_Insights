@@ -19,6 +19,10 @@ This repository has three tools:
 - **Best results charts:** [`benchmarks/charts-2026-10-29/Harrington-Best-Results-Full.pdf`](benchmarks/charts-2026-10-29/Harrington-Best-Results-Full.pdf) — every tool built or modified here (originals, modifieds, mutants) against the stock tools on each standard benchmark; also in the book as Appendix G.
 - **Research source code:** [`src/`](src/) — hcmx (HCM v3.3 + ternary pointer + HCM-Bin), the Harrington Exchange and its Blosc2 hybrid, the baseline comparisons and the record-delta benchmark. See [`src/README.md`](src/README.md).
 
+## Naming note (30 October 2026)
+
+The "ternary pointer" is now called the **candidate escape flag**, and the "Combary activity map" is now the **change map**; Combary is presented as motivation, not as a method. Code and results are unchanged. See [`docs/NAMING-NOTE.txt`](docs/NAMING-NOTE.txt).
+
 ## Credits
 
 HCM is close to the work of others and is built on it. Its overall design follows Matt Mahoney's lpaq1; its record contexts relate to the paq8 record model; its hash-table layout and adaptive counters follow lpaq and ZPAQ; its arithmetic coder follows Witten, Neal and Cleary (1987); and its exp()/log() table routines come from Arm Optimized Routines. Michael Harrington's contributions are the additions built on that engine (book Chapters 10 to 12) and Harrington Sets, all offered free under the MIT License for use in the original tools. The modified tools (xz-hi, zpaq-hi, bzip2-hi and the rest) are the original authors' software with marked changes. Full credits: [`CREDITS.txt`](CREDITS.txt) and book Section 1.8.
