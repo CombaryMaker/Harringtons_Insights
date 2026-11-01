@@ -1,0 +1,9 @@
+hs_zstd 1.3-ablation - test build contributed by Andrew Goodwin (University of Sydney), 2026-11-01, MIT like 1.2.
+What it adds to hs_zstd 1.2 (verified by diff, nothing else changed, .hsz format identical):
+  --sets 0..3   cap on k-means sets; 0 = plain block splitting in file order (fair Sets baseline; also turns raw rule off)
+  --raw entropy|test|off   raw-window rule: 1.2 entropy rule / zstd level-1 trial (2 MB window) / none
+  --smooth 1.2|safe        safe never relabels a compressible short run as RAW
+  --flush                  decode: msync+fsync (FlushViewOfFile+FlushFileBuffers on Windows) before timing stops
+  removed unused copy_n() and a self-assignment no-op
+Outcome (cloud sizes, see results-cloud-2026-11-01.txt): the 1.2 entropy raw rule hurts; Sets with --raw off beat plain
+block splitting by up to 9% on interleaved data and are neutral on Silesia. Multi-core speed run still to do on the desktop.

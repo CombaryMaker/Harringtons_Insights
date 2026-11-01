@@ -1,0 +1,43 @@
+file,variant,block_mb,bytes,per_million,compress_s,decode_median_s,decode_all_s,decode_peak_mb,decode_MBps
+switch_1mb.bin,"Sets (published 1.2 behaviour), 4 MB blocks",4,16375444,650702,0.211,0.07,0.099 0.068 0.070,35.8,360.8
+switch_1mb.bin,"--sets 0 (no Sets, raw off), 4 MB blocks",4,14707494,584423,0.173,0.066,0.095 0.066 0.063,38.6,378.6
+switch_1mb.bin,"Sets, --raw test, 4 MB blocks",4,13894386,552113,0.13,0.066,0.078 0.066 0.062,36.8,382.4
+switch_1mb.bin,"Sets, --raw off, 4 MB blocks",4,13842084,550035,0.105,0.062,0.074 0.061 0.062,39.2,403.8
+switch_1mb.bin,"--sets 0 --raw test, 4 MB blocks",4,14317509,568927,0.198,0.061,0.079 0.061 0.058,38.2,411.5
+switch_1mb.bin,"Sets, --smooth safe, 4 MB blocks",4,16375444,650702,0.105,0.056,0.064 0.056 0.055,35.8,445.9
+switch_1mb.bin,"Sets, --smooth safe --raw off, 4 MB blocks",4,13842084,550035,0.092,0.059,0.069 0.059 0.059,41.7,425.0
+switch_1mb.bin,"Sets (published 1.2 behaviour), 16 MB blocks",16,15987930,635303,0.099,0.057,0.067 0.057 0.056,38.2,442.3
+switch_1mb.bin,"--sets 0 (no Sets, raw off), 16 MB blocks",16,14701029,584166,0.178,0.074,0.078 0.065 0.074,42.2,337.8
+switch_1mb.bin,"Sets, --raw test, 16 MB blocks",16,13549538,538410,0.151,0.059,0.066 0.058 0.059,38.7,423.7
+switch_1mb.bin,"Sets, --raw off, 16 MB blocks",16,13382009,531753,0.101,0.063,0.070 0.063 0.060,44.1,399.3
+switch_1mb.bin,"--sets 0 --raw test, 16 MB blocks",16,14177239,563353,0.15,0.075,0.075 0.079 0.066,39.3,335.7
+switch_1mb.bin,"Sets, --smooth safe, 16 MB blocks",16,15987930,635303,0.106,0.064,0.068 0.060 0.064,38.2,396.3
+switch_1mb.bin,"Sets, --smooth safe --raw off, 16 MB blocks",16,13382009,531753,0.202,0.073,0.115 0.073 0.068,44.0,345.0
+dup_random_chunks.bin,"Sets (published 1.2 behaviour), 4 MB blocks",4,50331685,1000001,0.095,0.109,0.146 0.109 0.102,52.1,460.4
+dup_random_chunks.bin,"--sets 0 (no Sets, raw off), 4 MB blocks",4,38509406,765113,0.288,0.141,0.151 0.141 0.134,62.7,356.9
+dup_random_chunks.bin,"Sets, --raw test, 4 MB blocks",4,50331685,1000001,0.272,0.105,0.141 0.101 0.105,52.0,478.8
+dup_random_chunks.bin,"Sets, --raw off, 4 MB blocks",4,37970175,754400,0.184,0.113,0.148 0.104 0.113,66.7,445.9
+dup_random_chunks.bin,"--sets 0 --raw test, 4 MB blocks",4,38482635,764581,0.187,0.103,0.126 0.103 0.100,60.2,489.8
+dup_random_chunks.bin,"Sets, --smooth safe, 4 MB blocks",4,38488773,764703,0.154,0.104,0.163 0.104 0.098,60.8,485.9
+dup_random_chunks.bin,"Sets, --smooth safe --raw off, 4 MB blocks",4,37970175,754400,0.176,0.132,0.132 0.122 0.134,66.8,380.4
+dup_random_chunks.bin,"Sets (published 1.2 behaviour), 16 MB blocks",16,50331685,1000001,0.216,0.118,0.131 0.118 0.108,52.1,427.3
+dup_random_chunks.bin,"--sets 0 (no Sets, raw off), 16 MB blocks",16,38515512,765234,0.427,0.127,0.173 0.123 0.127,88.9,396.3
+dup_random_chunks.bin,"Sets, --raw test, 16 MB blocks",16,50331685,1000001,0.123,0.116,0.145 0.099 0.116,52.1,434.8
+dup_random_chunks.bin,"Sets, --raw off, 16 MB blocks",16,36830321,731753,0.235,0.112,0.146 0.112 0.112,91.9,448.8
+dup_random_chunks.bin,"--sets 0 --raw test, 16 MB blocks",16,38465620,764243,0.224,0.125,0.130 0.102 0.125,59.1,403.7
+dup_random_chunks.bin,"Sets, --smooth safe, 16 MB blocks",16,38477008,764469,0.269,0.106,0.119 0.096 0.106,58.6,475.3
+dup_random_chunks.bin,"Sets, --smooth safe --raw off, 16 MB blocks",16,36830321,731753,0.278,0.12,0.148 0.120 0.111,91.9,419.1
+silesia_joined.bin,"Sets (published 1.2 behaviour), 4 MB blocks",4,66515483,313843,0.878,0.685,1.091 0.685 0.635,223.8,309.6
+silesia_joined.bin,"--sets 0 (no Sets, raw off), 4 MB blocks",4,66398401,313291,0.848,0.577,0.580 0.544 0.577,219.9,367.2
+silesia_joined.bin,"Sets, --raw test, 4 MB blocks",4,66463582,313598,1.277,0.524,0.576 0.519 0.524,224.4,404.4
+silesia_joined.bin,"Sets, --raw off, 4 MB blocks",4,66504230,313790,0.902,0.57,0.610 0.570 0.532,223.4,372.0
+silesia_joined.bin,"--sets 0 --raw test, 4 MB blocks",4,66398401,313291,1.197,0.538,0.611 0.483 0.538,220.0,394.3
+silesia_joined.bin,"Sets, --smooth safe, 4 MB blocks",4,66515483,313843,1.021,0.452,0.427 0.452 0.563,223.8,469.3
+silesia_joined.bin,"Sets, --smooth safe --raw off, 4 MB blocks",4,66504230,313790,0.882,0.513,0.532 0.513 0.438,221.9,413.1
+silesia_joined.bin,"Sets (published 1.2 behaviour), 16 MB blocks",16,66227730,312485,1.257,0.583,0.685 0.583 0.553,242.5,363.7
+silesia_joined.bin,"--sets 0 (no Sets, raw off), 16 MB blocks",16,66228820,312491,1.235,0.611,0.579 0.611 0.888,233.0,346.7
+silesia_joined.bin,"Sets, --raw test, 16 MB blocks",16,66262911,312651,1.687,0.55,0.596 0.550 0.543,241.1,385.2
+silesia_joined.bin,"Sets, --raw off, 16 MB blocks",16,66281022,312737,1.231,0.526,0.541 0.524 0.526,237.8,402.9
+silesia_joined.bin,"--sets 0 --raw test, 16 MB blocks",16,66228820,312491,1.562,0.569,0.607 0.569 0.554,233.0,372.3
+silesia_joined.bin,"Sets, --smooth safe, 16 MB blocks",16,66227730,312485,0.905,0.52,0.572 0.520 0.514,241.3,407.4
+silesia_joined.bin,"Sets, --smooth safe --raw off, 16 MB blocks",16,66281022,312737,1.074,0.487,0.553 0.487 0.482,242.6,435.2

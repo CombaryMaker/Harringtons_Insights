@@ -1,0 +1,76 @@
+hs_zstd 1.3-ablation (Andrew Goodwin's test build of hs_zstd 1.2) - cloud run, 2026-11-01
+Machine: 2-core cloud container, Linux, zstd 1.6.0 library (Andrew used 1.5.6; sizes differ by a few hundred bytes).
+12 jobs not possible here: 2 jobs, 3 decode rounds each, --flush on, every round trip SHA-256 verified.
+Sizes are deterministic and valid; decode times on 2 cores are indicative only - the multi-core speed test belongs on the desktop.
+
+Test files (seeded, from make_testfiles.py): switch_1mb.bin 25,165,824 B (text/records/random/repeats alternating every 1 MB);
+dup_random_chunks.bin 50,331,648 B (random 2 MB chunks each stored twice with text between); silesia_joined.bin 211,938,580 B (all 12 files).
+
+=== switch_1mb.bin  (25,165,824 bytes)
+variant                                        1,000,000 bits down to        bytes vs --sets 0 compress s decode med s decode MB
+Sets (published 1.2 behaviour), 4 MB blocks                   650,702   16,375,444     +11.34%       0.21        0.070      35.8
+--sets 0 (no Sets, raw off), 4 MB blocks                      584,423   14,707,494      +0.00%       0.17        0.066      38.6
+Sets, --raw test, 4 MB blocks                                 552,113   13,894,386      -5.53%       0.13        0.066      36.8
+Sets, --raw off, 4 MB blocks                                  550,035   13,842,084      -5.88%       0.10        0.062      39.2
+--sets 0 --raw test, 4 MB blocks                              568,927   14,317,509      -2.65%       0.20        0.061      38.2
+Sets, --smooth safe, 4 MB blocks                              650,702   16,375,444     +11.34%       0.10        0.056      35.8
+Sets, --smooth safe --raw off, 4 MB blocks                    550,035   13,842,084      -5.88%       0.09        0.059      41.7
+
+Sets (published 1.2 behaviour), 16 MB blocks                  635,303   15,987,930      +8.75%       0.10        0.057      38.2
+--sets 0 (no Sets, raw off), 16 MB blocks                     584,166   14,701,029      +0.00%       0.18        0.074      42.2
+Sets, --raw test, 16 MB blocks                                538,410   13,549,538      -7.83%       0.15        0.059      38.7
+Sets, --raw off, 16 MB blocks                                 531,753   13,382,009      -8.97%       0.10        0.063      44.1
+--sets 0 --raw test, 16 MB blocks                             563,353   14,177,239      -3.56%       0.15        0.075      39.3
+Sets, --smooth safe, 16 MB blocks                             635,303   15,987,930      +8.75%       0.11        0.064      38.2
+Sets, --smooth safe --raw off, 16 MB blocks                   531,753   13,382,009      -8.97%       0.20        0.073      44.0
+
+zstd -3 --long=27 (one thread, reference)                     584,124   14,699,961
+
+=== dup_random_chunks.bin  (50,331,648 bytes)
+variant                                        1,000,000 bits down to        bytes vs --sets 0 compress s decode med s decode MB
+Sets (published 1.2 behaviour), 4 MB blocks                 1,000,001   50,331,685     +30.70%       0.10        0.109      52.1
+--sets 0 (no Sets, raw off), 4 MB blocks                      765,113   38,509,406      +0.00%       0.29        0.141      62.7
+Sets, --raw test, 4 MB blocks                               1,000,001   50,331,685     +30.70%       0.27        0.105      52.0
+Sets, --raw off, 4 MB blocks                                  754,400   37,970,175      -1.40%       0.18        0.113      66.7
+--sets 0 --raw test, 4 MB blocks                              764,581   38,482,635      -0.07%       0.19        0.103      60.2
+Sets, --smooth safe, 4 MB blocks                              764,703   38,488,773      -0.05%       0.15        0.104      60.8
+Sets, --smooth safe --raw off, 4 MB blocks                    754,400   37,970,175      -1.40%       0.18        0.132      66.8
+
+Sets (published 1.2 behaviour), 16 MB blocks                1,000,001   50,331,685     +30.68%       0.22        0.118      52.1
+--sets 0 (no Sets, raw off), 16 MB blocks                     765,234   38,515,512      +0.00%       0.43        0.127      88.9
+Sets, --raw test, 16 MB blocks                              1,000,001   50,331,685     +30.68%       0.12        0.116      52.1
+Sets, --raw off, 16 MB blocks                                 731,753   36,830,321      -4.38%       0.23        0.112      91.9
+--sets 0 --raw test, 16 MB blocks                             764,243   38,465,620      -0.13%       0.22        0.125      59.1
+Sets, --smooth safe, 16 MB blocks                             764,469   38,477,008      -0.10%       0.27        0.106      58.6
+Sets, --smooth safe --raw off, 16 MB blocks                   731,753   36,830,321      -4.38%       0.28        0.120      91.9
+
+zstd -3 --long=27 (one thread, reference)                     432,085   21,747,551
+
+=== silesia_joined.bin  (211,938,580 bytes)
+variant                                        1,000,000 bits down to        bytes vs --sets 0 compress s decode med s decode MB
+Sets (published 1.2 behaviour), 4 MB blocks                   313,843   66,515,483      +0.18%       0.88        0.685     223.8
+--sets 0 (no Sets, raw off), 4 MB blocks                      313,291   66,398,401      +0.00%       0.85        0.577     219.9
+Sets, --raw test, 4 MB blocks                                 313,598   66,463,582      +0.10%       1.28        0.524     224.4
+Sets, --raw off, 4 MB blocks                                  313,790   66,504,230      +0.16%       0.90        0.570     223.4
+--sets 0 --raw test, 4 MB blocks                              313,291   66,398,401      +0.00%       1.20        0.538     220.0
+Sets, --smooth safe, 4 MB blocks                              313,843   66,515,483      +0.18%       1.02        0.452     223.8
+Sets, --smooth safe --raw off, 4 MB blocks                    313,790   66,504,230      +0.16%       0.88        0.513     221.9
+
+Sets (published 1.2 behaviour), 16 MB blocks                  312,485   66,227,730      -0.00%       1.26        0.583     242.5
+--sets 0 (no Sets, raw off), 16 MB blocks                     312,491   66,228,820      +0.00%       1.24        0.611     233.0
+Sets, --raw test, 16 MB blocks                                312,651   66,262,911      +0.05%       1.69        0.550     241.1
+Sets, --raw off, 16 MB blocks                                 312,737   66,281,022      +0.08%       1.23        0.526     237.8
+--sets 0 --raw test, 16 MB blocks                             312,491   66,228,820      +0.00%       1.56        0.569     233.0
+Sets, --smooth safe, 16 MB blocks                             312,485   66,227,730      -0.00%       0.91        0.520     241.3
+Sets, --smooth safe --raw off, 16 MB blocks                   312,737   66,281,022      +0.08%       1.07        0.487     242.6
+
+zstd -3 --long=27 (one thread, reference)                     309,843   65,667,634
+
+Findings (agree with Andrew's single-core size results):
+1. Sets as published (entropy raw rule) lose to plain block splitting on both stress files: +8.8-11.3% on switch_1mb, +30.7% on dup_random_chunks (whole file stored raw).
+2. The raw rule is the cause, not the grouping. Sets with --raw off beat plain block splitting by 9.0% (16 MB) / 5.9% (4 MB) on switch_1mb and by 4.4% / 1.4% on dup_random_chunks.
+3. On Silesia joined, Sets are neutral: every variant within 0.18% of --sets 0.
+4. --raw test recovers most of the switch_1mb loss but not the duplicate-chunk case (trial window cannot see later repeats).
+5. --smooth safe alone changes nothing on switch_1mb/Silesia and rescues dup_random_chunks (-0.1% instead of +30.7%); combined with --raw off it is identical to --raw off alone.
+6. zstd -3 --long=27 wins outright on dup_random_chunks (21.7 MB vs 36.8 MB best block-split) because the repeats are further apart than one block; on switch_1mb it is 9% worse than Sets --raw off.
+Decision pending: make --raw off + --smooth safe the default in hs_zstd 1.3 (format unchanged, old files still decode).
