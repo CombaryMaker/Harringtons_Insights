@@ -1,0 +1,35 @@
+ABOUT hs_shark
+Michael Hugh Harrington, 2026. MIT License (this wrapper only; Wireshark and tshark are GPL-2 and are not included).
+
+What it is
+hs_shark runs Wireshark's command-line dissector, tshark, on every core of a machine for ONE large capture file, and
+produces exactly the output a single tshark run produces. tshark itself dissects on one thread, and the Wireshark
+developers have explained for years why that is hard to change: packets depend on earlier packets (TCP streams,
+reassembly, request/response matching) and much of the dissection state is global.
+
+How it works (Harrington Sets applied to packets)
+Instead of splitting the dissector, hs_shark keeps dependent traffic together. Every packet is assigned to a
+conversation set by its host pair (both IP addresses, either direction), which keeps TCP and UDP streams, IP fragments
+and control+data channels between the same two hosts in one place; non-IP traffic forms one set. The sets are balanced
+across N shards by bytes, each shard is fed to its own tshark process in original packet order (in direct mode through a
+pipe, with no shard files on disk), and the N outputs are merged back into original order. Every capture-wide value is
+then rebuilt so the result matches a single run: frame.number, frame.time_relative, frame.time_delta, tcp.stream and
+udp.stream (renumbered by first appearance), every frame-reference field (the 918 FT_FRAMENUM fields such as
+http.request_in), and frame numbers quoted inside the Info column ("Dup ACK 452#1", "(reply in 30611)",
+"[TCP PDU reassembled in 164]").
+
+What it is not
+Analyses that link packets between DIFFERENT host pairs (for example a DNS answer and a later connection to the
+address it returned) are not combined across shards, and filters on frame numbers would see shard-local numbers.
+Filter on addresses, ports or protocols instead. pcapng input is converted to pcap first (editcap).
+
+Results
+Desktop (6 cores / 12 threads, Windows 11, tshark 4.6.9), 903 MB public capture, 964,896 packets, 7 fields incl. Info:
+plain tshark 16.1 s; hs_shark classic 8.0 s (2.0x); hs_shark direct 5.6 s (2.9x); output identical on all lines.
+Cloud (2 vCPUs, tshark 4.2.2): 1.31-1.75x on the same capture; identical output on all 81 real captures of two public
+collections and with display filters and two-pass mode. Full numbers in results-desktop-2026-11-01.txt and the NOTES files.
+
+Why this is published
+The speed-up needs no change to Wireshark, no new file format and no new decoder; it is a 30 KB wrapper around the
+stock tshark.exe. It is offered to the Wireshark community free under the MIT License, as one of several applications
+of Harrington Sets (the others cover compressors such as zstd, gzip and paq8px, and other single-core file tools).

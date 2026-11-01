@@ -1,0 +1,55 @@
+HARRINGTON SETS WRAPPER FOR TSHARK / WIRESHARK (hs_shark) - 30 October 2026
+Michael Hugh Harrington. MIT License (the wrapper; Wireshark/tshark is GPL-2 and is not included).
+
+THE PROBLEM
+Wireshark and tshark dissect a capture on one thread. Wireshark's developers have said for years that this is
+hard to change: packets depend on earlier packets (TCP streams, reassembly, request/response matching) and much
+of the dissection state is global (Guy Harris, Ask Wireshark, Jan 2024; wireshark-dev "Parallelized Packet
+Dissection", 2012). Large captures therefore take a long time on one core no matter how many cores exist.
+
+THE HARRINGTON SETS APPROACH
+Keep dependent traffic together instead of splitting the dissector. Every packet goes into a conversation set by
+its host pair (both IP addresses, either direction), which keeps TCP/UDP streams, IP fragments and FTP/SIP-style
+control+data channels between the same two hosts together; non-IP traffic forms one set. Sets are balanced
+across N shards by bytes (largest first onto the lightest shard), each shard is written as a capture in original
+packet order, and N separate tshark processes dissect the shards at once (separate processes also sidestep the
+global-state problem). Outputs are merged back into original packet order and every capture-wide value is
+rebuilt so the result matches a single tshark run: frame.number, frame.time_relative, frame.time_delta,
+frame.time_delta_displayed, tcp.stream and udp.stream (renumbered by first appearance over all packets, also
+when a display filter is used), every frame-reference field (all 918 FT_FRAMENUM fields, e.g. http.request_in,
+tcp.analysis.duplicate_ack_frame, icmp.resp_in), and frame numbers inside the Info column ("Dup ACK 452#1",
+"(reply in 30611)").
+
+  hs_shark INPUT [--jobs N] [--tshark PATH] [--editcap PATH] [--out FILE] [--check] -- -T fields -e FIELD ...
+  --check also runs plain single-core tshark and compares every output line.
+
+RESULTS (cloud machine, 2 vCPUs, tshark 4.2.2; every comparison is against plain single-core tshark)
+Correctness:
+- All 81 real captures in two public collections (github.com/chrissanders/packets, github.com/automayt/ICS-pcap):
+  IDENTICAL output with frame number, relative time, tcp/udp stream, protocol and Info columns. (The other 90
+  files in those folders are Git LFS placeholders that tshark cannot open either.)
+- base.pcap (76 Ethernet captures joined, 112,952,027 bytes, 120,936 packets), IDENTICAL on every line for:
+  Info + protocol; TCP analysis flags, RTT, seq/ack and expert messages; HTTP/DNS fields with a display filter
+  ("http || dns": URIs, response codes, http.time, request/response frame links, dns.time); two-pass mode (-2).
+- big8.pcap (903,616,048 bytes, 967,488 packets, 1,507 conversation sets): IDENTICAL on all 967,488 lines with 11
+  fields including Info, TCP analysis flags, HTTP host and DNS query name.
+Speed (2 vCPUs; this cloud machine scales poorly - ClamAV did not scale on it at all - so the 6-core desktop
+should do better):
+- big8.pcap, 11 fields incl. Info: plain 41.2 s, hs_shark 31.5 s (1.31x).
+- big8.pcap, frame number + Info: plain 42.1 s, hs_shark 25.0 s (1.68x).
+- base.pcap is dominated by one 90 MB download between two hosts, so it gains little (4.3 s -> 3.4 s): one
+  conversation cannot be split. Captures with many hosts scale best.
+Memory: plain tshark peaked at 1,524 MB on big8.pcap; the largest hs_shark tshark process peaked at 850 MB (the
+total across shards is similar, but no single process needs as much).
+
+LIMITS
+- Field output (-T fields) only; statistics (-z), PDML/JSON and writing captures are not merged yet.
+- Display filters must not use frame or stream numbers (they differ per shard); filter on addresses/protocols.
+- Analyses that link different host pairs (e.g. a DNS answer followed by a connection to that address) are not
+  combined across shards; one huge conversation cannot be split.
+- pcapng input is converted with editcap first (one link type per file). Supported link types: Ethernet (VLAN),
+  raw IP, Linux cooked SLL/SLL2, BSD loopback; others still work but stay in one set.
+- Temporary space: about the capture size.
+
+FILES: hs_shark.cpp (source), hs_shark.exe (Windows build, not yet run on Windows; needs Wireshark installed,
+use --tshark "C:\Program Files\Wireshark\tshark.exe" and --editcap for pcapng), make_big8.py (test capture).
