@@ -1,0 +1,15 @@
+versions: --version: No such file or directory | pigz 2.8 | bgzip (htslib) 1.21 | rapidgzip rapidgzip, CLI to the parallelized, indexed, and seekable gzip decoding library rapidgzip version 0.16.1
+fair gzip baselines, desktop, 11/01/2026 02:36:40, silesia_4gb.bin 4026833020 bytes, sha256 1676242130E38A24E49A9E1345BA3FAD3F4A85563357849D72253304AA5F65EB, 12 threads, 3 decode rounds
+CPU: AMD Ryzen 5 7500X3D 6-Core Processor           , threads 12
+tool                                         1,000,000 bits down to
+gzip -6, one thread (decode gzip)              321,924  comp   116.1 s  decode 14.50 / 14.01 / 14.16  median  14.16 s  exact True
+  same file, pigz -d -p 12                     321,924  comp     0.0 s  decode 9.59 / 9.55 / 9.51    median   9.55 s  exact True
+  same file, rapidgzip -P 12                   321,924  comp     0.0 s  decode 2.98 / 2.88 / 2.73    median   2.88 s  exact True
+pigz -6 -p 12 (decode pigz)                    321,970  comp    13.1 s  decode 9.63 / 9.77 / 9.79    median   9.77 s  exact True
+  same file, rapidgzip -P 12                   321,970  comp     0.0 s  decode 2.81 / 2.71 / 2.70    median   2.71 s  exact True
+bgzip -l 6 -@ 12 (decode bgzip -@ 12)          334,925  comp    12.0 s  decode 3.36 / 3.14 / 3.50    median   3.36 s  exact True
+  same file, rapidgzip -P 12                   334,925  comp     0.0 s  decode 7.29 / 7.20 / 7.27    median   7.27 s  exact True
+hs_wrap 1.5 + gzip -6, Sets, 16 MB             322,017  comp System.Object[] s  decode decompress wall time 4.1 s / 4.19 / decompress wall time 3.8 s / 3.84 / decompress wall time 4.0 s / 4.02  median   4.02 s  exact True
+hs_wrap 1.5 + gzip -6, plain blocks, 16 MB     321,971  comp System.Object[] s  decode decompress wall time 3.9 s / 3.94 / decompress wall time 15.2 s / 15.24 / decompress wall time 4.0 s / 4.03  median   4.03 s  exact True
+FINISHED 11/01/2026 02:44:51
+DONE 

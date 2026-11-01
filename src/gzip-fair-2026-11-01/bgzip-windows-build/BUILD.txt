@@ -1,0 +1,7 @@
+bgzip.exe here is htslib 1.21's bgzip cross-compiled for Windows x64 with zig cc 0.13.0 (no MSYS2), used only as a fair
+baseline. Steps: zlib 1.3.1 built as libz.a; htslib ./configure --host=x86_64-w64-mingw32 --disable-bz2 --disable-lzma
+--disable-libcurl --disable-gcs --disable-s3 --disable-plugins --without-libdeflate; hfile.c gained #include <signal.h>;
+pthread.h shim (Win32 critical sections + condition variables, recursive mutexes, timed waits) and a regex.h stub
+(regcomp always fails - only htslib filter expressions use regex, bgzip never does) on the include path; config.h
+HAVE_BUILTIN_CPU_SUPPORT_SSSE3 off (zig's runtime lacks __cpu_model); -lpthread dropped; linked bgzip.o libhts.a -lz
+-lws2_32. Verified on the desktop: compress and 3 decodes of a 4 GB file, all SHA-256 exact.
