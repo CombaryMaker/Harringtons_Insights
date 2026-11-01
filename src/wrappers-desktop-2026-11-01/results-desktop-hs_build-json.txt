@@ -1,0 +1,28 @@
+﻿hs_build big-project desktop test started 11/01/2026 04:55:13
+CPU: AMD Ryzen 5 7500X3D 6-Core Processor           , threads 12
+verified: projjson.zip is the intended file; w64devkit, hs_build.exe and hs_cc.exe (built from source by wr8) present
+
+=== nlohmann/json 3.12.0 unit tests, 69 compile jobs, g++ -O2 -std=c++11, 12 jobs (wall seconds; objects compared with plain run 1)
+plain make -j12 run 1:              80.8 s   (69 objects)
+plain make -j12 run 2:              78.7 s   objects same: True
+plain make -j12 with timing shim:   78.7 s   objects same: True   (this run writes the profile)
+hs_build, source-size estimate:     74.7 s   objects same: True   [hs_build: 69 compile jobs, 0 with measured times (source-size estimate), 12 jobs; heaviest first: obj/unit-bjdata.o]
+hs_build, measured profile 1:       72.6 s   objects same: True   [hs_build: 69 compile jobs, 69 with measured times (profile), 12 jobs; heaviest first: obj/unit-deserialization.o]
+hs_build, measured profile 2:       72.7 s   objects same: True   [hs_build: 69 compile jobs, 69 with measured times (profile), 12 jobs; heaviest first: obj/unit-deserialization.o]
+plain make -j12 run 3:              78.7 s   objects same: True
+
+measured compile times from the plain shim run (seconds): heaviest 10, and where they sit in Makefile order (of 69)
+  total compile work 793 CPU-seconds over 69 files
+  obj/unit-deserialization.o                 43.5 s   started 24 of 69
+  obj/unit-bjdata.o                          42.4 s   started  7 of 69
+  obj/unit-cbor.o                            36.5 s   started 11 of 69
+  obj/unit-element_access2.o                 35.3 s   started 30 of 69
+  obj/unit-regression2.o                     34.3 s   started 53 of 69
+  obj/unit-class_parser_diagnostic_positions.o   32.2 s   started 16 of 69
+  obj/unit-regression1.o                     31.0 s   started 52 of 69
+  obj/unit-ubjson.o                          28.5 s   started 58 of 69
+  obj/unit-class_parser.o                    28.0 s   started 15 of 69
+  obj/unit-conversions.o                     27.6 s   started 22 of 69
+
+FINISHED 11/01/2026 05:04:13
+DONE

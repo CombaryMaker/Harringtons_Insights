@@ -79,3 +79,17 @@ while it compiles, so reordering cannot shorten the build below that one file. h
 has many heavy files competing for cores near the end of the build (more heavy files than cores).
 NOTE: the first desktop attempt used a prebuilt hs_cc.exe (cross-built with Zig); Windows Defender quarantined
 it as a false positive. Building hs_build and hs_cc on the PC from source with gcc avoided that.
+
+DESKTOP RESULT, PROJECT WITH MANY HEAVY FILES (1 November 2026; same desktop, w64devkit gcc 15.2.0 / make 4.4.1,
+hs_build/hs_cc 1.1 built from source on the PC). Project: the public nlohmann/json 3.12.0 unit tests, 69
+template-heavy C++ files (793 CPU-seconds of compiling in total; the heaviest 43.5 s, ten files over 27 s), plain
+one-rule Makefile in file-name order (Makefile.nlohmann-json-tests here), flags from the project's tests/CMakeLists.txt,
+g++ -O2 -std=c++11, 12 jobs.
+  plain make -j12:                    80.8 / 78.7 / 78.7 s   (with timing shim 78.7 s)
+  hs_build, source-size estimate:     74.7 s                 (1.05x)
+  hs_build, measured profile:         72.6 / 72.7 s          (1.08x, 6 s saved per build)
+All 69 object files byte-identical to the plain build in every run.
+Why it helped here and not on zstd: there are many heavy files and several of them start late in make's order
+(unit-regression2 34 s at position 53 of 69, unit-regression1 31 s at 52, unit-ubjson 28.5 s at 58), so plain make
+ends with a tail of heavy compiles; hs_build starts them first. The floor for this machine is about 793 / 12 = 66 s,
+so hs_build closed about half of the gap between plain make (78.7 s) and the floor.

@@ -1,0 +1,13 @@
+# nlohmann/json 3.12.0 unit tests (public, MIT), compiled with a plain one-rule Makefile; Makefile order = file name
+# order. Flags follow the project's tests/CMakeLists.txt (C++11, the test_main definitions, GNU warnings off).
+CXX = g++
+BIGOBJ ?= -Wa,-mbig-obj
+EXTRA ?=
+CXXFLAGS = -O2 -std=c++11 $(BIGOBJ) $(EXTRA) -DDOCTEST_CONFIG_SUPER_FAST_ASSERTS -DJSON_TEST_KEEP_MACROS -DJSON_TEST_USING_MULTIPLE_HEADERS=0 -Iinclude -Isingle_include -Itests/thirdparty/doctest -Itests/thirdparty/fifo_map -Itests/src -Wno-deprecated -Wno-float-equal -Wno-deprecated-declarations
+SRC := tests/src/unit.cpp $(sort $(wildcard tests/src/unit-*.cpp))
+OBJ := $(patsubst tests/src/%.cpp,obj/%.o,$(SRC))
+all: $(OBJ)
+obj/%.o: tests/src/%.cpp | obj
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+obj:
+	mkdir obj
