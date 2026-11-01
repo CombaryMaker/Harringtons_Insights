@@ -1,0 +1,165 @@
+PAQ8PX ON ALL CORES WITH HARRINGTON SETS
+
+An unmodified paq8px v217 runs one copy per block on separate cores through the Harrington Sets wrapper, so compression and decompression both use every core. The test files are the first 3 MB of ten Silesia files, which caps the speed-up near 2x. The files were cut to 3 MB because paq8px runs at about 5 KB/s per core: the eight-test matrix on these 30 MB already took about seven hours, and the full corpus would have taken over two weeks.
+
+GitHub: https://github.com/CombaryMaker/Harringtons_Insights
+This topic: https://github.com/CombaryMaker/Harringtons_Insights/tree/main/src/paq8px-sets
+
+paq8px v217 (github.com/hxim/paq8px, commit c84f576), Windows desktop, 6 cores / 12 threads. Ten files of
+3,145,728 bytes (31,457,280 bytes in all). Sizes: 1,000,000 bits down to X; times are sums over the ten
+files. Every round trip exact; 80 cycles, 0 failures.
++-----+------------------------------------------------+----------+-------------+---------------+
+| Test| Mode                                           | bits     | compress s  | decompress s  |
++-----+------------------------------------------------+----------+-------------+---------------+
+| T1  | paq8px -1, one stream (baseline)               | 222,453  | 3,889       | 3,867         |
+| T7  | Sets -1, 1 MB blocks, 1 job (splitting cost)   | 227,706  | 3,920       | 3,905         |
+| T6  | Sets -1, 1 MB blocks, 3 jobs                   | 227,706  | 1,881       | 1,873         |
+| T5  | Sets -1, 1 MB blocks, 6 jobs                   | 227,706  | 1,897       | 1,916         |
+| T4  | Sets -1, 1 MB blocks, 12 jobs                  | 227,706  | 1,829       | 1,824         |
+| T3  | Sets -1, 2 MB blocks, 12 jobs                  | 225,522  | 2,821       | 2,845         |
+| T2  | Sets -1, 16 MB blocks (sets only), 12 jobs     | 222,899  | 3,715       | 3,676         |
+| T8  | Sets -6, 1 MB blocks, 6 jobs                   | 219,207  | 2,056       | 2,076         |
++-----+------------------------------------------------+----------+-------------+---------------+
+Per file, T1 vs T4 (bytes / decompress s)
++----------+---------------------+---------------------+
+| File     | one stream          | Sets, 1 MB, 12 jobs |
++----------+---------------------+---------------------+
+| dickens  | 670,043    286.1    | 699,908    102.4    |
+| mozilla  | 875,673    659.8    | 894,721    358.3    |
+| mr       | 577,872    406.5    | 581,508    166.1    |
+| nci      | 95,221     237.4    | 99,346     95.5     |
+| osdb     | 667,422    479.7    | 684,219    228.5    |
+| reymont  | 398,772    263.8    | 416,357    122.2    |
+| samba    | 336,626    299.0    | 372,722    149.7    |
+| sao      | 1,624,622  495.7    | 1,632,097  247.1    |
+| webster  | 441,406    274.7    | 467,830    130.8    |
+| x-ray    | 1,310,117  464.2    | 1,314,294  223.2    |
++----------+---------------------+---------------------+
+T8 (level 6 on six cores) is both smaller and 1.9x faster than level 1 on one core. The 3 MB files hold at
+most three 1 MB blocks, so more than 3 jobs cannot help here; larger files would use all 12.
+
+MIT License. Copyright (c) 2026 Michael Hugh Harrington.
+
+CODE: px_test.cpp, the test harness that ran the 80 cycles (the wrapper used was hs_wrap.cpp, the C++ port of hs_wrap.py 1.2, HSW2 format, from HCM-tests\paq8px-wrapper-2026-10-30; the current wrapper 1.4 in the Harrington Sets document reads the same files), then run_px_test.bat
+
+// px_test.cpp - runs the approved paq8px / Harrington Sets wrapper test matrix (8 tests x 10 files = 80 cycles)
+// in its own folder, times every compression and decompression (wall clock), checks every round trip byte for
+// byte, deletes each test's outputs after measuring, and appends one line per cycle to results.txt.
+// Michael Hugh Harrington, 2026. MIT License.
+// Build: zig c++ -target x86_64-windows-gnu -O2 -std=c++17 -static px_test.cpp -o px_test.exe
+#include <cstdio>
+#include <cstdlib>
+#include <string>
+#include <vector>
+#include <chrono>
+#include <fstream>
+#include <filesystem>
+#include <iterator>
+namespace fs = std::filesystem;
+using namespace std;
+#ifdef _WIN32
+static const string PX = "paq8px.exe", HW = "hs_wrap.exe";
+static string q(const string &s) { return "\"" + s + "\""; }
+static int sh(const string &c) { return system(("\"" + c + " >NUL 2>NUL\"").c_str()); }
+#else
+static const string PX = "./paq8px", HW = "./hs_wrap";
+static string q(const string &s) { return "'" + s + "'"; }
+static int sh(const string &c) { return system((c + " >/dev/null 2>&1").c_str()); }
+#endif
+static double now() { return chrono::duration<double>(chrono::steady_clock::now().time_since_epoch()).count(); }
+static bool same(const string &a, const string &b) {
+    ifstream x(a, ios::binary), y(b, ios::binary); if (!x || !y) return false;
+    return vector<char>(istreambuf_iterator<char>(x), {}) == vector<char>(istreambuf_iterator<char>(y), {});
+}
+struct T { string id, desc; int level; int block; int jobs; };   // block 0 = plain paq8px single stream
+int main(int argc, char **argv) {
+    int allbad = 0;
+    vector<T> tests = {
+        {"T1", "paq8px -1 single stream (baseline)", 1, 0, 1},
+        {"T2", "wrapper, paq8px -1, 16 MB blocks (sets only), 12 jobs", 1, 16, 12},
+        {"T3", "wrapper, paq8px -1, 2 MB blocks, 12 jobs", 1, 2, 12},
+        {"T4", "wrapper, paq8px -1, 1 MB blocks, 12 jobs", 1, 1, 12},
+        {"T5", "wrapper, paq8px -1, 1 MB blocks, 6 jobs", 1, 1, 6},
+        {"T6", "wrapper, paq8px -1, 1 MB blocks, 3 jobs", 1, 1, 3},
+        {"T7", "wrapper, paq8px -1, 1 MB blocks, 1 job (cost of splitting alone)", 1, 1, 1},
+        {"T8", "wrapper, paq8px -6, 1 MB blocks, 6 jobs", 6, 1, 6}};
+    vector<string> files = {"dickens", "mozilla", "mr", "nci", "osdb", "reymont", "samba", "sao", "webster", "x-ray"};
+    string only = argc > 1 ? argv[1] : "";   // optional: run a single test id
+    FILE *log = fopen("results.txt", "a"); if (!log) return 1;
+    fprintf(log, "\npaq8px wrapper test matrix - test files are the first 3 MB (3,145,728 bytes) of 10 Silesia files\n");
+    fprintf(log, "test | file | original bytes | compressed bytes | 1,000,000 bits down to | ratio | compress s | decompress s | exact\n");
+    fflush(log);
+    fs::create_directories("work");
+    for (auto &t : tests) {
+        if (!only.empty() && only != t.id) continue;
+        fprintf(log, "--- %s: %s\n", t.id.c_str(), t.desc.c_str()); fflush(log);
+        double sc = 0, sd = 0; unsigned long long so = 0, sz = 0; int bad = 0;
+        for (auto &f : files) {
+            string in = f + ".3mb", z = "work/" + f + ".z", d = "work/" + f + ".out";
+            fs::remove(z); fs::remove(d);
+            string L = "-" + to_string(t.level);
+            string cc, dc;
+            if (t.block == 0) { cc = PX + " " + L + " " + q(in) + " " + q(z); dc = PX + " -d " + q(z) + " " + q(d); }
+            else {
+                cc = HW + " c " + q(in) + " " + q(z) + " --comp \\\"" + PX + " " + L + " {in} {out}\\\" --jobs " + to_string(t.jobs) + " --block-mb " + to_string(t.block);
+                dc = HW + " d " + q(z) + " " + q(d) + " --decomp \\\"" + PX + " -d {in} {out}\\\" --jobs " + to_string(t.jobs);
+            }
+#ifndef _WIN32
+            for (size_t p; (p = cc.find("\\\"")) != string::npos;) cc.replace(p, 2, "\"");
+            for (size_t p; (p = dc.find("\\\"")) != string::npos;) dc.replace(p, 2, "\"");
+#else
+            for (size_t p; (p = cc.find("\\\"")) != string::npos;) cc.replace(p, 2, "\"");
+            for (size_t p; (p = dc.find("\\\"")) != string::npos;) dc.replace(p, 2, "\"");
+#endif
+            double a = now(); int r1 = sh(cc); double ct = now() - a;
+            unsigned long long zs = fs::exists(z) ? fs::file_size(z) : 0;
+            a = now(); int r2 = r1 ? 1 : sh(dc); double dt = now() - a;
+            bool ok = !r1 && !r2 && same(in, d);
+            unsigned long long os_ = fs::exists(in) ? fs::file_size(in) : 0;
+            fprintf(log, "%s | %s | %llu | %llu | %.0f | %.3f | %.1f | %.1f | %s\n", t.id.c_str(), f.c_str(), os_, zs,
+                    os_ ? 1e6 * zs / os_ : 0.0, zs ? (double)os_ / zs : 0.0, ct, dt, ok ? "yes" : (r1 ? "COMPRESS FAILED" : r2 ? "DECOMPRESS FAILED" : "MISMATCH"));
+            fflush(log);
+            sc += ct; sd += dt; so += os_; sz += zs; if (!ok) { bad++; allbad++; }
+            fs::remove(z); fs::remove(d);
+        }
+        fprintf(log, "%s TOTAL | %llu | %llu | %.0f | compress %.1f s | decompress %.1f s | failures %d\n", t.id.c_str(), so, sz, so ? 1e6 * sz / so : 0.0, sc, sd, bad);
+        fflush(log);
+    }
+    fprintf(log, "ALL DONE\n"); fclose(log);
+    return allbad ? 1 : 0;   // nonzero exit when any cycle failed
+}
+
+============================== run_px_test.bat ==============================
+@echo off
+cd /d "%~dp0"
+set FAILED=0
+for %%T in (T4 T5 T3 T2 T6 T8 T7 T1) do (
+  px_test.exe %%T
+  if errorlevel 1 set FAILED=1
+)
+if %FAILED%==1 (echo ONE OR MORE TESTS FAILED & exit /b 1)
+echo ALL TESTS PASSED
+exit /b 0
+
+============================== LICENSE ==============================
+MIT License
+
+Copyright (c) 2026 Michael Hugh Harrington
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

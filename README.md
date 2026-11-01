@@ -19,6 +19,13 @@ This repository has three tools:
 - **Best results charts:** [`benchmarks/charts-2026-10-29/Harrington-Best-Results-Full.pdf`](benchmarks/charts-2026-10-29/Harrington-Best-Results-Full.pdf) — every tool built or modified here (originals, modifieds, mutants) against the stock tools on each standard benchmark; also in the book as Appendix G.
 - **Research source code:** [`src/`](src/) — hcmx (HCM v3.3 + ternary pointer + HCM-Bin), the Harrington Exchange and its Blosc2 hybrid, the baseline comparisons and the record-delta benchmark. See [`src/README.md`](src/README.md).
 
+## Forum write-ups (31 Oct 2026)
+
+Six standalone documents, each with results tables, the latest code and the MIT licence: [`docs/forum/`](docs/forum/) —
+Harrington Sets, HCM v3.6, the -hi tools, record-length delta, hs_zstd (vs pzstd) and paq8px on all cores.
+Supporting code and raw desktop results: [`src/hs-zstd/`](src/hs-zstd/), [`src/paq8px-sets/`](src/paq8px-sets/),
+[`src/pigz-race/`](src/pigz-race/), wrapper 1.4 in [`src/hs-wrap/`](src/hs-wrap/).
+
 ## Naming note (30 October 2026)
 
 The "ternary pointer" is now called the **candidate escape flag**, and the "Combary activity map" is now the **change map**; Combary is presented as motivation, not as a method. Code and results are unchanged. See [`docs/NAMING-NOTE.txt`](docs/NAMING-NOTE.txt).

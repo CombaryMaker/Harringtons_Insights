@@ -1,0 +1,128 @@
+
+paq8px wrapper test matrix - test files are the first 3 MB (3,145,728 bytes) of 10 Silesia files
+test | file | original bytes | compressed bytes | 1,000,000 bits down to | ratio | compress s | decompress s | exact
+--- T4: wrapper, paq8px -1, 1 MB blocks, 12 jobs
+T4 | dickens | 3145728 | 699908 | 222495 | 4.494 | 109.0 | 102.4 | yes
+T4 | mozilla | 3145728 | 894721 | 284424 | 3.516 | 358.7 | 358.3 | yes
+T4 | mr | 3145728 | 581508 | 184856 | 5.410 | 166.4 | 166.1 | yes
+T4 | nci | 3145728 | 99346 | 31581 | 31.664 | 96.3 | 95.5 | yes
+T4 | osdb | 3145728 | 684219 | 217507 | 4.598 | 225.4 | 228.5 | yes
+T4 | reymont | 3145728 | 416357 | 132356 | 7.555 | 124.1 | 122.2 | yes
+T4 | samba | 3145728 | 372722 | 118485 | 8.440 | 149.9 | 149.7 | yes
+T4 | sao | 3145728 | 1632097 | 518830 | 1.927 | 245.8 | 247.1 | yes
+T4 | webster | 3145728 | 467830 | 148719 | 6.724 | 129.1 | 130.8 | yes
+T4 | x-ray | 3145728 | 1314294 | 417803 | 2.393 | 224.1 | 223.2 | yes
+T4 TOTAL | 31457280 | 7163002 | 227706 | compress 1828.8 s | decompress 1823.9 s | failures 0
+ALL DONE
+
+paq8px wrapper test matrix - test files are the first 3 MB (3,145,728 bytes) of 10 Silesia files
+test | file | original bytes | compressed bytes | 1,000,000 bits down to | ratio | compress s | decompress s | exact
+--- T5: wrapper, paq8px -1, 1 MB blocks, 6 jobs
+T5 | dickens | 3145728 | 699908 | 222495 | 4.494 | 110.6 | 111.9 | yes
+T5 | mozilla | 3145728 | 894721 | 284424 | 3.516 | 361.4 | 365.8 | yes
+T5 | mr | 3145728 | 581508 | 184856 | 5.410 | 193.0 | 194.3 | yes
+T5 | nci | 3145728 | 99346 | 31581 | 31.664 | 110.2 | 110.6 | yes
+T5 | osdb | 3145728 | 684219 | 217507 | 4.598 | 241.8 | 246.6 | yes
+T5 | reymont | 3145728 | 416357 | 132356 | 7.555 | 122.6 | 126.7 | yes
+T5 | samba | 3145728 | 372722 | 118485 | 8.440 | 148.6 | 147.4 | yes
+T5 | sao | 3145728 | 1632097 | 518830 | 1.927 | 250.1 | 247.0 | yes
+T5 | webster | 3145728 | 467830 | 148719 | 6.724 | 128.8 | 129.4 | yes
+T5 | x-ray | 3145728 | 1314294 | 417803 | 2.393 | 230.3 | 235.8 | yes
+T5 TOTAL | 31457280 | 7163002 | 227706 | compress 1897.3 s | decompress 1915.5 s | failures 0
+ALL DONE
+
+paq8px wrapper test matrix - test files are the first 3 MB (3,145,728 bytes) of 10 Silesia files
+test | file | original bytes | compressed bytes | 1,000,000 bits down to | ratio | compress s | decompress s | exact
+--- T3: wrapper, paq8px -1, 2 MB blocks, 12 jobs
+T3 | dickens | 3145728 | 681820 | 216745 | 4.614 | 205.7 | 207.0 | yes
+T3 | mozilla | 3145728 | 892606 | 283752 | 3.524 | 489.9 | 490.4 | yes
+T3 | mr | 3145728 | 579962 | 184365 | 5.424 | 303.1 | 316.1 | yes
+T3 | nci | 3145728 | 97515 | 30999 | 32.259 | 168.1 | 171.6 | yes
+T3 | osdb | 3145728 | 676688 | 215113 | 4.649 | 367.6 | 359.9 | yes
+T3 | reymont | 3145728 | 409000 | 130018 | 7.691 | 156.8 | 156.1 | yes
+T3 | samba | 3145728 | 358865 | 114080 | 8.766 | 188.8 | 189.5 | yes
+T3 | sao | 3145728 | 1628986 | 517841 | 1.931 | 364.3 | 381.4 | yes
+T3 | webster | 3145728 | 456920 | 145251 | 6.885 | 200.8 | 193.1 | yes
+T3 | x-ray | 3145728 | 1311932 | 417052 | 2.398 | 376.2 | 379.7 | yes
+T3 TOTAL | 31457280 | 7094294 | 225522 | compress 2821.4 s | decompress 2844.8 s | failures 0
+ALL DONE
+
+paq8px wrapper test matrix - test files are the first 3 MB (3,145,728 bytes) of 10 Silesia files
+test | file | original bytes | compressed bytes | 1,000,000 bits down to | ratio | compress s | decompress s | exact
+--- T2: wrapper, paq8px -1, 16 MB blocks (sets only), 12 jobs
+T2 | dickens | 3145728 | 681820 | 216745 | 4.614 | 212.3 | 197.9 | yes
+T2 | mozilla | 3145728 | 875727 | 278386 | 3.592 | 671.1 | 657.6 | yes
+T2 | mr | 3145728 | 577926 | 183718 | 5.443 | 404.3 | 405.1 | yes
+T2 | nci | 3145728 | 95275 | 30287 | 33.017 | 236.7 | 235.6 | yes
+T2 | osdb | 3145728 | 667476 | 212185 | 4.713 | 487.8 | 490.6 | yes
+T2 | reymont | 3145728 | 398826 | 126783 | 7.887 | 267.1 | 264.3 | yes
+T2 | samba | 3145728 | 336680 | 107028 | 9.343 | 301.3 | 302.4 | yes
+T2 | sao | 3145728 | 1624676 | 516471 | 1.936 | 506.5 | 499.9 | yes
+T2 | webster | 3145728 | 441460 | 140336 | 7.126 | 277.0 | 277.8 | yes
+T2 | x-ray | 3145728 | 1311932 | 417052 | 2.398 | 351.0 | 344.4 | yes
+T2 TOTAL | 31457280 | 7011798 | 222899 | compress 3715.0 s | decompress 3675.6 s | failures 0
+ALL DONE
+
+paq8px wrapper test matrix - test files are the first 3 MB (3,145,728 bytes) of 10 Silesia files
+test | file | original bytes | compressed bytes | 1,000,000 bits down to | ratio | compress s | decompress s | exact
+--- T6: wrapper, paq8px -1, 1 MB blocks, 3 jobs
+T6 | dickens | 3145728 | 699908 | 222495 | 4.494 | 158.5 | 157.1 | yes
+T6 | mozilla | 3145728 | 894721 | 284424 | 3.516 | 336.5 | 331.8 | yes
+T6 | mr | 3145728 | 581508 | 184856 | 5.410 | 175.4 | 177.0 | yes
+T6 | nci | 3145728 | 99346 | 31581 | 31.664 | 108.4 | 108.2 | yes
+T6 | osdb | 3145728 | 684219 | 217507 | 4.598 | 243.7 | 236.2 | yes
+T6 | reymont | 3145728 | 416357 | 132356 | 7.555 | 121.7 | 122.3 | yes
+T6 | samba | 3145728 | 372722 | 118485 | 8.440 | 145.4 | 146.4 | yes
+T6 | sao | 3145728 | 1632097 | 518830 | 1.927 | 238.8 | 241.5 | yes
+T6 | webster | 3145728 | 467830 | 148719 | 6.724 | 127.5 | 131.7 | yes
+T6 | x-ray | 3145728 | 1314294 | 417803 | 2.393 | 224.7 | 220.2 | yes
+T6 TOTAL | 31457280 | 7163002 | 227706 | compress 1880.6 s | decompress 1872.6 s | failures 0
+ALL DONE
+
+paq8px wrapper test matrix - test files are the first 3 MB (3,145,728 bytes) of 10 Silesia files
+test | file | original bytes | compressed bytes | 1,000,000 bits down to | ratio | compress s | decompress s | exact
+--- T8: wrapper, paq8px -6, 1 MB blocks, 6 jobs
+T8 | dickens | 3145728 | 665907 | 211686 | 4.724 | 112.5 | 117.0 | yes
+T8 | mozilla | 3145728 | 836657 | 265966 | 3.760 | 393.3 | 389.1 | yes
+T8 | mr | 3145728 | 550678 | 175056 | 5.712 | 199.0 | 198.1 | yes
+T8 | nci | 3145728 | 96514 | 30681 | 32.593 | 109.9 | 113.5 | yes
+T8 | osdb | 3145728 | 659362 | 209606 | 4.771 | 266.0 | 272.0 | yes
+T8 | reymont | 3145728 | 387134 | 123067 | 8.126 | 127.9 | 130.2 | yes
+T8 | samba | 3145728 | 338457 | 107593 | 9.294 | 158.0 | 161.2 | yes
+T8 | sao | 3145728 | 1621061 | 515321 | 1.941 | 289.3 | 291.0 | yes
+T8 | webster | 3145728 | 438908 | 139525 | 7.167 | 141.9 | 141.0 | yes
+T8 | x-ray | 3145728 | 1300970 | 413567 | 2.418 | 258.0 | 262.9 | yes
+T8 TOTAL | 31457280 | 6895648 | 219207 | compress 2056.0 s | decompress 2075.8 s | failures 0
+ALL DONE
+
+paq8px wrapper test matrix - test files are the first 3 MB (3,145,728 bytes) of 10 Silesia files
+test | file | original bytes | compressed bytes | 1,000,000 bits down to | ratio | compress s | decompress s | exact
+--- T7: wrapper, paq8px -1, 1 MB blocks, 1 job (cost of splitting alone)
+T7 | dickens | 3145728 | 699908 | 222495 | 4.494 | 286.8 | 287.4 | yes
+T7 | mozilla | 3145728 | 894721 | 284424 | 3.516 | 673.7 | 669.0 | yes
+T7 | mr | 3145728 | 581508 | 184856 | 5.410 | 408.8 | 409.0 | yes
+T7 | nci | 3145728 | 99346 | 31581 | 31.664 | 239.0 | 239.0 | yes
+T7 | osdb | 3145728 | 684219 | 217507 | 4.598 | 490.4 | 482.6 | yes
+T7 | reymont | 3145728 | 416357 | 132356 | 7.555 | 267.6 | 266.2 | yes
+T7 | samba | 3145728 | 372722 | 118485 | 8.440 | 303.0 | 302.4 | yes
+T7 | sao | 3145728 | 1632097 | 518830 | 1.927 | 497.3 | 498.6 | yes
+T7 | webster | 3145728 | 467830 | 148719 | 6.724 | 280.0 | 277.9 | yes
+T7 | x-ray | 3145728 | 1314294 | 417803 | 2.393 | 473.0 | 472.6 | yes
+T7 TOTAL | 31457280 | 7163002 | 227706 | compress 3919.6 s | decompress 3904.8 s | failures 0
+ALL DONE
+
+paq8px wrapper test matrix - test files are the first 3 MB (3,145,728 bytes) of 10 Silesia files
+test | file | original bytes | compressed bytes | 1,000,000 bits down to | ratio | compress s | decompress s | exact
+--- T1: paq8px -1 single stream (baseline)
+T1 | dickens | 3145728 | 670043 | 213001 | 4.695 | 284.3 | 286.1 | yes
+T1 | mozilla | 3145728 | 875673 | 278369 | 3.592 | 677.6 | 659.8 | yes
+T1 | mr | 3145728 | 577872 | 183701 | 5.444 | 407.2 | 406.5 | yes
+T1 | nci | 3145728 | 95221 | 30270 | 33.036 | 236.6 | 237.4 | yes
+T1 | osdb | 3145728 | 667422 | 212168 | 4.713 | 487.0 | 479.7 | yes
+T1 | reymont | 3145728 | 398772 | 126766 | 7.889 | 264.3 | 263.8 | yes
+T1 | samba | 3145728 | 336626 | 107011 | 9.345 | 300.8 | 299.0 | yes
+T1 | sao | 3145728 | 1624622 | 516453 | 1.936 | 492.6 | 495.7 | yes
+T1 | webster | 3145728 | 441406 | 140319 | 7.127 | 273.7 | 274.7 | yes
+T1 | x-ray | 3145728 | 1310117 | 416475 | 2.401 | 464.8 | 464.2 | yes
+T1 TOTAL | 31457280 | 6997774 | 222453 | compress 3889.1 s | decompress 3866.8 s | failures 0
+ALL DONE

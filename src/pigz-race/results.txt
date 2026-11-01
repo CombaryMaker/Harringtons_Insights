@@ -1,0 +1,15 @@
+
+PIGZ RACE - pigz 2.8 (-p 12) vs gzip -6 (zlib minigzip) vs hs_wrap 1.4 + gzip -6 (12 jobs, 16 MB blocks), 2 GB Silesia repeated, 3 decode rounds, order rotated
+self-test (3 MB): pigz exact (884,678 bytes), gzip exact, wrapper exact
+input: 2,000,000,000 bytes, CRC-32 C3759FAE
+tool | compressed bytes | 1,000,000 bits down to | compress s | compress peak MB
+gzip -6 (1 core) | 642,731,181 | 321366 | 56.3 | 9
+pigz -6 -p 12 | 642,820,705 | 321410 | 6.3 | 20
+hs_wrap 1.4 + gzip -6, 16 MB | 642,946,556 | 321473 | 11.8 | 90
+round | order | decode s: gzip / pigz / hs_wrap | peak MB | all exact
+1 | gzip > pigz > hs_w | 6.72 / 4.60 / 1.92 | 8 / 9 / 274 | yes
+2 | pigz > hs_w > gzip | 6.55 / 4.53 / 1.87 | 8 / 9 / 274 | yes
+3 | hs_w > gzip > pigz | 6.21 / 4.57 / 1.90 | 8 / 9 / 274 | yes
+median decode | 6.55 / 4.57 / 1.90 s | peak MB 8 / 9 / 274 | failures 0
+decode speed vs gzip: pigz 1.43x, hs_wrap 3.44x | hs_wrap vs pigz 2.40x
+ALL DONE (big files deleted)

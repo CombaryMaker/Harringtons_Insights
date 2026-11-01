@@ -1,0 +1,158 @@
+THE -hi TOOLS
+
+The -hi tools search a stock compressor's own settings and filters per file, set the delta filter from a
+record-length detector, and keep the smallest result that the unmodified decoder opens no slower. The output
+is the tool's normal format. Exceptions: the xz_hi.py listed below keeps the smallest output and its decode
+times were measured afterwards (three files decode slower), and zpaq-hi is smaller but slower, so it fails the
+speed rule.
+
+GitHub: https://github.com/CombaryMaker/Harringtons_Insights
+This topic: https://github.com/CombaryMaker/Harringtons_Insights/tree/main/xz-hi
+  (also bzip2-hi/, src/zpaq-hi/, tools/7z_hi, tools/lzma_hi_xz_hi, tools/zstd_brotli_hi, tools/zip-hi,
+  tools/image_jxl_jls, tools/flac_hi)
+
+Sizes: 1,000,000 bits down to X; decode time for the whole set, stock decoder, in-process or command line
+(median of 7-15 runs). Every output decoded exactly by the stock tool.
++--------------------------+------------------------------------+------------------------------------+
+| Tool vs stock            | Canterbury (2,810,784 bytes)       | Silesia (211,938,580 bytes)        |
++--------------------------+------------------------------------+------------------------------------+
+| 7z-hi vs 7-Zip -mx9      | 176,072 -> 165,229   64 -> 59 ms   | 230,055 -> 223,334   3,483->3,314 ms|
+| xz-hi vs xz -9e          | 175,424 -> 164,663   33.0->28.8 ms | 228,632 -> 223,703   3,306->3,250 ms|
+| lzma-hi vs LZMA SDK -9   | 175,546 -> 173,038   28.6->28.3 ms | 230,033 -> 227,385   2,939->2,825 ms|
+| bzip2-hi vs bzip2 -9     | 193,081 -> 189,235   59.7->55.4 ms | -                                  |
+| zstd-hi vs zstd -19      | 183,706 -> 183,630   not slower    | -                                  |
+| Brotli-hi vs Brotli 11   | 174,564 -> 172,976   not slower    | -                                  |
+| zpaq-hi vs ZPAQ -m5      | 128,716 -> 127,874   slower (fails)| -                                  |
++--------------------------+------------------------------------+------------------------------------+
+
+Largest single wins, 7z-hi against 7-Zip -mx9 (bytes / decode ms / setting)
++--------------+-------------------+-------------------+------------------------------+
+| File         | -mx9              | 7z-hi             | setting                      |
++--------------+-------------------+-------------------+------------------------------+
+| kennedy.xls  | 50,528    9.9     | 23,764    6.5     | Delta:13 (detected), lc=1    |
+| nci          | 1,741,410 208.0   | 1,444,385 173.5   | lc=4 pb=1                    |
+| ooffice      | 2,425,568 170.4   | 2,026,287 136.6   | BCJ2 (skipped by -mx9)       |
+| mr           | 2,748,257 192.9   | 2,592,100 161.1   | Delta:2 (detected)           |
+| x-ray        | 4,479,871 315.9   | 4,197,352 287.6   | Delta:2 (detected)           |
++--------------+-------------------+-------------------+------------------------------+
+Detector alone (xz -9e + delta at detected R, nothing else changed): kennedy.xls 51,864 -> 24,308 bytes,
+mr 2,751,888 -> 2,610,832, x-ray 4,491,260 -> 4,251,520.
+
+Media, stock decoders: jxl-hi x-ray 0.3% larger, 5.3x faster decode; RG1 radiograph 2.9% larger, 7.5x faster.
+Tuned JPEG-LS x-ray 3,591,153 -> 3,574,443 bytes, 103.6 -> 87.6 ms. flac-hi, 8 kHz speech: 2.1% smaller,
+136 -> 123 ms.
+Cost: compression about 70x slower (xz-hi) to 300x slower (bzip2-hi) than the stock setting.
+
+MIT License. Copyright (c) 2026 Michael Hugh Harrington.
+
+CODE: xz_hi.py, the complete xz-hi tool with the record-length detector (other tools: see the GitHub folders above)
+
+#!/usr/bin/env python3
+"""xz-hi: smaller standard .xz files (Harrington Insights).
+
+Compressor-side search only. For each file it tries the LZMA2 literal and
+position settings (lc, lp, pb), match-finder effort (nice_len, depth), an
+optional pre-filter (delta at the file's record length, which HCM's record
+detector finds, or a BCJ filter for executables), a dictionary sized to the
+file and a CRC32 check, and keeps the smallest result. The output is a normal
+.xz file that any xz decodes.
+
+usage: xz_hi.py INPUT [OUTPUT]          (default OUTPUT = INPUT.xz)
+Uses Python's built-in lzma module (liblzma).
+"""
+import itertools, lzma, sys
+
+def looks_ambiguous(d):
+    """Few control bytes but 5% or more bytes >= 128 (image rows, audio samples): also try the filters."""
+    return len(d) > 0 and sum(1 for c in d if c >= 128) * 20 >= len(d)
+
+def looks_binary(d):
+    ctl = sum(1 for c in d if c < 9 or 13 < c < 32 or c == 127)
+    return len(d) > 0 and ctl * 10 > len(d)
+
+def record_length(d, rec_min=3):
+    """HCM's record detector: a byte value seen at equal spacing three times in
+    a row votes for that spacing; returns the spacing with enough votes (0 if none)."""
+    lp = [[-1, -1, -1] for _ in range(256)]
+    cand = cnt = R = 0
+    for p, c in enumerate(d):
+        l = lp[c]
+        d1 = p - l[0] if l[0] >= 0 else 0
+        d2 = l[0] - l[1] if l[1] >= 0 else -1
+        d3 = l[1] - l[2] if l[2] >= 0 else -2
+        if d1 > 1 and d1 == d2 == d3 and d1 < 65536:
+            if d1 == cand: cnt = min(cnt + 1, 64)
+            elif cnt > 0: cnt -= 1
+            else: cand, cnt = d1, 1
+            if cnt >= rec_min and cand != R: R = cand
+        l[2], l[1], l[0] = l[1], l[0], p
+    return R
+
+def comp(data, lc, lp, pb, pre=None, depth=512, nice=273):
+    f = [] if pre is None else [pre]
+    f.append({"id": lzma.FILTER_LZMA2, "preset": 9 | lzma.PRESET_EXTREME, "dict_size": max(4096, len(data)),
+              "lc": lc, "lp": lp, "pb": pb, "nice_len": nice, "depth": depth, "mf": lzma.MF_BT4})
+    return lzma.compress(data, format=lzma.FORMAT_XZ, check=lzma.CHECK_CRC32, filters=f)
+
+def best_xz(data):
+    base = lzma.compress(data, format=lzma.FORMAT_XZ, preset=9 | lzma.PRESET_EXTREME)   # = xz -9e
+    cands = []
+    for lc, lp, pb in itertools.product(range(5), range(3), range(3)):
+        if lc + lp <= 4:
+            cands.append((len(comp(data, lc, lp, pb)), (lc, lp, pb)))
+    cands.sort()
+    pres = [None]
+    if looks_binary(data) or looks_ambiguous(data):   # image rows and audio also get delta/BCJ filters
+        dists = {1, 2, 4, 8, 12, 13, 16, 26, 48, 216}
+        r = record_length(data)
+        if 0 < r <= 256: dists.add(r)
+        pres += [{"id": lzma.FILTER_DELTA, "dist": d} for d in sorted(dists)]
+        pres += [{"id": i} for i in (lzma.FILTER_X86, lzma.FILTER_SPARC, lzma.FILTER_POWERPC,
+                                      lzma.FILTER_ARM, lzma.FILTER_ARMTHUMB, lzma.FILTER_IA64)]
+    best = base
+    for _, (lc, lp, pb) in cands[:4]:
+        for pre in pres:
+            for depth in (512, 0, 4000):
+                for nice in (273, 128):
+                    try: blob = comp(data, lc, lp, pb, pre, depth, nice)
+                    except lzma.LZMAError: continue
+                    if len(blob) < len(best): best = blob
+    return base, best
+
+def main():
+    if len(sys.argv) < 2:
+        print(__doc__); return 1
+    src = sys.argv[1]
+    dst = sys.argv[2] if len(sys.argv) > 2 else src + '.xz'
+    data = open(src, 'rb').read()
+    base, best = best_xz(data)
+    assert lzma.decompress(best) == data
+    open(dst, 'wb').write(best)
+    print('%s -> %s  %d bytes (xz -9e: %d bytes)' % (src, dst, len(best), len(base)))
+    return 0
+
+if __name__ == '__main__':
+    sys.exit(main())
+
+============================== LICENSE ==============================
+MIT License
+
+Copyright (c) 2026 Michael Hugh Harrington
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

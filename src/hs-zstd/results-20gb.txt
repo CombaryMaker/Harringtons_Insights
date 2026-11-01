@@ -1,0 +1,14 @@
+
+20 GB TEST - plain zstd 1.5.6 (default level 3) vs hs_zstd 1.0 (Harrington Sets + zstd level 3, 12 jobs, 16 MB blocks)
+input: 20,000,000,000 bytes, CRC-32 5751F81A
+compress | bytes | 1,000,000 bits down to | seconds | peak MB
+zstd default (1 core) | 6,283,999,121 | 314200 | 68.2 | 62
+zstd -T0 (all cores) | 6,283,999,121 | 314200 | 18.8 | 157
+hs_zstd (12 jobs) | 6,288,746,006 | 314437 | 15.6 | 625
+round | first | zstd decode s | zstd peak MB | exact | hs_zstd decode s | hs_zstd peak MB | exact
+1 | zstd | 19.46 | 15 | yes | 10.71 | 318 | yes
+2 | hs_zstd | 28.72 | 15 | yes | 19.23 | 316 | yes
+3 | zstd | 28.51 | 15 | yes | 10.50 | 313 | yes
+median decode: zstd 28.51 s, hs_zstd 10.71 s -> hs_zstd is 2.66x zstd's speed (-62.5% time)
+note: hs_zstd writes through a memory-mapped output file; like zstd's own writes, the data sits in the Windows file cache when the program exits. Peak MB (job object) does not count mapped file pages.
+ALL DONE (big files deleted)
