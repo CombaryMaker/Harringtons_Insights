@@ -42,3 +42,13 @@ LIMITS
 - Each thread loads its own copy of the PDF (memory = jobs x PDF size, plus Tika's normal use).
 - Tika's metadata output is not part of this comparison (body text only).
 FILES: HsTika.java (source), hs_tika.jar (compiled), gen.py (makes the clean test PDFs; needs reportlab and Pillow).
+
+DESKTOP RESULTS (1 November 2026; AMD Ryzen 5 7500X3D 6 cores / 12 threads, Windows 11; Tika 3.3.3, Java 21 Temurin,
+Tesseract 5.5.3 for OCR; 12 jobs; body text compared with plain Tika)
+  clean_mixed.pdf (400 text + 40 scanned pages): plain 95.8 s | equal split 77.7 s (1.23x; one thread 76.7 s,
+      another 0.8 s) | HsTika guided 16.2 s (5.9x; threads 12.4-14.9 s)
+  mixed.pdf (352-page book + 57 image-heavy pages): plain 100.9 s | equal split 65.6 s (1.54x) | HsTika guided
+      22.2 s (4.5x; threads 13.4-20.2 s)
+Text identical to plain Tika in all four split runs.
+Windows note: the Java class path had to be given relative to the test folder; the first attempt with an absolute
+quoted path containing a space ("data compression") did not load Tika (NoClassDefFoundError).
