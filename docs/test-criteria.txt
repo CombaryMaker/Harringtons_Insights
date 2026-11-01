@@ -1,0 +1,22 @@
+Mandatory test criteria for every Harrington Sets / HCM result
+(kept current; last change 2026-11-01)
+
+Always report
+- compressed size, stated as "1,000,000 bits down to X"
+- compress time and decompress time (wall clock), repeated runs (give the median and the number of runs)
+- peak decoder memory
+- input file size
+- thread / job count used by every tool in the comparison
+- machine: CPU cores/threads, RAM, disk, OS
+- round-trip check (CRC-32 / byte compare) for every run
+
+Fair baselines (added 2026-11-01 after Andrew Goodwin's review)
+- pigz is NOT a fair decompression yardstick: it compresses in parallel but decompresses on one thread.
+- gzip-compatible parallel baselines: bgzip -@ 12 (htslib) and rapidgzip (parallel decoding of ordinary gzip files).
+- zstd baselines: zstd -T12 and pzstd, same level as the Sets run.
+- Plain block-split control: the same compressor on fixed blocks of the same size with no Sets grouping, so the table shows what Harrington Sets adds beyond block splitting.
+
+Standing rules
+- same machine, same session, order of runs alternated
+- tiers by decode multiple M vs lz4 default (Compression Tier Standard v1.1)
+- kennedy.xls shown as an outlier: totals with and without it
