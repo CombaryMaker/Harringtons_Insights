@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Harrington Sets: multi-core use for any single-core compressor.
 Original method by Michael Hugh Harrington, 2026. Code under the MIT License (full text at end of file).
+Version 1.3 (1 Nov 2026): safe run smoothing, after Andrew Goodwin (University of Sydney) showed in his review of the
+zstd build that a short run next to raw windows could take the RAW label and spread it over compressible data.
 
 The input is read in 64 KB windows. Windows with byte entropy above 7.99 bits/byte are excluded to a raw
 set (stored, never compressed). The rest are grouped by k-means on seven byte features into at most 3 sets,
@@ -50,7 +52,11 @@ def labels(data):
         while i < nw:
             j = i
             while j < nw and lab[j] == lab[i]: j += 1
-            if j - i < 8 and i > 0: lab[i:j] = lab[i - 1]
+            if j - i < 8 and i > 0:
+                nl = lab[i - 1]
+                # safe smoothing (Andrew Goodwin, 1 Nov 2026): a compressible run is never relabelled RAW
+                if nl == RAW and lab[i] != RAW: nl = lab[j] if (j < nw and lab[j] != RAW) else lab[i]
+                lab[i:j] = nl
             i = j
     return lab
 def runs(lab):

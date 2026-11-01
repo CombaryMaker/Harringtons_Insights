@@ -88,7 +88,12 @@ static vector<int> labels(const vector<uint8_t> &data) {
     }
     for (int pass = 0; pass < 2; pass++) {
         size_t i = 0;
-        while (i < nw) { size_t j = i; while (j < nw && lab[j] == lab[i]) j++; if (j - i < 8 && i > 0) for (size_t q = i; q < j; q++) lab[q] = lab[i - 1]; i = j; }
+        while (i < nw) { size_t j = i; while (j < nw && lab[j] == lab[i]) j++;
+            if (j - i < 8 && i > 0) { int nl = lab[i - 1];
+                // safe smoothing (Andrew Goodwin, 1 Nov 2026): a compressible run is never relabelled RAW
+                if (nl == RAW && lab[i] != RAW) nl = (j < nw && lab[j] != RAW) ? lab[j] : lab[i];
+                for (size_t q = i; q < j; q++) lab[q] = nl; }
+            i = j; }
     }
     return lab;
 }

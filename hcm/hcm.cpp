@@ -1,4 +1,4 @@
-// HCM -- Harrington Compression Method, version 3.6
+// HCM -- Harrington Compression Method, version 3.6.1
 // Copyright (c) 2026 Michael Harrington. MIT License (full text at the end
 // of this file).
 //
@@ -19,6 +19,9 @@
 // refines the result, and codes the bit with a 32-bit arithmetic coder.
 // The decoder runs the identical model, so the file needs nothing else.
 //
+// v3.6.1 (1 Nov 2026): safe run smoothing in sets mode. Andrew Goodwin (University of Sydney) found, reviewing the
+// Harrington Sets zstd build, that a short run next to raw windows took the RAW label and the next short run copied it,
+// so compressible data could be stored raw; a compressible run is now never relabelled RAW. Decoder unchanged.
 // v3.6 (29 Oct 2026): sets mode (commands s = fast, t = max), Michael Harrington's exclusion idea:
 // 64 KB windows that are random/already compressed are excluded to a raw set; the rest are grouped
 // into up to 3 sets by byte statistics; each set gets its own model, in parallel; a run-length map
@@ -1675,7 +1678,10 @@ static int compress_sets(const uint8_t *data, size_t n, int mode, size_t B, uint
             size_t i = 0;
             while (i < nw) {
                 size_t j = i; while (j < nw && lab[j] == lab[i]) j++;
-                if ((long)(j - i) < MINRUN && i > 0) for (size_t k = i; k < j; k++) lab[k] = lab[i - 1];
+                if ((long)(j - i) < MINRUN && i > 0) { int nl = lab[i - 1];
+                    // v3.6.1 safe smoothing (Andrew Goodwin, 1 Nov 2026): a compressible run is never relabelled RAW
+                    if (nl == RAW && lab[i] != RAW) nl = (j < nw && lab[j] != RAW) ? lab[j] : lab[i];
+                    for (size_t k = i; k < j; k++) lab[k] = (uint8_t)nl; }
                 i = j;
             }
         }
@@ -1898,7 +1904,7 @@ static int run(int argc, pchar **argv, const pchar *self) {
         return do_compress(argv[2], argv[3], is_word(argv[1], 'x') ? v3::MODE_MAX : v3::MODE_FAST);
     }
     int mode = self && name_has_max(self) ? v3::MODE_MAX : v3::MODE_FAST;
-    printf("HCM v3.6  (Harrington Compression Method)  -  %s mode\n", mode == v3::MODE_MAX ? "max" : "fast");
+    printf("HCM v3.6.1  (Harrington Compression Method)  -  %s mode\n", mode == v3::MODE_MAX ? "max" : "fast");
     printf("Copyright (c) 2026 Michael Harrington. MIT License.\n\n");
     int failures = 0;
     if (argc < 2) {

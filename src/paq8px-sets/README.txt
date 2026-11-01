@@ -38,7 +38,8 @@ CODE: hs_zstd.cpp version 1.2, in full
 // zstd (Meta, BSD licence) is linked in unchanged; every block inside is a standard zstd frame.
 //
 // Compress: the file is labelled in 64 KB windows (entropy exclusion above 7.99 bits/byte, k-means into at most 3
-// sets, run smoothing - the same rules as hs_wrap), each set is cut into blocks of B MB, every block is
+// sets, run smoothing - the same rules as hs_wrap; NOTE 1 Nov 2026: the smoothing here has the bug Andrew Goodwin found,
+// fixed in hs_wrap 1.5 / the paq8px port; it does not affect the Silesia results in this folder), each set is cut into blocks of B MB, every block is
 // compressed by zstd on its own core, raw (incompressible) windows are stored as they are.
 // Decompress: the output file is mapped into memory and every core decodes its blocks STRAIGHT INTO THEIR FINAL
 // PLACE in the output (zstd streaming output pointed at each piece of the output in turn) - no pipes, no

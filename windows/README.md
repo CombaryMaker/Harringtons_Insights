@@ -22,3 +22,9 @@ xz-hi on a 1 MB binary file can take a couple of minutes). Decoding does not.
 - `bzip2-hi.exe`: `bzip2_hi.cpp` + `dropframe.h`, linked with the library files
   of `../bzip2-hi/source` (altered bzip2; bzip2 license applies).
 - `HCM.exe`: `../hcm/hcm.cpp`, built with `-O2 -ffp-contract=off`.
+
+## Harrington Sets builds (1 Nov 2026)
+
+- `HCM.exe` / `HCM-Max.exe`: HCM v3.6.1 (safe run smoothing in sets mode; fix from Andrew Goodwin's review).
+- `hs_wrap.exe`: Harrington Sets wrapper 1.5 (safe smoothing, `--raw entropy|off`), e.g. `hs_wrap c big.tar big.hsw --comp "gzip -6 -c {in}" --jobs 12 --raw off`.
+- `hs_zstd.exe`: hs_zstd 1.3 (zstd 1.5.6 built in; raw rule off and safe smoothing by default), e.g. `hs_zstd c big.tar big.hsz --jobs 12`, control `--sets 0`, decode `hs_zstd d big.hsz big.tar --jobs 12`.

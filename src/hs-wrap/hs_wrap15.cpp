@@ -1,10 +1,15 @@
-// hs_wrap.cpp version 1.4 - Harrington Sets wrapper, streaming C++ version (same HSW2 file format as
+// hs_wrap.cpp version 1.5 - Harrington Sets wrapper, streaming C++ version (same HSW2 file format as
 // hs_wrap.py 1.2 and the in-memory C++ port: output files are byte-identical and interchangeable).
 // Runs any single-core compressor through Harrington Sets: 64 KB windows, entropy exclusion above
 // 7.99 bits/byte, k-means into at most 3 sets, run smoothing, blocks of at most B MB, one compressor copy
 // per block on separate cores (largest first), run-length map, CRC-32 of the original.
 // 1.3: the input is streamed from disk in two passes and never held in memory, so files far larger than RAM
 // (tested to 10 GB on a 16 GB machine) work; memory use is a few MB plus the compressor copies.
+// 1.5 (1 Nov 2026): safe smoothing and --raw entropy|off. Andrew Goodwin (University of Sydney) found in his review of
+// hs_zstd 1.2 that run smoothing could pass the RAW label from a short run to its neighbours and store compressible data raw,
+// and that the entropy raw rule costs size when random-looking data repeats earlier data. Smoothing is now safe; the raw
+// rule stays on by default here because skipping random windows is where slow compressors (paq8px, HCM) save most of their
+// time, and --raw off turns it off for compressors that store incompressible data raw themselves (gzip, zstd).
 // 1.4: direct decompression. When the --decomp template has neither {in} nor {out} (e.g. "gzip -d -c"),
 // each block is piped straight from the container into a decoder's standard input and its standard output is
 // read straight into memory - no temporary files. Blocks are decoded on all cores in the order the output needs
@@ -89,9 +94,10 @@ static void features(const uint8_t *c, size_t L, array<double, 7> &F, double &e)
     double space = h[32] + h[10] + h[13] + h[9];
     F = {ctl / L, alpha / L, digit / L, space / L, high / L, h[0] / L, e / 8};
 }
+static bool g_raw_rule = true;   // 1.5: --raw entropy (default) | off
 static vector<int> labels(const vector<array<double, 7>> &F, const vector<double> &E, const vector<size_t> &Ls) {
     size_t nw = F.size(); vector<int> lab(nw, 0); vector<size_t> idx;
-    for (size_t i = 0; i < nw; i++) { if (E[i] > 7.99 && Ls[i] >= 4096) lab[i] = RAW; else idx.push_back(i); }
+    for (size_t i = 0; i < nw; i++) { if (g_raw_rule && E[i] > 7.99 && Ls[i] >= 4096) lab[i] = RAW; else idx.push_back(i); }   // 1.5: --raw off skips the rule
     int K = idx.size() >= 48 ? 3 : (idx.size() >= 16 ? 2 : 1);
     if (!idx.empty()) {
         size_t m = idx.size(); auto d2 = [&](const array<double, 7> &a, const array<double, 7> &b) { double s = 0; for (int k = 0; k < 7; k++) s += (a[k] - b[k]) * (a[k] - b[k]); return s; };
@@ -116,7 +122,13 @@ static vector<int> labels(const vector<array<double, 7>> &F, const vector<double
     }
     for (int pass = 0; pass < 2; pass++) {
         size_t i = 0;
-        while (i < nw) { size_t j = i; while (j < nw && lab[j] == lab[i]) j++; if (j - i < 8 && i > 0) for (size_t q = i; q < j; q++) lab[q] = lab[i - 1]; i = j; }
+        while (i < nw) { size_t j = i; while (j < nw && lab[j] == lab[i]) j++;
+            if (j - i < 8 && i > 0) { int nl = lab[i - 1];
+                // 1.5: a compressible run is never turned into RAW (found by Andrew Goodwin in hs_zstd 1.2: a short run next to raw
+                // windows took the RAW label and the next short run copied it, so whole compressible stretches could be stored raw)
+                if (nl == RAW && lab[i] != RAW) nl = (j < nw && lab[j] != RAW) ? lab[j] : lab[i];
+                for (size_t q = i; q < j; q++) lab[q] = nl; }
+            i = j; }
     }
     return lab;
 }
@@ -358,8 +370,8 @@ static void decompress(const string &in, const string &out, const string &decomp
 int main(int argc, char **argv) {
     crc_init();
     if (argc < 4 || (strcmp(argv[1], "c") && strcmp(argv[1], "d"))) {
-        fprintf(stderr, "Harrington Sets wrapper 1.4 (streaming, direct decode), Michael Hugh Harrington, MIT License\n"
-                        "  hs_wrap c IN OUT --comp \"COMPRESSOR {in} {out}\" [--jobs N] [--block-mb B]\n"
+        fprintf(stderr, "Harrington Sets wrapper 1.5 (streaming, direct decode, safe smoothing), Michael Hugh Harrington, MIT License\n"
+                        "  hs_wrap c IN OUT --comp \"COMPRESSOR {in} {out}\" [--jobs N] [--block-mb B] [--raw entropy|off]\n"
                         "  hs_wrap d IN OUT --decomp \"DECOMPRESSOR {in} {out}\" [--jobs N]\n"
                         "  hs_wrap d IN OUT --decomp \"DECOMPRESSOR\" [--jobs N]   (no {in}/{out}: direct, stdin->stdout, no temp files; --hold N caps decoded blocks in memory)\n");
         return 2;
@@ -368,7 +380,7 @@ int main(int argc, char **argv) {
     for (int i = 4; i + 1 < argc; i += 2) {
         string k = argv[i];
         if (k == "--comp") comp = argv[i + 1]; else if (k == "--decomp") decomp = argv[i + 1];
-        else if (k == "--jobs") jobs = atoi(argv[i + 1]); else if (k == "--hold") g_hold = atol(argv[i + 1]); else if (k == "--block-mb") bmb = atol(argv[i + 1]);
+        else if (k == "--jobs") jobs = atoi(argv[i + 1]); else if (k == "--hold") g_hold = atol(argv[i + 1]); else if (k == "--raw") g_raw_rule = string(argv[i + 1]) != "off"; else if (k == "--block-mb") bmb = atol(argv[i + 1]);
         else { fprintf(stderr, "unknown option %s\n", k.c_str()); return 2; }
     }
     bool c = argv[1][0] == 'c';

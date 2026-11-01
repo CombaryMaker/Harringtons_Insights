@@ -1,4 +1,4 @@
-// hs_zstd.cpp (version 1.4-test: 1.3 + --merge and --autok, both off by default) - Harrington Sets + zstd, one program (zstd built in, no external tools, no temporary files).
+// hs_zstd.cpp (version 1.3; includes the experimental --merge and --autok switches, both off by default) - Harrington Sets + zstd, one program (zstd built in, no external tools, no temporary files).
 // Original method (Harrington Sets) by Michael Hugh Harrington, 2026. MIT License (full text at end of file).
 // zstd (Meta, BSD licence) is linked in unchanged; every block inside is a standard zstd frame.
 //
@@ -345,7 +345,7 @@ static void decompress(const string &in, const string &out, int jobs, bool flush
 int main(int argc, char **argv) {
     crc_init();
     if (argc < 4 || (strcmp(argv[1], "c") && strcmp(argv[1], "d"))) {
-        fprintf(stderr, "Harrington Sets + zstd (hs_zstd 1.4-test), Michael Hugh Harrington, MIT License; zstd %s built in\n"
+        fprintf(stderr, "Harrington Sets + zstd (hs_zstd 1.3), Michael Hugh Harrington, MIT License; zstd %s built in\n"
                         "  hs_zstd c IN OUT [--level L] [--jobs N] [--block-mb B] [--sets 0-3] [--raw entropy|test|off] [--smooth 1.2|safe] [--merge T] [--autok S]\n"
                         "  hs_zstd d IN OUT [--jobs N] [--flush]\n", ZSTD_versionString());
         return 2;

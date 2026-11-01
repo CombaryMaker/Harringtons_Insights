@@ -7,6 +7,7 @@ Same method as hs_wrap.py, with two changes for record streams: windows are abou
 end, and a marker line is placed before every window in each block, so each window's output can be cut out of
 the tool's output and put back in original order. The tool must copy marker lines through unchanged.
 
+Safe run smoothing added 1 Nov 2026 (fix from Andrew Goodwin's review).
 Usage: hs_lines.py IN OUT --tool "jq -c -f filter.jq" [--jobs N] [--block-mb B] [--mode sets|blocks]
        [--marker '{"__hsw":%d}']
 """
@@ -49,7 +50,11 @@ def labels(data, win):
         while i < nw:
             j = i
             while j < nw and lab[j] == lab[i]: j += 1
-            if j - i < 8 and i > 0: lab[i:j] = lab[i - 1]
+            if j - i < 8 and i > 0:
+                nl = lab[i - 1]
+                # safe smoothing (Andrew Goodwin, 1 Nov 2026): a compressible run is never relabelled RAW
+                if nl == RAW and lab[i] != RAW: nl = lab[j] if (j < nw and lab[j] != RAW) else lab[i]
+                lab[i:j] = nl
             i = j
     return lab
 def main():

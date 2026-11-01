@@ -1,5 +1,8 @@
 hs_zstd - Harrington Sets + zstd
 hs_zstd.cpp (1.3; --raw off and --smooth safe defaults after Andrew Goodwin's review, test pack in ablation-1.3/) compresses a file as Harrington Sets blocks of standard zstd frames and decodes every block on its own core straight into a memory-mapped output. hszcorp.cpp and pzrace.cpp are the test harnesses; results-*.txt are the raw desktop results. Build: zstd lib objects + g++ -O2 -std=c++17 -pthread hs_zstd.cpp libzstd.a -o hs_zstd. Full write-up: docs/forum/hs_zstd.txt.
+Examples: hs_zstd c big.tar big.hsz --jobs 12 --block-mb 16 (1.3 defaults) | --sets 0 (plain-blocks control) |
+--raw entropy --smooth 1.2 (1.2 behaviour) | hs_zstd d big.hsz big.tar --jobs 12 --flush. The ablation-1.3 and
+race-4gb-2026-11-01 folders hold the test packs; both findings behind 1.3 are Andrew Goodwin's (University of Sydney).
 
 MIT License. Copyright (c) 2026 Michael Hugh Harrington. Full text at the end of this file.
 

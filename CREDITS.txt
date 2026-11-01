@@ -21,3 +21,9 @@ Michael Hugh Harrington's own contributions are the additions built on these eng
 driving stock tools, the ternary pointer, word-position and line-position contexts, match recovery and the
 other changes listed in the book), the Harrington Exchange, Combary, HaBiTS, the header methods, and
 Harrington Sets. They are released under the MIT License and offered free for use in the original tools.
+
+Andrew Goodwin (University of Sydney) reviewed the work in October and November 2026. His review of hs_zstd 1.2
+supplied the test switches and the two findings behind hs_zstd 1.3, hs_wrap 1.5 and HCM v3.6.1: the entropy raw rule
+costs size when random-looking data repeats earlier data, and the run smoothing could spread the raw label over
+compressible data. Both fixes and the plain-block-splitting control (--sets 0) that now anchors every Harrington Sets
+comparison are his. Earlier, his synthetic test set led to the HCM v3.4 and xz-hi ambiguous-file fixes.

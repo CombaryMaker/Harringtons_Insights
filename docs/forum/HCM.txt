@@ -1,4 +1,4 @@
-HCM v3.6 (HARRINGTON COMPRESSION METHOD)
+HCM v3.6.1 (HARRINGTON COMPRESSION METHOD)
 
 HCM is a single-file context-mixing compressor in the lpaq family with automatic text, record and 16-bit
 numeric contexts, a fast and a max mode, and multi-core modes (equal blocks or Harrington Sets). Every file
@@ -55,11 +55,16 @@ Wins and losses per file, HCM max against the best stock tool (bytes)
 
 Build: clang++ -O2 -ffp-contract=off -pthread -o hcm hcm.cpp    Use: hcm c|x|p|q|s|t IN OUT, hcm d IN OUT
 
+VERSION 3.6.1 (1 Nov 2026): safe run smoothing in sets mode. Andrew Goodwin (University of Sydney) found, reviewing the
+Harrington Sets zstd build, that a short run next to raw windows could take the RAW label and the next short run copy it,
+so compressible data could be stored raw. A compressible run is now never relabelled RAW. Decoder and format unchanged;
+Silesia output identical (samba 3,406,084 bytes before and after).
+
 MIT License. Copyright (c) 2026 Michael Hugh Harrington.
 
-CODE: hcm.cpp v3.6, in full
+CODE: hcm.cpp v3.6.1, in full
 
-// HCM -- Harrington Compression Method, version 3.6
+// HCM -- Harrington Compression Method, version 3.6.1
 // Copyright (c) 2026 Michael Harrington. MIT License (full text at the end
 // of this file).
 //
@@ -80,6 +85,9 @@ CODE: hcm.cpp v3.6, in full
 // refines the result, and codes the bit with a 32-bit arithmetic coder.
 // The decoder runs the identical model, so the file needs nothing else.
 //
+// v3.6.1 (1 Nov 2026): safe run smoothing in sets mode. Andrew Goodwin (University of Sydney) found, reviewing the
+// Harrington Sets zstd build, that a short run next to raw windows took the RAW label and the next short run copied it,
+// so compressible data could be stored raw; a compressible run is now never relabelled RAW. Decoder unchanged.
 // v3.6 (29 Oct 2026): sets mode (commands s = fast, t = max), Michael Harrington's exclusion idea:
 // 64 KB windows that are random/already compressed are excluded to a raw set; the rest are grouped
 // into up to 3 sets by byte statistics; each set gets its own model, in parallel; a run-length map
@@ -1736,7 +1744,10 @@ static int compress_sets(const uint8_t *data, size_t n, int mode, size_t B, uint
             size_t i = 0;
             while (i < nw) {
                 size_t j = i; while (j < nw && lab[j] == lab[i]) j++;
-                if ((long)(j - i) < MINRUN && i > 0) for (size_t k = i; k < j; k++) lab[k] = lab[i - 1];
+                if ((long)(j - i) < MINRUN && i > 0) { int nl = lab[i - 1];
+                    // v3.6.1 safe smoothing (Andrew Goodwin, 1 Nov 2026): a compressible run is never relabelled RAW
+                    if (nl == RAW && lab[i] != RAW) nl = (j < nw && lab[j] != RAW) ? lab[j] : lab[i];
+                    for (size_t k = i; k < j; k++) lab[k] = (uint8_t)nl; }
                 i = j;
             }
         }
@@ -1959,7 +1970,7 @@ static int run(int argc, pchar **argv, const pchar *self) {
         return do_compress(argv[2], argv[3], is_word(argv[1], 'x') ? v3::MODE_MAX : v3::MODE_FAST);
     }
     int mode = self && name_has_max(self) ? v3::MODE_MAX : v3::MODE_FAST;
-    printf("HCM v3.6  (Harrington Compression Method)  -  %s mode\n", mode == v3::MODE_MAX ? "max" : "fast");
+    printf("HCM v3.6.1  (Harrington Compression Method)  -  %s mode\n", mode == v3::MODE_MAX ? "max" : "fast");
     printf("Copyright (c) 2026 Michael Harrington. MIT License.\n\n");
     int failures = 0;
     if (argc < 2) {
@@ -1998,6 +2009,33 @@ int main(int argc, char **argv) { return run(argc, argv, argc ? argv[0] : NULL);
 #endif
 
 /*
+MIT License
+
+Copyright (c) 2026 Michael Harrington
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+The built-in exp() and log() are ported from Arm Optimized Routines,
+Copyright (c) 1999-2022, Arm Limited, used under the MIT License with the
+same permission notice as above.
+*/
+
 MIT License
 
 Copyright (c) 2026 Michael Hugh Harrington
