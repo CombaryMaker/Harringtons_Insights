@@ -49,8 +49,10 @@ g++ -O2 -std=c++17 -pthread hs_zstd.cpp -Izstd/lib zstd/lib/libzstd.a -o hs_zstd
 ## Limits
 
 The `.hsz` container needs hs_zstd to decode (each block inside is a standard zstd frame). Decoder memory is
-larger than zstd's. Results are from one Windows desktop. Repeats farther apart than one block are lost
-(`zstd --long` handles those better).
+larger than zstd's. Results are from one Windows desktop. Every byte is always restored exactly; the cost of independent blocks is
+in size only: a block cannot refer back to data in another block, so content that repeats more than one block
+apart is compressed again rather than stored as a reference (`zstd --long` reaches further and compresses such
+files smaller).
 
 ## License
 

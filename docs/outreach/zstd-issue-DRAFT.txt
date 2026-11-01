@@ -48,7 +48,9 @@ directly into its final location in a memory-mapped output instead of through pe
 writer. If that is already known or tried, I would be glad to learn why it was not adopted.
 
 Limits: the .hsz container needs hs_zstd to reassemble (each block inside is a standard zstd frame); memory is
-higher than zstd's; all numbers come from one Windows machine; repeats farther apart than one block are lost.
+higher than zstd's; all numbers come from one Windows machine. Every byte is always restored exactly; the cost of
+independent blocks is in compression ratio only, because a block cannot refer back to data in another block, so
+content repeated more than one block apart is compressed again instead of being stored as a reference.
 
 Credit to Andrew Goodwin (University of Sydney), whose review supplied the plain-blocks control, two bug fixes and
 the fair-baseline method used here.
