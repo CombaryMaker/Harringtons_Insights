@@ -1,0 +1,390 @@
+// hs_zstd.cpp (version 1.4-test: 1.3 + --merge and --autok, both off by default) - Harrington Sets + zstd, one program (zstd built in, no external tools, no temporary files).
+// Original method (Harrington Sets) by Michael Hugh Harrington, 2026. MIT License (full text at end of file).
+// zstd (Meta, BSD licence) is linked in unchanged; every block inside is a standard zstd frame.
+//
+// Compress: the file is labelled in 64 KB windows (entropy exclusion above 7.99 bits/byte, k-means into at most 3
+// sets, run smoothing - the same rules as hs_wrap), each set is cut into blocks of B MB, every block is
+// compressed by zstd on its own core, raw (incompressible) windows are stored as they are.
+// Decompress: the output file is mapped into memory and every core decodes its blocks STRAIGHT INTO THEIR FINAL
+// PLACE in the output (zstd streaming output pointed at each piece of the output in turn) - no pipes, no
+// temporary files, no single writer, no extra copy. CRC-32 is computed per piece on the worker cores and joined.
+// 1.1: a block whose output is one contiguous piece is decoded in one call straight into place (no zstd stream
+// buffer, which for a 16 MB single-segment frame is about 16 MB per core); split blocks still use streaming.
+// 1.2: hardened container checks (full header size before any offset arithmetic, overflow-safe block sums,
+// impossible lengths rejected), checked seeks, zstd contexts freed on every exit path, and a no-progress guard in
+// the streaming decoder, so a damaged frame is rejected instead of looping.
+// 1.3 (format unchanged: every .hsz made by 1.2 or 1.3 decodes with either). Test options were contributed by Andrew Goodwin
+// (University of Sydney); his tests showed the 1.2 raw rule and run smoothing cost 9-31% on data that looks random but repeats,
+// so 1.3 defaults are --raw off and --smooth safe. The 1.2 behaviour is still available with --raw entropy --smooth 1.2.
+//   --sets N     N = 0..3, the most sets k-means may form (default 3, as in 1.2). --sets 0 (or 1) keeps the
+//                original file order in a single set: plain block splitting, the baseline for measuring Sets.
+//                --sets 0 also switches the raw rule off unless --raw is given.
+//   --raw MODE   which windows are stored uncompressed:
+//                  entropy  windows above 7.99 bits/byte (the 1.2 rule)
+//                  test     windows that a fast trial compression (zstd level 1, streamed through the file with a
+//                           2 MB window so earlier data counts) cannot shrink at all (by 0.1% or more)
+//                  off      none (default in 1.3); zstd stores incompressible data raw inside its frames anyway
+//   --smooth M   run smoothing: safe (default in 1.3) never turns a compressible run into raw windows; 1.2 = the old rule
+//                windows (see labels()).
+//   --flush      decompress only: force the output to disk before the clock stops, so timings include writing
+//                it out rather than only filling memory.
+// Usage: hs_zstd c IN OUT [--level L] [--jobs N] [--block-mb B] [--sets N] [--raw entropy|test|off] [--smooth 1.2|safe]
+//        hs_zstd d IN OUT [--jobs N] [--flush]
+// Build: zstd lib objects + g++ -O2 -std=c++17 -pthread hs_zstd.cpp libzstd.a -o hs_zstd
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cstdint>
+#include <cmath>
+#include <string>
+#include <vector>
+#include <array>
+#include <map>
+#include <set>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <atomic>
+#include <chrono>
+#include <algorithm>
+#include <stdexcept>
+#include <filesystem>
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#else
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <unistd.h>
+#endif
+#include "zstd.h"
+namespace fs = std::filesystem;
+using namespace std;
+#ifdef _WIN32
+#define FSEEK _fseeki64
+#else
+#define FSEEK fseeko
+#endif
+static const size_t W = 65536; static const int RAW = 255;
+enum RawMode { RAW_ENTROPY, RAW_TEST, RAW_OFF };   // 1.3
+
+// ---- CRC-32 (zlib polynomial), slicing by 8 ----
+static uint32_t T8[8][256];
+static void crc_init() {
+    for (uint32_t i = 0; i < 256; i++) { uint32_t c = i; for (int k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320u ^ (c >> 1) : c >> 1; T8[0][i] = c; }
+    for (int t = 1; t < 8; t++) for (int i = 0; i < 256; i++) T8[t][i] = (T8[t - 1][i] >> 8) ^ T8[0][T8[t - 1][i] & 255];
+}
+static uint32_t crc_upd(uint32_t c, const uint8_t *p, size_t n) {   // c = running value (start 0)
+    c = ~c;
+    while (n >= 8) {
+        uint32_t a = c ^ (p[0] | p[1] << 8 | p[2] << 16 | (uint32_t)p[3] << 24), b = p[4] | p[5] << 8 | p[6] << 16 | (uint32_t)p[7] << 24;
+        c = T8[7][a & 255] ^ T8[6][(a >> 8) & 255] ^ T8[5][(a >> 16) & 255] ^ T8[4][a >> 24] ^ T8[3][b & 255] ^ T8[2][(b >> 8) & 255] ^ T8[1][(b >> 16) & 255] ^ T8[0][b >> 24];
+        p += 8; n -= 8;
+    }
+    while (n--) c = T8[0][(c ^ *p++) & 255] ^ (c >> 8);
+    return ~c;
+}
+
+// ---- small file helpers ----
+struct F { FILE *f = nullptr; F(const string &p, const char *m) { f = fopen(p.c_str(), m); if (!f) throw runtime_error("cannot open " + p); setvbuf(f, nullptr, _IOFBF, 1 << 20); } ~F() { if (f) fclose(f); } };
+static void wr(FILE *f, const void *p, size_t n) { if (n && fwrite(p, 1, n, f) != n) throw runtime_error("write failed (disk full?)"); }
+static void rd(FILE *f, void *p, size_t n) { if (n && fread(p, 1, n, f) != n) throw runtime_error("truncated or damaged file"); }
+template <class T> static void put(FILE *f, T v) { wr(f, &v, sizeof v); }
+template <class T> static T get(FILE *f) { T v; rd(f, &v, sizeof v); return v; }
+static uint64_t fsize(const string &p) { error_code ec; auto s = fs::file_size(p, ec); if (ec) throw runtime_error("missing file " + p); return s; }
+
+// ---- labelling (same rules as hs_wrap.py) ----
+static void features(const uint8_t *c, size_t L, array<double, 7> &F, double &e) {
+    double h[256] = {0}; for (size_t i = 0; i < L; i++) h[c[i]]++;
+    e = 0; for (int i = 0; i < 256; i++) if (h[i] > 0) { double p = h[i] / L; e -= p * log2(p); }
+    double alpha = 0, digit = 0, high = 0, ctl = 0;
+    for (int i = 65; i < 91; i++) alpha += h[i]; for (int i = 97; i < 123; i++) alpha += h[i];
+    for (int i = 48; i < 58; i++) digit += h[i]; for (int i = 128; i < 256; i++) high += h[i];
+    for (int i = 0; i < 32; i++) ctl += h[i]; ctl += h[127] - h[10] - h[13] - h[9];
+    double space = h[32] + h[10] + h[13] + h[9];
+    F = {ctl / L, alpha / L, digit / L, space / L, high / L, h[0] / L, e / 8};
+}
+// 1.3: the raw decision is made by the caller (rawflag), and maxK caps the number of sets (0 or 1 = no grouping)
+// 1.4 (Andrew Goodwin's two suggestions, both off by default so results stay as in 1.3):
+//   mergeT > 0 : after k-means, clusters whose centres lie closer than mergeT (Euclidean distance in the 7 features,
+//                each 0..1) are merged, so near-identical data is not split across sets by chance
+//   autoK > 0  : the number of sets is chosen by how much clustering separates the windows: K grows from 1 while
+//                each extra set removes at least autoK (a share, e.g. 0.15) of the remaining within-set scatter
+static double d2f(const array<double, 7> &a, const array<double, 7> &b) { double s = 0; for (int k = 0; k < 7; k++) s += (a[k] - b[k]) * (a[k] - b[k]); return s; }
+// k-means with farthest-point seeding (as in 1.2); returns within-cluster scatter
+static double kmeans(const vector<array<double, 7>> &F, const vector<size_t> &idx, int K, vector<int> &a, vector<array<double, 7>> &C) {
+    size_t m = idx.size(); C.assign(1, F[idx[0]]);
+    for (int k = 1; k < K; k++) {
+        size_t best = 0; double bd = -1;
+        for (size_t j = 0; j < m; j++) { double d = 1e300; for (auto &c : C) d = min(d, d2f(F[idx[j]], c)); if (d > bd) { bd = d; best = j; } }
+        C.push_back(F[idx[best]]);
+    }
+    a.assign(m, 0);
+    for (int it = 0; it < 20; it++) {
+        for (size_t j = 0; j < m; j++) { int b = 0; double bd = d2f(F[idx[j]], C[0]); for (int k = 1; k < K; k++) { double d = d2f(F[idx[j]], C[k]); if (d < bd) { bd = d; b = k; } } a[j] = b; }
+        for (int k = 0; k < K; k++) {
+            array<double, 7> s{}; size_t c = 0;
+            for (size_t j = 0; j < m; j++) if (a[j] == k) { for (int q = 0; q < 7; q++) s[q] += F[idx[j]][q]; c++; }
+            if (c) for (int q = 0; q < 7; q++) C[k][q] = s[q] / c;
+        }
+    }
+    double w = 0; for (size_t j = 0; j < m; j++) w += d2f(F[idx[j]], C[a[j]]); return w;
+}
+static vector<int> labels(const vector<array<double, 7>> &F, const vector<char> &rawflag, int maxK, bool safeSmooth, double mergeT, double autoK) {
+    size_t nw = F.size(); vector<int> lab(nw, 0); vector<size_t> idx;
+    for (size_t i = 0; i < nw; i++) { if (rawflag[i]) lab[i] = RAW; else idx.push_back(i); }
+    int K = idx.size() >= 48 ? 3 : (idx.size() >= 16 ? 2 : 1); K = min(K, max(1, maxK));
+    if (!idx.empty() && K > 1) {
+        size_t m = idx.size(); vector<int> a; vector<array<double, 7>> C;
+        if (autoK > 0) {   // 1.4: pick K by separation
+            vector<int> a1; vector<array<double, 7>> C1; double w = kmeans(F, idx, 1, a1, C1); int chosen = 1; a = a1; C = C1;
+            for (int k = 2; k <= K && w > 0; k++) { vector<int> ak; vector<array<double, 7>> Ck; double wk = kmeans(F, idx, k, ak, Ck);
+                if ((w - wk) / w >= autoK) { chosen = k; a = ak; C = Ck; w = wk; } else break; }
+            K = chosen;
+        } else kmeans(F, idx, K, a, C);
+        if (mergeT > 0 && K > 1) {   // 1.4: merge clusters with close centres
+            vector<int> map(K); for (int k = 0; k < K; k++) map[k] = k;
+            for (bool again = true; again;) { again = false;
+                for (int x = 0; x < K && !again; x++) for (int y = x + 1; y < K && !again; y++) if (map[x] == x && map[y] == y && sqrt(d2f(C[x], C[y])) < mergeT) {
+                    size_t cx = 0, cy = 0; for (size_t j = 0; j < m; j++) { if (map[a[j]] == x) cx++; else if (map[a[j]] == y) cy++; }
+                    for (int q = 0; q < 7; q++) C[x][q] = (C[x][q] * cx + C[y][q] * cy) / max<size_t>(1, cx + cy);
+                    for (int k = 0; k < K; k++) if (map[k] == y) map[k] = x; again = true; } }
+            vector<int> ren(K, -1); int nk = 0; for (int k = 0; k < K; k++) if (map[k] == k) ren[k] = nk++;
+            for (size_t j = 0; j < m; j++) a[j] = ren[map[a[j]]]; K = nk;
+        }
+        if (K > 1) {
+            vector<size_t> cnt(K, 0); for (int x : a) cnt[x]++;
+            int big = (int)(max_element(cnt.begin(), cnt.end()) - cnt.begin());
+            for (size_t j = 0; j < m; j++) lab[idx[j]] = cnt[a[j]] * W < (1u << 20) ? big : a[j];
+        }
+    }
+    for (int pass = 0; pass < 2; pass++) {
+        size_t i = 0;
+        while (i < nw) { size_t j = i; while (j < nw && lab[j] == lab[i]) j++;
+            if (j - i < 8 && i > 0) { int nl = lab[i - 1];
+                // 1.3: with --smooth safe a compressible run is never turned into RAW (in 1.2 a short run next to raw windows
+                // takes the RAW label, and the next short run copies it, so whole compressible stretches can end up raw)
+                if (safeSmooth && nl == RAW && lab[i] != RAW) nl = (j < nw && lab[j] != RAW) ? lab[j] : lab[i];
+                for (size_t q = i; q < j; q++) lab[q] = nl; }
+            i = j; }
+    }
+    return lab;
+}
+
+// zlib's crc32_combine: CRC of A+B from CRC(A), CRC(B) and len(B)
+static uint32_t gf2_times(const uint32_t *m, uint32_t v) { uint32_t s = 0; while (v) { if (v & 1) s ^= *m; v >>= 1; m++; } return s; }
+static void gf2_square(uint32_t *sq, const uint32_t *m) { for (int n = 0; n < 32; n++) sq[n] = gf2_times(m, m[n]); }
+static uint32_t crc_combine(uint32_t c1, uint32_t c2, uint64_t len2) {
+    if (!len2) return c1; uint32_t even[32], odd[32]; odd[0] = 0xEDB88320u; uint32_t row = 1; for (int n = 1; n < 32; n++) { odd[n] = row; row <<= 1; }
+    gf2_square(even, odd); gf2_square(odd, even);
+    do { gf2_square(even, odd); if (len2 & 1) c1 = gf2_times(even, c1); len2 >>= 1; if (!len2) break; gf2_square(odd, even); if (len2 & 1) c1 = gf2_times(odd, c1); len2 >>= 1; } while (len2);
+    return c1 ^ c2;
+}
+
+// ---- output file mapped into memory ----
+struct OutMap {
+    uint8_t *p = nullptr; uint64_t n = 0;
+#ifdef _WIN32
+    HANDLE f = INVALID_HANDLE_VALUE, m = nullptr;
+    OutMap(const string &path, uint64_t size) : n(size) {
+        f = CreateFileA(path.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (f == INVALID_HANDLE_VALUE) throw runtime_error("cannot create " + path);
+        if (!n) return;
+        m = CreateFileMappingA(f, nullptr, PAGE_READWRITE, (DWORD)(n >> 32), (DWORD)(n & 0xffffffffu), nullptr); if (!m) throw runtime_error("cannot map output (disk full?)");
+        p = (uint8_t *)MapViewOfFile(m, FILE_MAP_WRITE, 0, 0, (SIZE_T)n); if (!p) throw runtime_error("cannot map output view");
+    }
+    void flush() { if (p && !FlushViewOfFile(p, 0)) throw runtime_error("flush failed"); if (f != INVALID_HANDLE_VALUE && !FlushFileBuffers(f)) throw runtime_error("flush failed"); }   // 1.3
+    ~OutMap() { if (p) UnmapViewOfFile(p); if (m) CloseHandle(m); if (f != INVALID_HANDLE_VALUE) CloseHandle(f); }
+#else
+    int fd = -1;
+    OutMap(const string &path, uint64_t size) : n(size) {
+        fd = open(path.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644); if (fd < 0) throw runtime_error("cannot create " + path);
+        if (!n) return;
+        if (ftruncate(fd, (off_t)n)) throw runtime_error("cannot size output (disk full?)");
+        void *q = mmap(nullptr, n, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); if (q == MAP_FAILED) throw runtime_error("cannot map output"); p = (uint8_t *)q;
+    }
+    void flush() { if (p && msync(p, n, MS_SYNC)) throw runtime_error("flush failed"); if (fd >= 0 && fsync(fd)) throw runtime_error("flush failed"); }   // 1.3
+    ~OutMap() { if (p) munmap(p, n); if (fd >= 0) close(fd); }
+#endif
+};
+static void pread_at(FILE *f, uint64_t off, void *dst, size_t n) { if (FSEEK(f, (long long)off, SEEK_SET)) throw runtime_error("seek failed (truncated or damaged file)"); rd(f, dst, n); }
+struct CCtxPtr { ZSTD_CCtx *p = ZSTD_createCCtx(); ~CCtxPtr() { ZSTD_freeCCtx(p); } };   // freed on every exit path
+struct DCtxPtr { ZSTD_DCtx *p = ZSTD_createDCtx(); ~DCtxPtr() { ZSTD_freeDCtx(p); } };
+
+static void zcheck(size_t r) { if (ZSTD_isError(r)) throw runtime_error(string("zstd: ") + ZSTD_getErrorName(r)); }
+
+static void compress(const string &in, const string &out, int level, int jobs, long block_mb, int maxK, RawMode rawmode, bool safeSmooth, double mergeT, double autoK) {
+    uint64_t n = fsize(in), nw = (n + W - 1) / W;
+    // pass 1 (all cores): window features + CRC per range, CRCs joined; 1.3: optional trial compression per window
+    vector<array<double, 7>> Fv(nw); vector<double> E(nw); vector<size_t> Ls(nw); vector<uint32_t> trial(nw, 0);
+    int T = max(1, jobs); vector<uint32_t> rc(T, 0); vector<uint64_t> rlen(T, 0); string err; mutex mu;
+    { vector<thread> th; for (int t = 0; t < T; t++) th.emplace_back([&, t] {
+        try { uint64_t a = nw * t / T, b = nw * (t + 1) / T; F fi(in, "rb"); vector<uint8_t> buf(W); uint32_t c = 0; uint64_t L = 0;
+            CCtxPtr tcp; vector<uint8_t> tout(ZSTD_compressBound(W) + 1024); vector<uint8_t> pre;
+            if (rawmode == RAW_TEST) {   // 1.3: level-1 stream over this range; earlier data (up to 2 MB) is the history
+                zcheck(ZSTD_CCtx_setParameter(tcp.p, ZSTD_c_compressionLevel, 1)); zcheck(ZSTD_CCtx_setParameter(tcp.p, ZSTD_c_windowLog, 21));
+                uint64_t s0 = a * W, plen = min<uint64_t>(s0, 1ull << 21);
+                if (plen) { pre.resize((size_t)plen); pread_at(fi.f, s0 - plen, pre.data(), pre.size()); zcheck(ZSTD_CCtx_refPrefix(tcp.p, pre.data(), pre.size())); }
+            }
+            if (FSEEK(fi.f, (long long)(a * W), SEEK_SET)) throw runtime_error("seek failed");
+            for (uint64_t i = a; i < b; i++) { size_t k = (size_t)min<uint64_t>(W, n - i * W); rd(fi.f, buf.data(), k); features(buf.data(), k, Fv[i], E[i]); Ls[i] = k; c = crc_upd(c, buf.data(), k); L += k;
+                if (rawmode == RAW_TEST) { ZSTD_inBuffer ib{buf.data(), k, 0}; size_t produced = 0;
+                    for (;;) { ZSTD_outBuffer ob{tout.data(), tout.size(), 0}; size_t r = ZSTD_compressStream2(tcp.p, &ob, &ib, ZSTD_e_flush); zcheck(r); produced += ob.pos; if (r == 0 && ib.pos == ib.size) break; }
+                    trial[i] = (uint32_t)produced; } }
+            rc[t] = c; rlen[t] = L; } catch (exception &e) { lock_guard<mutex> g(mu); err = e.what(); } });
+      for (auto &x : th) x.join(); }
+    if (!err.empty()) throw runtime_error(err);
+    uint32_t crc = 0; for (int t = 0; t < T; t++) crc = crc_combine(crc, rc[t], rlen[t]);
+    vector<char> rawflag(nw, 0);   // 1.3: raw decision by mode
+    for (size_t i = 0; i < nw; i++) {
+        if (Ls[i] < 4096) continue;
+        if (rawmode == RAW_ENTROPY) rawflag[i] = E[i] > 7.99;
+        else if (rawmode == RAW_TEST) rawflag[i] = (double)trial[i] >= 0.999 * (double)Ls[i];
+    }
+    auto lab = labels(Fv, rawflag, maxK, safeSmooth, mergeT, autoK);
+    vector<pair<int, uint32_t>> R; for (size_t i = 0; i < nw;) { size_t j = i; while (j < nw && lab[j] == lab[i]) j++; R.push_back({lab[i], (uint32_t)(j - i)}); i = j; }
+    map<int, uint64_t> setlen; for (size_t i = 0; i < nw; i++) setlen[lab[i]] += Ls[i];
+    // blocks per set (same split as hs_wrap), and for each block the input pieces it is made of
+    struct Blk { int s; uint64_t len; vector<pair<uint64_t, uint64_t>> pieces; }; vector<Blk> B; map<int, uint64_t> per; map<int, size_t> first;
+    for (auto &kv : setlen) { int s = kv.first; if (s == RAW) continue; uint64_t L = kv.second, BB = (uint64_t)block_mb << 20, nb = max<uint64_t>(1, (L + BB - 1) / BB), p = (L + nb - 1) / nb;
+        per[s] = p; first[s] = B.size(); for (uint64_t k = 0; k < nb; k++) B.push_back({s, min(L, (k + 1) * p) - min(L, k * p), {}}); }
+    vector<pair<uint64_t, uint64_t>> rawp; map<int, uint64_t> pos;
+    for (size_t i = 0; i < nw; i++) { int s = lab[i]; uint64_t off = (uint64_t)i * W, k = Ls[i];
+        if (s == RAW) { if (!rawp.empty() && rawp.back().first + rawp.back().second == off) rawp.back().second += k; else rawp.push_back({off, k}); continue; }
+        while (k) { size_t bk = first[s] + (size_t)(pos[s] / per[s]); uint64_t room = (bk - first[s] + 1) * per[s] - pos[s], t = min(room, k); auto &pc = B[bk].pieces;
+            if (!pc.empty() && pc.back().first + pc.back().second == off) pc.back().second += t; else pc.push_back({off, t}); off += t; k -= t; pos[s] += t; } }
+    size_t nb = B.size(); vector<vector<uint8_t>> z(nb); vector<char> done(nb, 0); size_t held = 0, LIMIT = (size_t)T * 2 + 2; atomic<size_t> nx{0}; condition_variable cv;
+    F fo(out, "wb"); setvbuf(fo.f, nullptr, _IOFBF, 1 << 22);
+    wr(fo.f, "HSZ1", 4); put<uint64_t>(fo.f, n); put<uint32_t>(fo.f, crc); put<uint32_t>(fo.f, (uint32_t)R.size()); put<uint32_t>(fo.f, (uint32_t)nb);
+    for (auto &r : R) { put<uint8_t>(fo.f, (uint8_t)r.first); put<uint32_t>(fo.f, r.second); }
+    long long tablepos = (long long)(4 + 20 + 5 * R.size());
+    for (auto &b : B) { put<uint8_t>(fo.f, (uint8_t)b.s); put<uint64_t>(fo.f, b.len); put<uint64_t>(fo.f, 0); }
+    uint64_t rl = setlen.count(RAW) ? setlen[RAW] : 0; put<uint64_t>(fo.f, rl);
+    vector<thread> th; for (int t = 0; t < T; t++) th.emplace_back([&] {
+        try { F fi(in, "rb"); CCtxPtr ccp; ZSTD_CCtx *cc = ccp.p; vector<uint8_t> buf;
+            for (;;) { size_t k;
+                { unique_lock<mutex> g(mu); cv.wait(g, [&] { return held < LIMIT || !err.empty(); }); if (!err.empty()) break; k = nx++; if (k >= nb) break; held++; }
+                buf.resize(B[k].len); size_t o = 0; for (auto &pc : B[k].pieces) { pread_at(fi.f, pc.first, buf.data() + o, (size_t)pc.second); o += pc.second; }
+                vector<uint8_t> zz(ZSTD_compressBound(buf.size())); size_t r = ZSTD_compressCCtx(cc, zz.data(), zz.size(), buf.data(), buf.size(), level);
+                if (ZSTD_isError(r)) throw runtime_error(string("zstd: ") + ZSTD_getErrorName(r)); zz.resize(r);
+                lock_guard<mutex> g(mu); z[k].swap(zz); done[k] = 1; cv.notify_all(); }
+            } catch (exception &e) { lock_guard<mutex> g(mu); if (err.empty()) err = e.what(); cv.notify_all(); } });
+    try {   // writer: raw windows first, then the blocks in order as they finish
+        { F fi(in, "rb"); vector<uint8_t> b(1 << 22); for (auto &rp : rawp) { uint64_t o = rp.first, L = rp.second; while (L) { size_t t = (size_t)min<uint64_t>(L, b.size()); pread_at(fi.f, o, b.data(), t); wr(fo.f, b.data(), t); o += t; L -= t; } } }
+        for (size_t k = 0; k < nb; k++) { vector<uint8_t> zz;
+            { unique_lock<mutex> g(mu); cv.wait(g, [&] { return done[k] || !err.empty(); }); if (!done[k]) throw runtime_error(err); zz.swap(z[k]); held--; cv.notify_all(); }
+            wr(fo.f, zz.data(), zz.size()); z[k].clear(); B[k].pieces.clear(); B[k].pieces.push_back({0, zz.size()}); }
+    } catch (exception &e) { lock_guard<mutex> g(mu); if (err.empty()) err = e.what(); cv.notify_all(); }
+    for (auto &x : th) x.join(); if (!err.empty()) throw runtime_error(err);
+    FSEEK(fo.f, tablepos, SEEK_SET); for (auto &b : B) { put<uint8_t>(fo.f, (uint8_t)b.s); put<uint64_t>(fo.f, b.len); put<uint64_t>(fo.f, b.pieces[0].second); }
+    uint64_t zt = 0; for (auto &b : B) zt += b.pieces[0].second; uint64_t outsz = (uint64_t)tablepos + 17ull * nb + 8 + rl + zt;
+    size_t nsets = 0; for (auto &kv : setlen) if (kv.first != RAW) nsets++;
+    const char *rm = rawmode == RAW_ENTROPY ? "entropy" : rawmode == RAW_TEST ? "test" : "off";
+    printf("%llu -> %llu bytes; sets %zu (max %d), raw rule %s, smoothing %s, runs %zu, blocks %zu, raw %llu, zstd level %d\n", (unsigned long long)n, (unsigned long long)outsz, nsets, maxK, rm, safeSmooth ? "safe" : "1.2", R.size(), nb, (unsigned long long)rl, level);
+}
+
+static void decompress(const string &in, const string &out, int jobs, bool flush) {
+    uint64_t total = fsize(in); F fi(in, "rb"); char mg[4]; rd(fi.f, mg, 4); if (memcmp(mg, "HSZ1", 4)) throw runtime_error("not an hs_zstd file");
+    uint64_t n = get<uint64_t>(fi.f); uint32_t crc = get<uint32_t>(fi.f), nr = get<uint32_t>(fi.f), nbk = get<uint32_t>(fi.f);
+    if (32 + 5ull * nr + 17ull * nbk > total) throw runtime_error("truncated or damaged file");   // 1.2: full header size checked first
+    if (n > (1ull << 60)) throw runtime_error("damaged file (impossible length)");
+    vector<pair<int, uint32_t>> R(nr); for (auto &r : R) { r.first = get<uint8_t>(fi.f); r.second = get<uint32_t>(fi.f); }
+    struct Bk { int s; uint64_t ln, zl; }; vector<Bk> B(nbk); for (auto &b : B) { b.s = get<uint8_t>(fi.f); b.ln = get<uint64_t>(fi.f); b.zl = get<uint64_t>(fi.f); }
+    uint64_t rl = get<uint64_t>(fi.f), p = 4 + 20 + 5ull * nr + 17ull * nbk + 8; if (rl > total - p) throw runtime_error("bad raw length");
+    uint64_t rawpos = p; p += rl; uint64_t nw = (n + W - 1) / W, ztot = 0;
+    for (auto &b : B) { if (b.zl > total - p || b.ln > n || b.ln == 0) throw runtime_error("block table is damaged"); ztot += b.zl; if (ztot > total - p) throw runtime_error("wrong file length (truncated or damaged)"); }
+    if (p + ztot != total) throw runtime_error("wrong file length (truncated or damaged)");
+    size_t nb = B.size(); vector<uint64_t> zoff(nb); { uint64_t q = p; for (size_t k = 0; k < nb; k++) { zoff[k] = q; q += B[k].zl; } }
+    // pieces of the output in order: block (or raw) + offset inside it + length + where it goes
+    struct Seg { int64_t blk; uint64_t off, len, out; uint32_t crc; }; vector<Seg> seg; map<int, vector<size_t>> bl; for (size_t k = 0; k < nb; k++) bl[B[k].s].push_back(k);
+    map<int, pair<size_t, uint64_t>> cur; vector<uint64_t> firstneed(nb, UINT64_MAX); vector<vector<size_t>> segs_of(nb); uint64_t outpos = 0, rawoff = 0, wi = 0;
+    for (auto &r : R) {
+        if (r.first != RAW && r.first > 2) throw runtime_error("bad set label in the map"); if (r.second == 0 || wi + r.second > nw) throw runtime_error("the map does not match the file length");
+        uint64_t L = min<uint64_t>((uint64_t)r.second * W, n - wi * W); wi += r.second;
+        if (r.first == RAW) { if (rawoff + L > rl) throw runtime_error("bad raw length"); seg.push_back({-1, rawoff, L, outpos, 0}); rawoff += L; outpos += L; continue; }
+        auto &c = cur[r.first]; auto &lst = bl[r.first];
+        while (L) { if (c.first >= lst.size()) throw runtime_error("set data ran out"); size_t k = lst[c.first]; uint64_t t = min<uint64_t>(L, B[k].ln - c.second);
+            if (firstneed[k] == UINT64_MAX) firstneed[k] = outpos; segs_of[k].push_back(seg.size()); seg.push_back({(int64_t)k, c.second, t, outpos, 0});
+            c.second += t; L -= t; outpos += t; if (c.second == B[k].ln) { c.first++; c.second = 0; } }
+    }
+    if (wi != nw || outpos != n || rawoff != rl) throw runtime_error("the map does not match the file length");
+    for (auto &kv : cur) { auto &lst = bl[kv.first]; if (kv.second.first < lst.size()) throw runtime_error("block table does not match the map"); }
+    // tasks: every block, plus the raw pieces (one task per raw piece), in the order the output needs them
+    struct Task { int64_t blk; size_t si; uint64_t key; }; vector<Task> tasks;
+    for (size_t k = 0; k < nb; k++) tasks.push_back({(int64_t)k, 0, firstneed[k] == UINT64_MAX ? n : firstneed[k]});
+    for (size_t i = 0; i < seg.size(); i++) if (seg[i].blk < 0) tasks.push_back({-1, i, seg[i].out});
+    stable_sort(tasks.begin(), tasks.end(), [](const Task &a, const Task &b) { return a.key < b.key; });
+    OutMap om(out, n); atomic<size_t> nx{0}; mutex mu; string err;
+    vector<thread> th; for (int t = 0; t < max(1, jobs); t++) th.emplace_back([&] {
+        try { F f2(in, "rb"); DCtxPtr dcp; ZSTD_DCtx *dc = dcp.p; vector<uint8_t> zb;
+            for (size_t j; (j = nx++) < tasks.size();) {
+                { lock_guard<mutex> g(mu); if (!err.empty()) break; }
+                auto &tk = tasks[j];
+                if (tk.blk < 0) { Seg &s = seg[tk.si]; pread_at(f2.f, rawpos + s.off, om.p + s.out, (size_t)s.len); s.crc = crc_upd(0, om.p + s.out, (size_t)s.len); continue; }
+                size_t k = (size_t)tk.blk; zb.resize((size_t)B[k].zl); pread_at(f2.f, zoff[k], zb.data(), zb.size());
+                if (segs_of[k].size() == 1) {   // 1.1: block lands in one piece of the output -> decode straight into place, no stream buffer
+                    Seg &s = seg[segs_of[k][0]]; size_t r = ZSTD_decompressDCtx(dc, om.p + s.out, (size_t)s.len, zb.data(), zb.size());
+                    if (ZSTD_isError(r)) throw runtime_error(string("zstd: ") + ZSTD_getErrorName(r)); if (r != s.len) throw runtime_error("block length mismatch");
+                    s.crc = crc_upd(0, om.p + s.out, (size_t)s.len); continue; }
+                ZSTD_DCtx_reset(dc, ZSTD_reset_session_only); ZSTD_inBuffer ib{zb.data(), zb.size(), 0}; size_t ret = 1;
+                for (size_t si : segs_of[k]) { Seg &s = seg[si]; ZSTD_outBuffer ob{om.p + s.out, (size_t)s.len, 0};
+                    while (ob.pos < ob.size) { size_t ip0 = ib.pos, op0 = ob.pos; ret = ZSTD_decompressStream(dc, &ob, &ib); if (ZSTD_isError(ret)) throw runtime_error(string("zstd: ") + ZSTD_getErrorName(ret)); if (ret == 0 && ob.pos < ob.size) throw runtime_error("block decoded shorter than expected");
+                        if (ib.pos == ip0 && ob.pos == op0) throw runtime_error("damaged block (zstd made no progress: truncated or corrupt frame)"); }   // 1.2: no-progress guard
+                    s.crc = crc_upd(0, om.p + s.out, (size_t)s.len); }
+                if (ret != 0 || ib.pos != ib.size) throw runtime_error("block length mismatch");
+            }
+            } catch (exception &e) { lock_guard<mutex> g(mu); if (err.empty()) err = e.what(); } });
+    for (auto &x : th) x.join();
+    if (!err.empty()) throw runtime_error(err);
+    uint32_t c2 = 0; for (auto &s : seg) c2 = crc_combine(c2, s.crc, s.len);
+    if (c2 != crc) throw runtime_error("restored data failed the CRC-32 check");
+    if (flush) om.flush();   // 1.3: include writing the output to disk in the timing
+}
+
+int main(int argc, char **argv) {
+    crc_init();
+    if (argc < 4 || (strcmp(argv[1], "c") && strcmp(argv[1], "d"))) {
+        fprintf(stderr, "Harrington Sets + zstd (hs_zstd 1.4-test), Michael Hugh Harrington, MIT License; zstd %s built in\n"
+                        "  hs_zstd c IN OUT [--level L] [--jobs N] [--block-mb B] [--sets 0-3] [--raw entropy|test|off] [--smooth 1.2|safe] [--merge T] [--autok S]\n"
+                        "  hs_zstd d IN OUT [--jobs N] [--flush]\n", ZSTD_versionString());
+        return 2;
+    }
+    int jobs = (int)thread::hardware_concurrency(); if (jobs < 1) jobs = 2; int level = 3; long bmb = 16; int maxK = 3; int rawset = -1; bool flush = false; bool safeSmooth = true; double mergeT = 0, autoK = 0;   // 1.3 default: safe smoothing; 1.4 merge/autok off
+    for (int i = 4; i < argc; i++) { string k = argv[i];
+        if (k == "--flush") { flush = true; continue; }
+        if (i + 1 >= argc) { fprintf(stderr, "option %s needs a value\n", k.c_str()); return 2; }
+        string v = argv[++i];
+        if (k == "--jobs") jobs = atoi(v.c_str()); else if (k == "--level") level = atoi(v.c_str()); else if (k == "--block-mb") bmb = atol(v.c_str());
+        else if (k == "--merge") mergeT = atof(v.c_str()); else if (k == "--autok") autoK = atof(v.c_str());
+        else if (k == "--sets") { maxK = atoi(v.c_str()); if (maxK < 0 || maxK > 3) { fprintf(stderr, "--sets must be 0 to 3\n"); return 2; } }
+        else if (k == "--smooth") { if (v == "safe") safeSmooth = true; else if (v == "1.2") safeSmooth = false; else { fprintf(stderr, "--smooth must be 1.2 or safe\n"); return 2; } }
+        else if (k == "--raw") { if (v == "entropy") rawset = RAW_ENTROPY; else if (v == "test") rawset = RAW_TEST; else if (v == "off") rawset = RAW_OFF; else { fprintf(stderr, "--raw must be entropy, test or off\n"); return 2; } }
+        else { fprintf(stderr, "unknown option %s\n", k.c_str()); return 2; } }
+    if (bmb < 1) bmb = 16; if (jobs < 1) jobs = 1;
+    RawMode rawmode = rawset >= 0 ? (RawMode)rawset : RAW_OFF;   // 1.3 default: no raw rule (zstd stores incompressible data raw itself)
+    auto t = chrono::steady_clock::now();
+    try { if (argv[1][0] == 'c') compress(argv[2], argv[3], level, jobs, bmb, maxK, rawmode, safeSmooth, mergeT, autoK); else decompress(argv[2], argv[3], jobs, flush); }
+    catch (exception &e) { fprintf(stderr, "error: %s\n", e.what()); error_code ec; if (argv[1][0] == 'd') fs::remove(argv[3], ec); return 1; }
+    printf("%s wall time %.2f s\n", argv[1][0] == 'c' ? "compress" : "decompress", chrono::duration<double>(chrono::steady_clock::now() - t).count());
+    return 0;
+}
+
+// MIT License
+//
+// Copyright (c) 2026 Michael Hugh Harrington
+// The --sets, --raw, --smooth and --flush options (1.3) were contributed by Andrew Goodwin under the same licence.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+// documentation files (the "Software"), to deal in the Software without restriction, including without limitation
+// the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+// to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+// the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+// THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+// CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+// IN THE SOFTWARE.

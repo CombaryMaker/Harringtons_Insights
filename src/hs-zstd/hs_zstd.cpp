@@ -1,4 +1,4 @@
-// hs_zstd.cpp (version 1.3) - Harrington Sets + zstd, one program (zstd built in, no external tools, no temporary files).
+// hs_zstd.cpp (version 1.4-test: 1.3 + --merge and --autok, both off by default) - Harrington Sets + zstd, one program (zstd built in, no external tools, no temporary files).
 // Original method (Harrington Sets) by Michael Hugh Harrington, 2026. MIT License (full text at end of file).
 // zstd (Meta, BSD licence) is linked in unchanged; every block inside is a standard zstd frame.
 //
@@ -106,30 +106,58 @@ static void features(const uint8_t *c, size_t L, array<double, 7> &F, double &e)
     F = {ctl / L, alpha / L, digit / L, space / L, high / L, h[0] / L, e / 8};
 }
 // 1.3: the raw decision is made by the caller (rawflag), and maxK caps the number of sets (0 or 1 = no grouping)
-static vector<int> labels(const vector<array<double, 7>> &F, const vector<char> &rawflag, int maxK, bool safeSmooth) {
+// 1.4 (Andrew Goodwin's two suggestions, both off by default so results stay as in 1.3):
+//   mergeT > 0 : after k-means, clusters whose centres lie closer than mergeT (Euclidean distance in the 7 features,
+//                each 0..1) are merged, so near-identical data is not split across sets by chance
+//   autoK > 0  : the number of sets is chosen by how much clustering separates the windows: K grows from 1 while
+//                each extra set removes at least autoK (a share, e.g. 0.15) of the remaining within-set scatter
+static double d2f(const array<double, 7> &a, const array<double, 7> &b) { double s = 0; for (int k = 0; k < 7; k++) s += (a[k] - b[k]) * (a[k] - b[k]); return s; }
+// k-means with farthest-point seeding (as in 1.2); returns within-cluster scatter
+static double kmeans(const vector<array<double, 7>> &F, const vector<size_t> &idx, int K, vector<int> &a, vector<array<double, 7>> &C) {
+    size_t m = idx.size(); C.assign(1, F[idx[0]]);
+    for (int k = 1; k < K; k++) {
+        size_t best = 0; double bd = -1;
+        for (size_t j = 0; j < m; j++) { double d = 1e300; for (auto &c : C) d = min(d, d2f(F[idx[j]], c)); if (d > bd) { bd = d; best = j; } }
+        C.push_back(F[idx[best]]);
+    }
+    a.assign(m, 0);
+    for (int it = 0; it < 20; it++) {
+        for (size_t j = 0; j < m; j++) { int b = 0; double bd = d2f(F[idx[j]], C[0]); for (int k = 1; k < K; k++) { double d = d2f(F[idx[j]], C[k]); if (d < bd) { bd = d; b = k; } } a[j] = b; }
+        for (int k = 0; k < K; k++) {
+            array<double, 7> s{}; size_t c = 0;
+            for (size_t j = 0; j < m; j++) if (a[j] == k) { for (int q = 0; q < 7; q++) s[q] += F[idx[j]][q]; c++; }
+            if (c) for (int q = 0; q < 7; q++) C[k][q] = s[q] / c;
+        }
+    }
+    double w = 0; for (size_t j = 0; j < m; j++) w += d2f(F[idx[j]], C[a[j]]); return w;
+}
+static vector<int> labels(const vector<array<double, 7>> &F, const vector<char> &rawflag, int maxK, bool safeSmooth, double mergeT, double autoK) {
     size_t nw = F.size(); vector<int> lab(nw, 0); vector<size_t> idx;
     for (size_t i = 0; i < nw; i++) { if (rawflag[i]) lab[i] = RAW; else idx.push_back(i); }
     int K = idx.size() >= 48 ? 3 : (idx.size() >= 16 ? 2 : 1); K = min(K, max(1, maxK));
     if (!idx.empty() && K > 1) {
-        size_t m = idx.size(); auto d2 = [&](const array<double, 7> &a, const array<double, 7> &b) { double s = 0; for (int k = 0; k < 7; k++) s += (a[k] - b[k]) * (a[k] - b[k]); return s; };
-        vector<array<double, 7>> C{F[idx[0]]};
-        for (int k = 1; k < K; k++) {
-            size_t best = 0; double bd = -1;
-            for (size_t j = 0; j < m; j++) { double d = 1e300; for (auto &c : C) d = min(d, d2(F[idx[j]], c)); if (d > bd) { bd = d; best = j; } }
-            C.push_back(F[idx[best]]);
+        size_t m = idx.size(); vector<int> a; vector<array<double, 7>> C;
+        if (autoK > 0) {   // 1.4: pick K by separation
+            vector<int> a1; vector<array<double, 7>> C1; double w = kmeans(F, idx, 1, a1, C1); int chosen = 1; a = a1; C = C1;
+            for (int k = 2; k <= K && w > 0; k++) { vector<int> ak; vector<array<double, 7>> Ck; double wk = kmeans(F, idx, k, ak, Ck);
+                if ((w - wk) / w >= autoK) { chosen = k; a = ak; C = Ck; w = wk; } else break; }
+            K = chosen;
+        } else kmeans(F, idx, K, a, C);
+        if (mergeT > 0 && K > 1) {   // 1.4: merge clusters with close centres
+            vector<int> map(K); for (int k = 0; k < K; k++) map[k] = k;
+            for (bool again = true; again;) { again = false;
+                for (int x = 0; x < K && !again; x++) for (int y = x + 1; y < K && !again; y++) if (map[x] == x && map[y] == y && sqrt(d2f(C[x], C[y])) < mergeT) {
+                    size_t cx = 0, cy = 0; for (size_t j = 0; j < m; j++) { if (map[a[j]] == x) cx++; else if (map[a[j]] == y) cy++; }
+                    for (int q = 0; q < 7; q++) C[x][q] = (C[x][q] * cx + C[y][q] * cy) / max<size_t>(1, cx + cy);
+                    for (int k = 0; k < K; k++) if (map[k] == y) map[k] = x; again = true; } }
+            vector<int> ren(K, -1); int nk = 0; for (int k = 0; k < K; k++) if (map[k] == k) ren[k] = nk++;
+            for (size_t j = 0; j < m; j++) a[j] = ren[map[a[j]]]; K = nk;
         }
-        vector<int> a(m);
-        for (int it = 0; it < 20; it++) {
-            for (size_t j = 0; j < m; j++) { int b = 0; double bd = d2(F[idx[j]], C[0]); for (int k = 1; k < K; k++) { double d = d2(F[idx[j]], C[k]); if (d < bd) { bd = d; b = k; } } a[j] = b; }
-            for (int k = 0; k < K; k++) {
-                array<double, 7> s{}; size_t c = 0;
-                for (size_t j = 0; j < m; j++) if (a[j] == k) { for (int q = 0; q < 7; q++) s[q] += F[idx[j]][q]; c++; }
-                if (c) for (int q = 0; q < 7; q++) C[k][q] = s[q] / c;
-            }
+        if (K > 1) {
+            vector<size_t> cnt(K, 0); for (int x : a) cnt[x]++;
+            int big = (int)(max_element(cnt.begin(), cnt.end()) - cnt.begin());
+            for (size_t j = 0; j < m; j++) lab[idx[j]] = cnt[a[j]] * W < (1u << 20) ? big : a[j];
         }
-        vector<size_t> cnt(K, 0); for (int x : a) cnt[x]++;
-        int big = (int)(max_element(cnt.begin(), cnt.end()) - cnt.begin());
-        for (size_t j = 0; j < m; j++) lab[idx[j]] = cnt[a[j]] * W < (1u << 20) ? big : a[j];
     }
     for (int pass = 0; pass < 2; pass++) {
         size_t i = 0;
@@ -186,7 +214,7 @@ struct DCtxPtr { ZSTD_DCtx *p = ZSTD_createDCtx(); ~DCtxPtr() { ZSTD_freeDCtx(p)
 
 static void zcheck(size_t r) { if (ZSTD_isError(r)) throw runtime_error(string("zstd: ") + ZSTD_getErrorName(r)); }
 
-static void compress(const string &in, const string &out, int level, int jobs, long block_mb, int maxK, RawMode rawmode, bool safeSmooth) {
+static void compress(const string &in, const string &out, int level, int jobs, long block_mb, int maxK, RawMode rawmode, bool safeSmooth, double mergeT, double autoK) {
     uint64_t n = fsize(in), nw = (n + W - 1) / W;
     // pass 1 (all cores): window features + CRC per range, CRCs joined; 1.3: optional trial compression per window
     vector<array<double, 7>> Fv(nw); vector<double> E(nw); vector<size_t> Ls(nw); vector<uint32_t> trial(nw, 0);
@@ -214,7 +242,7 @@ static void compress(const string &in, const string &out, int level, int jobs, l
         if (rawmode == RAW_ENTROPY) rawflag[i] = E[i] > 7.99;
         else if (rawmode == RAW_TEST) rawflag[i] = (double)trial[i] >= 0.999 * (double)Ls[i];
     }
-    auto lab = labels(Fv, rawflag, maxK, safeSmooth);
+    auto lab = labels(Fv, rawflag, maxK, safeSmooth, mergeT, autoK);
     vector<pair<int, uint32_t>> R; for (size_t i = 0; i < nw;) { size_t j = i; while (j < nw && lab[j] == lab[i]) j++; R.push_back({lab[i], (uint32_t)(j - i)}); i = j; }
     map<int, uint64_t> setlen; for (size_t i = 0; i < nw; i++) setlen[lab[i]] += Ls[i];
     // blocks per set (same split as hs_wrap), and for each block the input pieces it is made of
@@ -317,17 +345,18 @@ static void decompress(const string &in, const string &out, int jobs, bool flush
 int main(int argc, char **argv) {
     crc_init();
     if (argc < 4 || (strcmp(argv[1], "c") && strcmp(argv[1], "d"))) {
-        fprintf(stderr, "Harrington Sets + zstd (hs_zstd 1.3), Michael Hugh Harrington, MIT License; zstd %s built in\n"
-                        "  hs_zstd c IN OUT [--level L] [--jobs N] [--block-mb B] [--sets 0-3] [--raw entropy|test|off] [--smooth 1.2|safe]\n"
+        fprintf(stderr, "Harrington Sets + zstd (hs_zstd 1.4-test), Michael Hugh Harrington, MIT License; zstd %s built in\n"
+                        "  hs_zstd c IN OUT [--level L] [--jobs N] [--block-mb B] [--sets 0-3] [--raw entropy|test|off] [--smooth 1.2|safe] [--merge T] [--autok S]\n"
                         "  hs_zstd d IN OUT [--jobs N] [--flush]\n", ZSTD_versionString());
         return 2;
     }
-    int jobs = (int)thread::hardware_concurrency(); if (jobs < 1) jobs = 2; int level = 3; long bmb = 16; int maxK = 3; int rawset = -1; bool flush = false; bool safeSmooth = true;   // 1.3 default: safe smoothing
+    int jobs = (int)thread::hardware_concurrency(); if (jobs < 1) jobs = 2; int level = 3; long bmb = 16; int maxK = 3; int rawset = -1; bool flush = false; bool safeSmooth = true; double mergeT = 0, autoK = 0;   // 1.3 default: safe smoothing; 1.4 merge/autok off
     for (int i = 4; i < argc; i++) { string k = argv[i];
         if (k == "--flush") { flush = true; continue; }
         if (i + 1 >= argc) { fprintf(stderr, "option %s needs a value\n", k.c_str()); return 2; }
         string v = argv[++i];
         if (k == "--jobs") jobs = atoi(v.c_str()); else if (k == "--level") level = atoi(v.c_str()); else if (k == "--block-mb") bmb = atol(v.c_str());
+        else if (k == "--merge") mergeT = atof(v.c_str()); else if (k == "--autok") autoK = atof(v.c_str());
         else if (k == "--sets") { maxK = atoi(v.c_str()); if (maxK < 0 || maxK > 3) { fprintf(stderr, "--sets must be 0 to 3\n"); return 2; } }
         else if (k == "--smooth") { if (v == "safe") safeSmooth = true; else if (v == "1.2") safeSmooth = false; else { fprintf(stderr, "--smooth must be 1.2 or safe\n"); return 2; } }
         else if (k == "--raw") { if (v == "entropy") rawset = RAW_ENTROPY; else if (v == "test") rawset = RAW_TEST; else if (v == "off") rawset = RAW_OFF; else { fprintf(stderr, "--raw must be entropy, test or off\n"); return 2; } }
@@ -335,7 +364,7 @@ int main(int argc, char **argv) {
     if (bmb < 1) bmb = 16; if (jobs < 1) jobs = 1;
     RawMode rawmode = rawset >= 0 ? (RawMode)rawset : RAW_OFF;   // 1.3 default: no raw rule (zstd stores incompressible data raw itself)
     auto t = chrono::steady_clock::now();
-    try { if (argv[1][0] == 'c') compress(argv[2], argv[3], level, jobs, bmb, maxK, rawmode, safeSmooth); else decompress(argv[2], argv[3], jobs, flush); }
+    try { if (argv[1][0] == 'c') compress(argv[2], argv[3], level, jobs, bmb, maxK, rawmode, safeSmooth, mergeT, autoK); else decompress(argv[2], argv[3], jobs, flush); }
     catch (exception &e) { fprintf(stderr, "error: %s\n", e.what()); error_code ec; if (argv[1][0] == 'd') fs::remove(argv[3], ec); return 1; }
     printf("%s wall time %.2f s\n", argv[1][0] == 'c' ? "compress" : "decompress", chrono::duration<double>(chrono::steady_clock::now() - t).count());
     return 0;
