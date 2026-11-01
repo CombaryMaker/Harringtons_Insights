@@ -1,6 +1,6 @@
 HARRINGTON SETS
 
-Harrington Sets lets many unmodified single-core compressors and other single-core programs use every core; it does not help every tool (PrusaSlicer and Cura gained nothing). A file is read in 64 KB windows, random-looking windows can be stored raw (off by default in hs_zstd 1.3, see note below), the rest are grouped by byte statistics into at most three sets, each set is cut into blocks that run on separate cores, and a small run-length map restores the original order.
+Harrington Sets lets many unmodified single-core compressors and other single-core programs use every core; it does not help every tool (PrusaSlicer and Cura gained nothing). A file is read in 64 KB windows, random-looking windows can be stored raw (off by default in hs_zstd 1.3, see note below), the rest are grouped by byte statistics into at most three sets (the byte-frequency "fingerprint" clustering of McDaniel and Heydari 2003 and Li, Wang, Stolfo and Herzog 2005, applied here to windows inside one file), each set is cut into blocks that run on separate cores, and a small run-length map restores the original order.
 
 GitHub: https://github.com/CombaryMaker/Harringtons_Insights
 This topic: https://github.com/CombaryMaker/Harringtons_Insights/tree/main/src/hs-wrap
@@ -88,6 +88,16 @@ plain block splitting on data whose type switches every 1 MB and equal within 0.
 exist as --raw and --smooth. hs_wrap 1.5 and HCM v3.6.1 carry the same safe-smoothing fix; in hs_wrap the raw rule stays on by default (it is where
 paq8px and HCM save most of their time) and --raw off turns it off for compressors that store random data raw themselves.
 Details: https://github.com/CombaryMaker/Harringtons_Insights/tree/main/src/hs-zstd/ablation-1.3
+
+PRIOR WORK (added 1 Nov 2026): the grouping step - describing data by its byte frequencies and clustering it,
+including with k-means - is established work: McDaniel and Heydari (2003), "Content based file type detection
+algorithms", HICSS 2003; Li, Wang, Stolfo and Herzog (2005), "Fileprints: identifying file types by n-gram
+analysis", IEEE IAW 2005, pp. 64-71. Andrew Goodwin (University of Sydney) pointed these out and showed the full
+byte-frequency fingerprint gives the same groups as the seven statistics used here. What is new is the use:
+grouping windows inside one file so the groups can be compressed as separate block streams on separate cores.
+NOTE on the pigz result above (1 Nov 2026): pigz cannot decode in parallel, so it is not a fair decode yardstick.
+Against rapidgzip, which decodes an ordinary .gz on 12 threads, the wrapper with gzip is slower to decode (4 GB:
+rapidgzip 2.88 s, hs_wrap + gzip 4.02 s, bgzip 3.36 s). Full table: src/gzip-fair-2026-11-01.
 
 MIT License. Copyright (c) 2026 Michael Hugh Harrington.
 

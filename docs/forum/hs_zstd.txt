@@ -80,6 +80,10 @@ Use: hs_zstd c IN OUT [--level L] [--jobs N] [--block-mb B] [--sets 0-3] [--raw 
           hs_zstd c big.tar old.hsz --raw entropy --smooth 1.2         (exactly what 1.2 wrote)
           hs_zstd d big.hsz big.tar --jobs 12 --flush                  (decode; --flush = output on disk before the clock stops)
 
+Prior work: grouping windows by byte statistics is the byte-frequency "fingerprint" technique of McDaniel and
+Heydari (2003, HICSS) and Li, Wang, Stolfo and Herzog (2005, IEEE IAW, "Fileprints"); hs_zstd applies it to
+parallel block compression.
+
 MIT License. Copyright (c) 2026 Michael Hugh Harrington.
 
 CODE: hs_zstd.cpp version 1.3, in full

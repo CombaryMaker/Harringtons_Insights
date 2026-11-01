@@ -1,7 +1,8 @@
 HARRINGTON SETS
 Multi-core for compressors that only ever had one core.
 Michael Hugh Harrington, Harrington's Insights, 29 October 2026.
-Original work by Michael Hugh Harrington. Released under the MIT License (full text at the end of this document).
+Code by Michael Hugh Harrington; the grouping step builds on McDaniel and Heydari (2003) and Li et al. (2005).
+Released under the MIT License (full text at the end of this document).
 
 WHAT IT IS
 Harrington Sets lets slow compressors that have always run on a single processor core use every core in the
@@ -16,7 +17,8 @@ HOW IT WORKS
    to a raw set that is stored as-is and never modelled. (Optional since hs_zstd 1.3 / hs_wrap 1.5 and off by default in hs_zstd:
    when the compressor already stores incompressible data raw, the rule only costs; see src/hs-zstd/ablation-1.3.)
    Smoothing fix (1 Nov 2026, from Andrew Goodwin's review): a short run is never relabelled raw, in every version.
-3. The remaining windows are grouped into up to three sets of like data (k-means on the measurements).
+3. The remaining windows are grouped into up to three sets of like data (k-means on the measurements - the
+   byte-frequency "fingerprint" clustering of McDaniel and Heydari 2003 and Li et al. 2005; see below).
    Runs shorter than 512 KB join their neighbour; sets under 1 MB fold into the largest set.
 4. Each set's windows are joined in file order into one stream with its own model. Large streams are split
    into blocks so every core stays busy, and each block runs on its own core.
@@ -24,16 +26,34 @@ HOW IT WORKS
    set two or set three (or raw). Stored as run lengths, about 5 bytes per run, it puts every window back in
    its exact place when the file is decoded.
 
-ORIGINALITY
-Harrington Sets is an original work with loose ties to earlier ideas, all of which operate differently:
-- Equal-chunk parallel blocks (pigz, pbzip2, xz -T, zstd -T, ZPAQ blocks, pcompress) cut the file blindly.
+ORIGINALITY AND PRIOR WORK
+The grouping step is established work. Describing a stretch of data by how often each byte value occurs, and
+using that "fingerprint" to tell text, executables and compressed data apart, goes back to McDaniel and Heydari
+(2003), who built byte-frequency fingerprints for known file types, and to Li, Wang, Stolfo and Herzog (2005),
+whose "fileprints" used the same idea with clustering, including k-means. Harrington Sets measures each 64 KB
+window the same way (seven summary statistics: control bytes, letters, digits, spaces, high bytes, zeros and
+entropy) and groups the windows with k-means. Andrew Goodwin (University of Sydney) found these papers while
+reviewing Sets and showed that replacing the seven statistics with the full 256-value byte-frequency fingerprint
+gives exactly the same groups and the same compressed size on the switching test files.
+What differs: those papers name a file's type, learn from files of known types, and look at whole files or
+fragments; Harrington Sets uses no labels, works on windows inside one file, and uses the groups for a
+different purpose - to give each group its own stream, cut the streams into blocks and run them on separate
+cores, with a run-length map that restores the original order. The contribution is that application: grouping
+like data inside a file for parallel block compression (and, through the wrapper, for other single-core tools),
+not the grouping technique itself.
+Other neighbouring work, which operates differently:
+- Equal-chunk parallel blocks (pigz, pbzip2, xz -T, zstd -T, pzstd, ZPAQ blocks, pcompress) cut the file blindly;
+  the --sets 0 control in hs_zstd and hs_wrap is exactly this, and is the fair baseline for what Sets add.
 - Archivers such as FreeArc, 7-Zip and RAR group whole files by name or extension.
 - OpenZL, Parquet and ORC split data into streams from a format description or schema written in advance.
 - Logzip clusters lines, but only for text logs.
-Harrington Sets parses on the spot, with no format knowledge, regroups like windows from anywhere in a
-file into shared streams, excludes incompressible data through a layered map, and decodes the streams in
-parallel inside a context-mixing compressor. To the author's knowledge no existing tool does this.
+Measured against plain block splitting, Sets are equal on Silesia and smaller on data whose kind changes at the
+megabyte scale (9% on a synthetic switching file; 244,338 vs 245,319 per million on a 3.2 GB public mixed tar).
 Tools that already decode in milliseconds gain little and are left as they are.
+
+REFERENCES
+McDaniel, M. and Heydari, M. H. (2003). Content based file type detection algorithms. Proceedings of the 36th Annual Hawaii International Conference on System Sciences (HICSS 2003), IEEE.
+Li, W.-J., Wang, K., Stolfo, S. J. and Herzog, B. (2005). Fileprints: identifying file types by n-gram analysis. Proceedings of the 6th Annual IEEE SMC Information Assurance Workshop (IAW 2005), pp. 64-71. doi:10.1109/IAW.2005.1495935.
 
 CREDITS
 Harrington Sets is the method described above. The compressor it was first applied to, HCM, is close to the

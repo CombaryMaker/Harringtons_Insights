@@ -27,3 +27,8 @@ supplied the test switches and the two findings behind hs_zstd 1.3, hs_wrap 1.5 
 costs size when random-looking data repeats earlier data, and the run smoothing could spread the raw label over
 compressible data. Both fixes and the plain-block-splitting control (--sets 0) that now anchors every Harrington Sets
 comparison are his. Earlier, his synthetic test set led to the HCM v3.4 and xz-hi ambiguous-file fixes.
+
+Harrington Sets builds on byte-frequency file-type identification: McDaniel and Heydari (2003), "Content based file
+type detection algorithms" (HICSS 2003), and Li, Wang, Stolfo and Herzog (2005), "Fileprints: identifying file types by
+n-gram analysis" (IEEE IAW 2005, pp. 64-71). Sets' grouping of 64 KB windows by byte statistics with k-means is that
+established technique; Andrew Goodwin identified these papers and showed the equivalence.

@@ -4,6 +4,10 @@ Examples: hs_zstd c big.tar big.hsz --jobs 12 --block-mb 16 (1.3 defaults) | --s
 --raw entropy --smooth 1.2 (1.2 behaviour) | hs_zstd d big.hsz big.tar --jobs 12 --flush. The ablation-1.3 and
 race-4gb-2026-11-01 folders hold the test packs; both findings behind 1.3 are Andrew Goodwin's (University of Sydney).
 
+Prior work: grouping windows by byte statistics is the byte-frequency "fingerprint" technique of McDaniel and
+Heydari (2003, HICSS) and Li, Wang, Stolfo and Herzog (2005, IEEE IAW, "Fileprints"); hs_zstd applies it to
+parallel block compression.
+
 MIT License. Copyright (c) 2026 Michael Hugh Harrington. Full text at the end of this file.
 
 RESULTS
