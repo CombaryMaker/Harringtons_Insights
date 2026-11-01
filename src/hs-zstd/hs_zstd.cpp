@@ -1,4 +1,4 @@
-// hs_zstd.cpp (version 1.2) - Harrington Sets + zstd, one program (zstd built in, no external tools, no temporary files).
+// hs_zstd.cpp (version 1.3) - Harrington Sets + zstd, one program (zstd built in, no external tools, no temporary files).
 // Original method (Harrington Sets) by Michael Hugh Harrington, 2026. MIT License (full text at end of file).
 // zstd (Meta, BSD licence) is linked in unchanged; every block inside is a standard zstd frame.
 //
@@ -13,7 +13,23 @@
 // 1.2: hardened container checks (full header size before any offset arithmetic, overflow-safe block sums,
 // impossible lengths rejected), checked seeks, zstd contexts freed on every exit path, and a no-progress guard in
 // the streaming decoder, so a damaged frame is rejected instead of looping.
-// Usage: hs_zstd c IN OUT [--level L] [--jobs N] [--block-mb B]      hs_zstd d IN OUT [--jobs N]
+// 1.3 (format unchanged: every .hsz made by 1.2 or 1.3 decodes with either). Test options were contributed by Andrew Goodwin
+// (University of Sydney); his tests showed the 1.2 raw rule and run smoothing cost 9-31% on data that looks random but repeats,
+// so 1.3 defaults are --raw off and --smooth safe. The 1.2 behaviour is still available with --raw entropy --smooth 1.2.
+//   --sets N     N = 0..3, the most sets k-means may form (default 3, as in 1.2). --sets 0 (or 1) keeps the
+//                original file order in a single set: plain block splitting, the baseline for measuring Sets.
+//                --sets 0 also switches the raw rule off unless --raw is given.
+//   --raw MODE   which windows are stored uncompressed:
+//                  entropy  windows above 7.99 bits/byte (the 1.2 rule)
+//                  test     windows that a fast trial compression (zstd level 1, streamed through the file with a
+//                           2 MB window so earlier data counts) cannot shrink at all (by 0.1% or more)
+//                  off      none (default in 1.3); zstd stores incompressible data raw inside its frames anyway
+//   --smooth M   run smoothing: safe (default in 1.3) never turns a compressible run into raw windows; 1.2 = the old rule
+//                windows (see labels()).
+//   --flush      decompress only: force the output to disk before the clock stops, so timings include writing
+//                it out rather than only filling memory.
+// Usage: hs_zstd c IN OUT [--level L] [--jobs N] [--block-mb B] [--sets N] [--raw entropy|test|off] [--smooth 1.2|safe]
+//        hs_zstd d IN OUT [--jobs N] [--flush]
 // Build: zstd lib objects + g++ -O2 -std=c++17 -pthread hs_zstd.cpp libzstd.a -o hs_zstd
 #include <cstdio>
 #include <cstdlib>
@@ -51,6 +67,7 @@ using namespace std;
 #define FSEEK fseeko
 #endif
 static const size_t W = 65536; static const int RAW = 255;
+enum RawMode { RAW_ENTROPY, RAW_TEST, RAW_OFF };   // 1.3
 
 // ---- CRC-32 (zlib polynomial), slicing by 8 ----
 static uint32_t T8[8][256];
@@ -75,7 +92,6 @@ static void wr(FILE *f, const void *p, size_t n) { if (n && fwrite(p, 1, n, f) !
 static void rd(FILE *f, void *p, size_t n) { if (n && fread(p, 1, n, f) != n) throw runtime_error("truncated or damaged file"); }
 template <class T> static void put(FILE *f, T v) { wr(f, &v, sizeof v); }
 template <class T> static T get(FILE *f) { T v; rd(f, &v, sizeof v); return v; }
-static void copy_n(FILE *from, FILE *to, uint64_t n) { vector<uint8_t> b(1 << 20); while (n) { size_t k = (size_t)min<uint64_t>(n, b.size()); rd(from, b.data(), k); wr(to, b.data(), k); n -= k; } }
 static uint64_t fsize(const string &p) { error_code ec; auto s = fs::file_size(p, ec); if (ec) throw runtime_error("missing file " + p); return s; }
 
 // ---- labelling (same rules as hs_wrap.py) ----
@@ -89,11 +105,12 @@ static void features(const uint8_t *c, size_t L, array<double, 7> &F, double &e)
     double space = h[32] + h[10] + h[13] + h[9];
     F = {ctl / L, alpha / L, digit / L, space / L, high / L, h[0] / L, e / 8};
 }
-static vector<int> labels(const vector<array<double, 7>> &F, const vector<double> &E, const vector<size_t> &Ls) {
+// 1.3: the raw decision is made by the caller (rawflag), and maxK caps the number of sets (0 or 1 = no grouping)
+static vector<int> labels(const vector<array<double, 7>> &F, const vector<char> &rawflag, int maxK, bool safeSmooth) {
     size_t nw = F.size(); vector<int> lab(nw, 0); vector<size_t> idx;
-    for (size_t i = 0; i < nw; i++) { if (E[i] > 7.99 && Ls[i] >= 4096) lab[i] = RAW; else idx.push_back(i); }
-    int K = idx.size() >= 48 ? 3 : (idx.size() >= 16 ? 2 : 1);
-    if (!idx.empty()) {
+    for (size_t i = 0; i < nw; i++) { if (rawflag[i]) lab[i] = RAW; else idx.push_back(i); }
+    int K = idx.size() >= 48 ? 3 : (idx.size() >= 16 ? 2 : 1); K = min(K, max(1, maxK));
+    if (!idx.empty() && K > 1) {
         size_t m = idx.size(); auto d2 = [&](const array<double, 7> &a, const array<double, 7> &b) { double s = 0; for (int k = 0; k < 7; k++) s += (a[k] - b[k]) * (a[k] - b[k]); return s; };
         vector<array<double, 7>> C{F[idx[0]]};
         for (int k = 1; k < K; k++) {
@@ -116,7 +133,13 @@ static vector<int> labels(const vector<array<double, 7>> &F, const vector<double
     }
     for (int pass = 0; pass < 2; pass++) {
         size_t i = 0;
-        while (i < nw) { size_t j = i; while (j < nw && lab[j] == lab[i]) j++; if (j - i < 8 && i > 0) for (size_t q = i; q < j; q++) lab[q] = lab[i - 1]; i = j; }
+        while (i < nw) { size_t j = i; while (j < nw && lab[j] == lab[i]) j++;
+            if (j - i < 8 && i > 0) { int nl = lab[i - 1];
+                // 1.3: with --smooth safe a compressible run is never turned into RAW (in 1.2 a short run next to raw windows
+                // takes the RAW label, and the next short run copies it, so whole compressible stretches can end up raw)
+                if (safeSmooth && nl == RAW && lab[i] != RAW) nl = (j < nw && lab[j] != RAW) ? lab[j] : lab[i];
+                for (size_t q = i; q < j; q++) lab[q] = nl; }
+            i = j; }
     }
     return lab;
 }
@@ -143,6 +166,7 @@ struct OutMap {
         m = CreateFileMappingA(f, nullptr, PAGE_READWRITE, (DWORD)(n >> 32), (DWORD)(n & 0xffffffffu), nullptr); if (!m) throw runtime_error("cannot map output (disk full?)");
         p = (uint8_t *)MapViewOfFile(m, FILE_MAP_WRITE, 0, 0, (SIZE_T)n); if (!p) throw runtime_error("cannot map output view");
     }
+    void flush() { if (p && !FlushViewOfFile(p, 0)) throw runtime_error("flush failed"); if (f != INVALID_HANDLE_VALUE && !FlushFileBuffers(f)) throw runtime_error("flush failed"); }   // 1.3
     ~OutMap() { if (p) UnmapViewOfFile(p); if (m) CloseHandle(m); if (f != INVALID_HANDLE_VALUE) CloseHandle(f); }
 #else
     int fd = -1;
@@ -152,6 +176,7 @@ struct OutMap {
         if (ftruncate(fd, (off_t)n)) throw runtime_error("cannot size output (disk full?)");
         void *q = mmap(nullptr, n, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); if (q == MAP_FAILED) throw runtime_error("cannot map output"); p = (uint8_t *)q;
     }
+    void flush() { if (p && msync(p, n, MS_SYNC)) throw runtime_error("flush failed"); if (fd >= 0 && fsync(fd)) throw runtime_error("flush failed"); }   // 1.3
     ~OutMap() { if (p) munmap(p, n); if (fd >= 0) close(fd); }
 #endif
 };
@@ -159,19 +184,37 @@ static void pread_at(FILE *f, uint64_t off, void *dst, size_t n) { if (FSEEK(f, 
 struct CCtxPtr { ZSTD_CCtx *p = ZSTD_createCCtx(); ~CCtxPtr() { ZSTD_freeCCtx(p); } };   // freed on every exit path
 struct DCtxPtr { ZSTD_DCtx *p = ZSTD_createDCtx(); ~DCtxPtr() { ZSTD_freeDCtx(p); } };
 
-static void compress(const string &in, const string &out, int level, int jobs, long block_mb) {
+static void zcheck(size_t r) { if (ZSTD_isError(r)) throw runtime_error(string("zstd: ") + ZSTD_getErrorName(r)); }
+
+static void compress(const string &in, const string &out, int level, int jobs, long block_mb, int maxK, RawMode rawmode, bool safeSmooth) {
     uint64_t n = fsize(in), nw = (n + W - 1) / W;
-    // pass 1 (all cores): window features + CRC per range, CRCs joined
-    vector<array<double, 7>> Fv(nw); vector<double> E(nw); vector<size_t> Ls(nw);
+    // pass 1 (all cores): window features + CRC per range, CRCs joined; 1.3: optional trial compression per window
+    vector<array<double, 7>> Fv(nw); vector<double> E(nw); vector<size_t> Ls(nw); vector<uint32_t> trial(nw, 0);
     int T = max(1, jobs); vector<uint32_t> rc(T, 0); vector<uint64_t> rlen(T, 0); string err; mutex mu;
     { vector<thread> th; for (int t = 0; t < T; t++) th.emplace_back([&, t] {
-        try { uint64_t a = nw * t / T, b = nw * (t + 1) / T; F fi(in, "rb"); FSEEK(fi.f, (long long)(a * W), SEEK_SET); vector<uint8_t> buf(W); uint32_t c = 0; uint64_t L = 0;
-            for (uint64_t i = a; i < b; i++) { size_t k = (size_t)min<uint64_t>(W, n - i * W); rd(fi.f, buf.data(), k); features(buf.data(), k, Fv[i], E[i]); Ls[i] = k; c = crc_upd(c, buf.data(), k); L += k; }
+        try { uint64_t a = nw * t / T, b = nw * (t + 1) / T; F fi(in, "rb"); vector<uint8_t> buf(W); uint32_t c = 0; uint64_t L = 0;
+            CCtxPtr tcp; vector<uint8_t> tout(ZSTD_compressBound(W) + 1024); vector<uint8_t> pre;
+            if (rawmode == RAW_TEST) {   // 1.3: level-1 stream over this range; earlier data (up to 2 MB) is the history
+                zcheck(ZSTD_CCtx_setParameter(tcp.p, ZSTD_c_compressionLevel, 1)); zcheck(ZSTD_CCtx_setParameter(tcp.p, ZSTD_c_windowLog, 21));
+                uint64_t s0 = a * W, plen = min<uint64_t>(s0, 1ull << 21);
+                if (plen) { pre.resize((size_t)plen); pread_at(fi.f, s0 - plen, pre.data(), pre.size()); zcheck(ZSTD_CCtx_refPrefix(tcp.p, pre.data(), pre.size())); }
+            }
+            if (FSEEK(fi.f, (long long)(a * W), SEEK_SET)) throw runtime_error("seek failed");
+            for (uint64_t i = a; i < b; i++) { size_t k = (size_t)min<uint64_t>(W, n - i * W); rd(fi.f, buf.data(), k); features(buf.data(), k, Fv[i], E[i]); Ls[i] = k; c = crc_upd(c, buf.data(), k); L += k;
+                if (rawmode == RAW_TEST) { ZSTD_inBuffer ib{buf.data(), k, 0}; size_t produced = 0;
+                    for (;;) { ZSTD_outBuffer ob{tout.data(), tout.size(), 0}; size_t r = ZSTD_compressStream2(tcp.p, &ob, &ib, ZSTD_e_flush); zcheck(r); produced += ob.pos; if (r == 0 && ib.pos == ib.size) break; }
+                    trial[i] = (uint32_t)produced; } }
             rc[t] = c; rlen[t] = L; } catch (exception &e) { lock_guard<mutex> g(mu); err = e.what(); } });
       for (auto &x : th) x.join(); }
     if (!err.empty()) throw runtime_error(err);
     uint32_t crc = 0; for (int t = 0; t < T; t++) crc = crc_combine(crc, rc[t], rlen[t]);
-    auto lab = labels(Fv, E, Ls);
+    vector<char> rawflag(nw, 0);   // 1.3: raw decision by mode
+    for (size_t i = 0; i < nw; i++) {
+        if (Ls[i] < 4096) continue;
+        if (rawmode == RAW_ENTROPY) rawflag[i] = E[i] > 7.99;
+        else if (rawmode == RAW_TEST) rawflag[i] = (double)trial[i] >= 0.999 * (double)Ls[i];
+    }
+    auto lab = labels(Fv, rawflag, maxK, safeSmooth);
     vector<pair<int, uint32_t>> R; for (size_t i = 0; i < nw;) { size_t j = i; while (j < nw && lab[j] == lab[i]) j++; R.push_back({lab[i], (uint32_t)(j - i)}); i = j; }
     map<int, uint64_t> setlen; for (size_t i = 0; i < nw; i++) setlen[lab[i]] += Ls[i];
     // blocks per set (same split as hs_wrap), and for each block the input pieces it is made of
@@ -203,15 +246,17 @@ static void compress(const string &in, const string &out, int level, int jobs, l
         { F fi(in, "rb"); vector<uint8_t> b(1 << 22); for (auto &rp : rawp) { uint64_t o = rp.first, L = rp.second; while (L) { size_t t = (size_t)min<uint64_t>(L, b.size()); pread_at(fi.f, o, b.data(), t); wr(fo.f, b.data(), t); o += t; L -= t; } } }
         for (size_t k = 0; k < nb; k++) { vector<uint8_t> zz;
             { unique_lock<mutex> g(mu); cv.wait(g, [&] { return done[k] || !err.empty(); }); if (!done[k]) throw runtime_error(err); zz.swap(z[k]); held--; cv.notify_all(); }
-            B[k].len = B[k].len; wr(fo.f, zz.data(), zz.size()); z[k].clear(); B[k].pieces.clear(); B[k].pieces.push_back({0, zz.size()}); }
+            wr(fo.f, zz.data(), zz.size()); z[k].clear(); B[k].pieces.clear(); B[k].pieces.push_back({0, zz.size()}); }
     } catch (exception &e) { lock_guard<mutex> g(mu); if (err.empty()) err = e.what(); cv.notify_all(); }
     for (auto &x : th) x.join(); if (!err.empty()) throw runtime_error(err);
     FSEEK(fo.f, tablepos, SEEK_SET); for (auto &b : B) { put<uint8_t>(fo.f, (uint8_t)b.s); put<uint64_t>(fo.f, b.len); put<uint64_t>(fo.f, b.pieces[0].second); }
     uint64_t zt = 0; for (auto &b : B) zt += b.pieces[0].second; uint64_t outsz = (uint64_t)tablepos + 17ull * nb + 8 + rl + zt;
-    printf("%llu -> %llu bytes; runs %zu, blocks %zu, raw %llu, zstd level %d\n", (unsigned long long)n, (unsigned long long)outsz, R.size(), nb, (unsigned long long)rl, level);
+    size_t nsets = 0; for (auto &kv : setlen) if (kv.first != RAW) nsets++;
+    const char *rm = rawmode == RAW_ENTROPY ? "entropy" : rawmode == RAW_TEST ? "test" : "off";
+    printf("%llu -> %llu bytes; sets %zu (max %d), raw rule %s, smoothing %s, runs %zu, blocks %zu, raw %llu, zstd level %d\n", (unsigned long long)n, (unsigned long long)outsz, nsets, maxK, rm, safeSmooth ? "safe" : "1.2", R.size(), nb, (unsigned long long)rl, level);
 }
 
-static void decompress(const string &in, const string &out, int jobs) {
+static void decompress(const string &in, const string &out, int jobs, bool flush) {
     uint64_t total = fsize(in); F fi(in, "rb"); char mg[4]; rd(fi.f, mg, 4); if (memcmp(mg, "HSZ1", 4)) throw runtime_error("not an hs_zstd file");
     uint64_t n = get<uint64_t>(fi.f); uint32_t crc = get<uint32_t>(fi.f), nr = get<uint32_t>(fi.f), nbk = get<uint32_t>(fi.f);
     if (32 + 5ull * nr + 17ull * nbk > total) throw runtime_error("truncated or damaged file");   // 1.2: full header size checked first
@@ -266,22 +311,31 @@ static void decompress(const string &in, const string &out, int jobs) {
     if (!err.empty()) throw runtime_error(err);
     uint32_t c2 = 0; for (auto &s : seg) c2 = crc_combine(c2, s.crc, s.len);
     if (c2 != crc) throw runtime_error("restored data failed the CRC-32 check");
+    if (flush) om.flush();   // 1.3: include writing the output to disk in the timing
 }
 
 int main(int argc, char **argv) {
     crc_init();
     if (argc < 4 || (strcmp(argv[1], "c") && strcmp(argv[1], "d"))) {
-        fprintf(stderr, "Harrington Sets + zstd (hs_zstd 1.2), Michael Hugh Harrington, MIT License; zstd %s built in\n"
-                        "  hs_zstd c IN OUT [--level L] [--jobs N] [--block-mb B]\n  hs_zstd d IN OUT [--jobs N]\n", ZSTD_versionString());
+        fprintf(stderr, "Harrington Sets + zstd (hs_zstd 1.3), Michael Hugh Harrington, MIT License; zstd %s built in\n"
+                        "  hs_zstd c IN OUT [--level L] [--jobs N] [--block-mb B] [--sets 0-3] [--raw entropy|test|off] [--smooth 1.2|safe]\n"
+                        "  hs_zstd d IN OUT [--jobs N] [--flush]\n", ZSTD_versionString());
         return 2;
     }
-    int jobs = (int)thread::hardware_concurrency(); if (jobs < 1) jobs = 2; int level = 3; long bmb = 16;
-    for (int i = 4; i + 1 < argc; i += 2) { string k = argv[i];
-        if (k == "--jobs") jobs = atoi(argv[i + 1]); else if (k == "--level") level = atoi(argv[i + 1]); else if (k == "--block-mb") bmb = atol(argv[i + 1]);
+    int jobs = (int)thread::hardware_concurrency(); if (jobs < 1) jobs = 2; int level = 3; long bmb = 16; int maxK = 3; int rawset = -1; bool flush = false; bool safeSmooth = true;   // 1.3 default: safe smoothing
+    for (int i = 4; i < argc; i++) { string k = argv[i];
+        if (k == "--flush") { flush = true; continue; }
+        if (i + 1 >= argc) { fprintf(stderr, "option %s needs a value\n", k.c_str()); return 2; }
+        string v = argv[++i];
+        if (k == "--jobs") jobs = atoi(v.c_str()); else if (k == "--level") level = atoi(v.c_str()); else if (k == "--block-mb") bmb = atol(v.c_str());
+        else if (k == "--sets") { maxK = atoi(v.c_str()); if (maxK < 0 || maxK > 3) { fprintf(stderr, "--sets must be 0 to 3\n"); return 2; } }
+        else if (k == "--smooth") { if (v == "safe") safeSmooth = true; else if (v == "1.2") safeSmooth = false; else { fprintf(stderr, "--smooth must be 1.2 or safe\n"); return 2; } }
+        else if (k == "--raw") { if (v == "entropy") rawset = RAW_ENTROPY; else if (v == "test") rawset = RAW_TEST; else if (v == "off") rawset = RAW_OFF; else { fprintf(stderr, "--raw must be entropy, test or off\n"); return 2; } }
         else { fprintf(stderr, "unknown option %s\n", k.c_str()); return 2; } }
-    if (bmb < 1) bmb = 16;
+    if (bmb < 1) bmb = 16; if (jobs < 1) jobs = 1;
+    RawMode rawmode = rawset >= 0 ? (RawMode)rawset : RAW_OFF;   // 1.3 default: no raw rule (zstd stores incompressible data raw itself)
     auto t = chrono::steady_clock::now();
-    try { if (argv[1][0] == 'c') compress(argv[2], argv[3], level, jobs, bmb); else decompress(argv[2], argv[3], jobs); }
+    try { if (argv[1][0] == 'c') compress(argv[2], argv[3], level, jobs, bmb, maxK, rawmode, safeSmooth); else decompress(argv[2], argv[3], jobs, flush); }
     catch (exception &e) { fprintf(stderr, "error: %s\n", e.what()); error_code ec; if (argv[1][0] == 'd') fs::remove(argv[3], ec); return 1; }
     printf("%s wall time %.2f s\n", argv[1][0] == 'c' ? "compress" : "decompress", chrono::duration<double>(chrono::steady_clock::now() - t).count());
     return 0;
@@ -290,6 +344,7 @@ int main(int argc, char **argv) {
 // MIT License
 //
 // Copyright (c) 2026 Michael Hugh Harrington
+// The --sets, --raw, --smooth and --flush options (1.3) were contributed by Andrew Goodwin under the same licence.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 // documentation files (the "Software"), to deal in the Software without restriction, including without limitation

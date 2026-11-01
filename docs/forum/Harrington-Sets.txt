@@ -1,6 +1,6 @@
 HARRINGTON SETS
 
-Harrington Sets lets many unmodified single-core compressors and other single-core programs use every core; it does not help every tool (PrusaSlicer and Cura gained nothing). A file is read in 64 KB windows, random-looking windows are stored raw, the rest are grouped by byte statistics into at most three sets, each set is cut into blocks that run on separate cores, and a small run-length map restores the original order.
+Harrington Sets lets many unmodified single-core compressors and other single-core programs use every core; it does not help every tool (PrusaSlicer and Cura gained nothing). A file is read in 64 KB windows, random-looking windows can be stored raw (off by default in hs_zstd 1.3, see note below), the rest are grouped by byte statistics into at most three sets, each set is cut into blocks that run on separate cores, and a small run-length map restores the original order.
 
 GitHub: https://github.com/CombaryMaker/Harringtons_Insights
 This topic: https://github.com/CombaryMaker/Harringtons_Insights/tree/main/src/hs-wrap
@@ -77,6 +77,14 @@ Other single-core tools through the wrapper (2-core cloud machine; output identi
 
 Use: hs_wrap c IN OUT --comp "COMPRESSOR {in} {out}" [--jobs N] [--block-mb B]
      hs_wrap d IN OUT --decomp "DECOMPRESSOR {in} {out}" [--jobs N]   (a template without {out} uses stdout)
+
+NOTE (1 Nov 2026): the raw rule. The 7.99 bits/byte exclusion stores random-looking windows uncompressed. Andrew
+Goodwin's tests of hs_zstd showed this costs 9-31% whenever random-looking data repeats earlier data, and that
+the run smoothing could spread the raw label onto compressible windows. hs_zstd 1.3 therefore defaults to no raw
+rule and safe smoothing (zstd stores incompressible data raw itself); with that change Sets are 9% smaller than
+plain block splitting on data whose type switches every 1 MB and equal within 0.1% on Silesia. The same switches
+exist as --raw and --smooth. hs_wrap (gzip, paq8px, HCM and the other tools) still uses the 7.99 rule for now.
+Details: https://github.com/CombaryMaker/Harringtons_Insights/tree/main/src/hs-zstd/ablation-1.3
 
 MIT License. Copyright (c) 2026 Michael Hugh Harrington.
 
