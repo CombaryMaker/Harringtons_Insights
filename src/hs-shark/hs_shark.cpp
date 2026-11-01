@@ -10,6 +10,8 @@
 // once (separate processes also avoid Wireshark's global state). The outputs are merged back into original
 // packet order, and capture-wide fields are rebuilt: frame.number, frame.time_relative, frame.time_delta,
 // frame.time_delta_displayed, tcp.stream and udp.stream (renumbered in order of first appearance, as tshark does).
+// 1.2 (2026-11-01): Info column "[TCP PDU reassembled in N]" (new in tshark 4.6) is now remapped too; found on the desktop test,
+//     4,808 of 964,896 lines differed from plain tshark before this fix.
 // 1.1 (2026-10-31): --mode direct - no shard files and no output files: each tshark reads its shard from a pipe
 // (tshark -r -) fed straight from the original capture, and its output is read straight into memory for the merge.
 // --mode classic (default) is the original 1.0 behaviour, kept so the two can be measured against each other.
@@ -307,7 +309,7 @@ int main(int argc, char **argv) {
             for (int col : us_cols) { string v = unq(c[col]); if (!v.empty()) { auto k = make_pair(h.s, atoll(v.c_str())); auto it = usm.find(k); if (it == usm.end()) it = usm.emplace(k, unext++).first; c[col] = rq(to_string(it->second)); } }
             for (int col : fr_cols) { string v = unq(c[col]); if (!v.empty()) c[col] = rq(remap_frame(h.s, v)); }
             if (finfo >= 0) {   // frame numbers shown inside the Info column ("Dup ACK 452#1", "(reply in 30611)")
-                static const char *pre[] = {"Dup ACK ", "request in ", "reply in ", "response in ", "Request in ", "Reply in ", "Response in ", "retransmission of ", "Retransmission of ", "in frame ", "frame #"};
+                static const char *pre[] = {"Dup ACK ", "request in ", "reply in ", "response in ", "Request in ", "Reply in ", "Response in ", "retransmission of ", "Retransmission of ", "in frame ", "frame #", "reassembled in ", "Reassembled in "};   // 1.2: "[TCP PDU reassembled in N]" (tshark 4.6)
                 string v = c[finfo];
                 for (const char *pf : pre) { size_t L = strlen(pf), p0 = 0;
                     while ((p0 = v.find(pf, p0)) != string::npos) { size_t a = p0 + L, b = a; while (b < v.size() && isdigit((unsigned char)v[b])) b++;

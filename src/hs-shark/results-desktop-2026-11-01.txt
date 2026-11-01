@@ -1,0 +1,15 @@
+hs_shark 1.2 desktop test, 2026-11-01 (Ryzen 5 7500X3D 6c/12t, 15 GB, Windows 11, Wireshark/tshark 4.6.9, 12 jobs, 3 runs)
+Capture: big8.pcap, 903,358,584 bytes, 964,896 packets, built from public captures only (github.com/chrissanders/packets and
+github.com/automayt/ICS-pcap, 74 Ethernet captures = base.pcap 112,919,844 bytes, repeated 8x with shifted times and
+XORed last IPv4 octets; builder bigcap.cpp, archive hashes in shark_log3.txt). sha256 40E53D1B...2228A9.
+Fields: frame.number, frame.time_relative, ip.src, ip.dst, tcp.stream, Protocol, Info.
+
+  plain tshark, one core:            16.0 / 16.1 / 16.1 s   (118,382,472 bytes with CRLF, 964,896 lines)
+  hs_shark 1.2 --mode classic, 12:    7.7 /  8.2 /  8.0 s   output identical to plain (line endings normalised)   2.0x
+  hs_shark 1.2 --mode direct,  12:    5.6 /  5.6 /  5.7 s   output identical to plain                            2.9x
+
+Bug found and fixed by this test: tshark 4.6 writes "[TCP PDU reassembled in N]" in the Info column; hs_shark 1.1 (written
+against tshark 4.2) did not translate that N from shard frame numbers to original ones, so 4,808 of 964,896 lines differed.
+1.2 adds "reassembled in " to the Info rewrite list; all lines then match. Cloud 2-core results (1.31-1.75x) stand.
+Harness notes: a PowerShell redirect of tshark's stdout re-encodes it as UTF-16 - use cmd redirection and compare with line
+endings normalised; hs_shark's own status line goes to stderr, which PowerShell treats as an error under "Stop".
