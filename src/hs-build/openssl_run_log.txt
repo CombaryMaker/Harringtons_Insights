@@ -1,0 +1,28 @@
+rc=0 plain make -j2 with shim: 158.526651230 s
+hs_build: 2059 compile jobs, 0 with measured times (source-size estimate), 2 jobs; heaviest first: ssl/libssl-lib-ssl_lib.o
+error: compile phase failed (make exit 512)
+hs_build (size estimate): 1.463152455 s
+hs_build: 2059 compile jobs, 0 with measured times (source-size estimate), 2 jobs; heaviest first: ssl/libssl-lib-ssl_lib.o
+hs_build: plan 2.3 s, compile 152.8 s, link/rest 48.5 s, total 203.6 s
+hs_build (size estimate): 203.590244896 s
+size run: all 5 outputs IDENTICAL
+hs_build: 2059 compile jobs, 0 with measured times (source-size estimate), 2 jobs; heaviest first: ssl/libssl-lib-ssl_lib.o
+hs_build: plan 2.3 s, build 205.5 s, total 207.8 s
+hs_build v2 (size estimate): 207.797585476 s
+size run: all 5 outputs IDENTICAL
+hs_build: 2059 compile jobs, 0 with measured times (source-size estimate), 2 jobs; heaviest first: ssl/libssl-lib-ssl_lib.o
+hs_build: plan 2.4 s, build 201.7 s, total 204.1 s
+hs_build v3 top10% (size estimate): 204.066140737 s
+size run: all 5 outputs IDENTICAL
+plain make -j2 after make clean (no shim): 153.721531734 s
+hs_build: 2059 compile jobs, 0 with measured times (source-size estimate), 2 jobs; heaviest first: ssl/libssl-lib-ssl_lib.o
+hs_build: plan 1.9 s, build 41.6 s, total 43.5 s
+hs_build (size estimate, default target): 43.466544071 s
+hs_build: 2059 compile jobs, 0 with measured times (source-size estimate), 2 jobs; heaviest first: ssl/libssl-lib-ssl_lib.o
+hs_build: plan 2.1 s, build 143.3 s, total 145.4 s
+hs_build (size estimate, build_sw): 145.455211438 s
+size run: all 5 outputs IDENTICAL to shimmed plain
+hs_build: 2059 compile jobs, 2059 with measured times (profile), 2 jobs; heaviest first: apps/openssl-bin-speed.o
+hs_build: plan 2.0 s, build 149.0 s, total 151.0 s
+hs_build (measured profile, build_sw): 151.113257223 s
+profile run: all 5 outputs IDENTICAL to shimmed plain

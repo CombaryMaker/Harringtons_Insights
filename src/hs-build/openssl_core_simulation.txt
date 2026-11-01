@@ -1,0 +1,26 @@
+2116 compile jobs, total CPU 285 s, longest single file 2.3 s, mean 0.13 s
+cores    ideal  make order  heaviest first    gain   (idle at end: make / heaviest-first)
+    2    142.4       142.6           142.4  1.001x      0.3 s / 0.0 s
+    4     71.2        71.9            71.2  1.009x      1.1 s / 0.0 s
+    6     47.5        48.6            47.5  1.024x      1.8 s / 0.0 s
+    8     35.6        37.0            35.6  1.039x      2.0 s / 0.0 s
+   12     23.7        25.4            23.7  1.069x      2.2 s / 0.0 s
+   16     17.8        19.6            17.8  1.100x      2.2 s / 0.0 s
+
+heaviest 8 files: compile time, position in make's start order (of 2116)
+     2.3 s  # 2109  apps/openssl-bin-speed.o
+     1.8 s  # 1000  ssl/libssl-lib-ssl_lib.o
+     1.7 s  # 1926  ssl/libssl-shlib-ssl_lib.o
+     1.7 s  # 2104  apps/openssl-bin-s_client.o
+     1.5 s  #  906  providers/implementations/encode_decode/libdefault-lib-encode_key2any.o
+     1.2 s  # 2105  apps/openssl-bin-s_server.o
+     1.1 s  #  326  crypto/ec/libcrypto-lib-curve25519.o
+     1.1 s  # 1025  ssl/quic/libssl-lib-quic_impl.o
+
+same files, other start orders (compile-phase wall time):
+cores  heaviest first  make order  alphabetical  lightest first
+    2           142.4       142.6         142.6           143.1
+    4            71.2        71.9          71.5            72.3
+    8            35.6        37.0          36.0            36.8
+   12            23.7        25.4          24.1            25.1
+   16            17.8        19.6          18.2            19.3

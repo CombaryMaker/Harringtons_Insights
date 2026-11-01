@@ -1,0 +1,26 @@
+106 compile jobs, total CPU 229 s, longest single file 14.3 s, mean 2.16 s
+cores    ideal  make order  heaviest first    gain   (idle at end: make / heaviest-first)
+    2    114.5       115.2           114.6  1.006x      1.4 s / 0.1 s
+    4     57.3        58.2            57.3  1.017x      1.4 s / 0.0 s
+    6     38.2        39.0            38.3  1.019x      1.8 s / 0.2 s
+    8     28.6        29.8            28.8  1.035x      2.0 s / 0.3 s
+   12     19.1        20.5            19.2  1.062x      2.1 s / 0.3 s
+   16     14.3        16.0            14.5  1.102x      2.4 s / 0.3 s
+
+heaviest 8 files: compile time, position in make's start order (of 106)
+    14.3 s  #    4  lib/tokenize.o
+    13.8 s  #    3  lib/valueflow.o
+    11.1 s  #    5  lib/symboldatabase.o
+     6.0 s  #    2  externals/simplecpp/simplecpp.o
+     5.9 s  #   61  lib/templatesimplifier.o
+     5.8 s  #   49  lib/library.o
+     5.8 s  #   28  lib/checkother.o
+     5.7 s  #   16  lib/checkclass.o
+
+same files, other start orders (compile-phase wall time):
+cores  heaviest first  make order  alphabetical  lightest first
+    2           114.6       115.2         114.9           119.1
+    4            57.3        58.2          57.6            62.9
+    8            28.8        29.8          32.8            37.4
+   12            19.2        20.5          25.8            28.2
+   16            14.5        16.0          22.2            24.0

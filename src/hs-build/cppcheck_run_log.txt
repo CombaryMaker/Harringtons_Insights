@@ -1,0 +1,5 @@
+rc=0 cppcheck plain make -j2 (shim): 115.684318090 s
+hs_build: 106 compile jobs, 106 with measured times (profile), 2 jobs; heaviest first: lib/tokenize.o
+hs_build: plan 0.0 s, build 109.8 s, total 109.8 s
+hs_build (measured profile): 109.848190206 s
+bf1f3c532106816918a07a312021e66bf6113344fba8a9c3db3e6160e2773c69  cppcheck
