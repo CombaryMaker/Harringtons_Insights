@@ -1,2 +1,6 @@
 __pycache__/
 *.pyc
+
+# Windows build by-products
+*.pdb
+*.lib
