@@ -1,0 +1,16 @@
+4 GB race, desktop, 11/01/2026 01:39:09, jobs=12, decode rounds=5, hs_zstd with --flush, SHA-256 verified
+CPU: AMD Ryzen 5 7500X3D 6-Core Processor           , threads 12, RAM 15 GB
+
+=== mixed_4gb.tar  (3,179,306,496 bytes)  sha256 49FE431E93CE7F699680523201FF44D4D997504CDCAF76E34D1698E6169E8FF7
+hs_zstd 1.3 (Sets, raw off, safe), 16 MB       bits/M   244,338  bytes     776,824,933  comp    2.16 s (  591.3 MB)  decode med   1.75 s  all [1.86 1.75 1.81 1.72 1.68]  working set  3165.2 MB  private commit     301 MB
+plain blocks --sets 0, 16 MB                   bits/M   245,319  bytes     779,945,863  comp    2.14 s (  643.7 MB)  decode med   1.67 s  all [1.78 1.67 1.65 1.64 1.68]  working set    3148 MB  private commit   240.5 MB
+1.2 rule (--raw entropy --smooth 1.2), 16 MB   bits/M   246,163  bytes     782,627,226  comp    2.21 s (  595.9 MB)  decode med   1.72 s  all [1.79 1.70 1.72 1.69 1.75]  working set  3167.9 MB  private commit   278.5 MB
+hs_zstd 1.3 (Sets, raw off, safe), 4 MB        bits/M   247,207  bytes     785,946,871  comp    1.90 s (  193.9 MB)  decode med   1.75 s  all [1.79 1.75 1.63 1.62 1.83]  working set  3110.5 MB  private commit   128.6 MB
+plain blocks --sets 0, 4 MB                    bits/M   247,601  bytes     787,198,376  comp    1.97 s (  194.1 MB)  decode med   1.78 s  all [1.82 1.79 1.78 1.68 1.71]  working set  3080.4 MB  private commit   101.4 MB
+zstd -3, one thread                            bits/M   244,965  bytes     778,820,145  comp    7.90 s (   57.2 MB)  decode med   2.23 s  all [2.16 2.16 2.26 2.23 2.23]  working set    10.4 MB  private commit     7.1 MB
+zstd -3 -T12                                   bits/M   244,965  bytes     778,820,145  comp    2.17 s (  215.2 MB)  decode med   2.19 s  all [2.46 2.15 2.19 2.37 2.16]  working set    10.4 MB  private commit     7.1 MB
+zstd -3 --long=27 -T12                         bits/M   233,113  bytes     741,136,596  comp    3.26 s (  191.4 MB)  decode med   7.00 s  all [2.26 2.20 7.00 8.04 8.62]  working set   136.4 MB  private commit   133.3 MB
+pzstd -3 -p 12                                 bits/M   246,879  bytes     784,902,640  comp    2.83 s (  141.3 MB)  decode med   1.92 s  all [1.86 2.14 1.92 2.40 1.91]  working set   154.7 MB  private commit   160.1 MB
+
+FINISHED 11/01/2026 01:44:32
+DONE 

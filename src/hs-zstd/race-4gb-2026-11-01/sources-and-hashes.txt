@@ -1,0 +1,8 @@
+SOURCES (download time 2026-11-01 01:28:24Z)
+  linux-6.6.tar.gz  229314609 bytes  sha256 9A72C005A62F109F96EE00552502D16C4F06C248E6BABA1629506627396AC0A7  https://github.com/torvalds/linux/archive/refs/tags/v6.6.tar.gz
+tar.exe: Error exit delayed from previous errors
+  WARNING: extract reported errors for dl\linux-6.6.tar.gz
+  blender-4.2.3.zip  383613057 bytes  sha256 7F8BE9B1DC904E7689B3112659791C29CC9ED9D46CE57C4EA5B31A0621489B3A  https://download.blender.org/release/Blender4.2/blender-4.2.3-windows-x64.zip
+  pdfjs-master.zip  134827044 bytes  sha256 AF10EBD599CCF178334D408F58BEBEA2B342704BBD2F449E647A1F9CE33D28CB  https://github.com/mozilla/pdf.js/archive/refs/heads/master.zip
+  covid-19-data.zip  162480512 bytes  sha256 3D88B47E68F5249771EF10A0D36F82A61602D983FC872C65D16FC4BB2314F8F7  https://github.com/nytimes/covid-19-data/archive/refs/heads/master.zip
+mixed_4gb.tar built: 3179306496 bytes
