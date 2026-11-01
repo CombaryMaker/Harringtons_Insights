@@ -59,4 +59,4 @@ License: MIT, Copyright (c) 2026 Michael Hugh Harrington.
 
 Thank you for zstd and for your time.
 Michael Hugh Harrington
-michaelhh@gmail.com
+michael@michaelharrington.com

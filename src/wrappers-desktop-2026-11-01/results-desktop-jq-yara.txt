@@ -1,0 +1,18 @@
+jq: jq-1.7.1   yara: 4.5.2   python: Python 3.12.7
+CPU: AMD Ryzen 5 7500X3D 6-Core Processor           , threads 12, 11/01/2026 03:03:01
+2350209 800000039
+
+=== hs_jq: app.log.jsonl 800000039 bytes, 12 jobs
+pick out error records       plain 18.4 / 17.7   hs_jq equal 2.8 / 2.9 (same output: True)   guided 3.5 s (same: True)   13,321,722 output bytes
+summarize metric records     plain 33.6 / 32.8   hs_jq equal 5.4 / 5.3 (same output: True)   guided 5.7 s (same: True)   29,498,630 output bytes
+every record as a TSV row    plain 24.8 / 24.2   hs_jq equal 3.8 / 3.8 (same output: True)   guided 4.2 s (same: True)   87,667,145 output bytes
+
+=== hs_scan + YARA: test1g.bin (first 1 GiB of public Silesia 4 GB) 1073741824 bytes, 400 rules precompiled, 12 jobs
+plain yara (one file, one core): 3.5 / 3.5 s
+yara -p 12 on the same one file: 3.5 s
+hs_scan 12 jobs (incl. writing the scan units): 2.2 / 2.2 s
+match comparison (plain vs hs_scan):
+rules/strings with matches: 3, total plain match offsets 20570, differing keys 0
+
+FINISHED 11/01/2026 03:07:19
+DONE 

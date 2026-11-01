@@ -1,0 +1,17 @@
+hs_jq and hs_scan desktop test, 2026-11-01
+Machine: AMD Ryzen 5 7500X3D, 6 cores / 12 threads, NVMe, Windows 11. 12 jobs. Two timing rounds each.
+
+jq 1.7.1 on an 800,000,039-byte generated JSON-lines log (2,350,209 records):
+  filter                     jq (1 core)   hs_jq equal   hs_jq guided   speed-up   output identical
+  pick out error records     17.7 s        2.8 s         3.5 s          6.3x       yes
+  summarize metric records   32.8 s        5.3 s         5.7 s          6.2x       yes
+  every record as a TSV row  24.2 s        3.8 s         4.2 s          6.4x       yes
+Equal splitting beat Sets-guided splitting on this uniform log, as expected: grouping only helps when the
+content type changes inside the file.
+
+YARA 4.5.2 on the first 1 GiB of the public Silesia 4 GB file, 400 precompiled rules:
+  plain yara (one core)      3.5 s
+  yara -p 12 (same file)     3.5 s   (-p parallelises across files, not within one file)
+  hs_scan, 12 jobs           2.2 s   (1.6x, includes writing the scan units)
+  matches: 3 rules/strings matched, 20,570 match offsets, 0 differences between plain yara and hs_scan.
+YARA is fast enough here that writing the scan units limits the gain.
