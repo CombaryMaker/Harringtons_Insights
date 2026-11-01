@@ -59,7 +59,7 @@ int main(int ac,char**av){
   for(int r=0;r<N;r++){
     double t=now(); dec(cp,out.data(),U); dp.push_back(now()-t); if(r==0&&memcmp(out.data(),d.data(),U)){puts("BAD plain");return 1;}
     t=now(); dec(cd,tmp.data(),U); undelta(out.data(),tmp.data(),U,R); dd.push_back(now()-t); if(r==0&&memcmp(out.data(),d.data(),U)){puts("BAD delta");return 1;}
-    t=now(); dec(cf,fb.data(),fb.size()); dec(cl,lb.data(),ln); size_t j=0; for(size_t i=0;i<U;i++){ if((fb[i>>3]>>(7-(i&7)))&1) out[i]=lb[j++]; else out[i]=out[i-R]; } da.push_back(now()-t);
+    t=now(); dec(cf,fb.data(),fb.size()); dec(cl,lb.data(),ln); size_t j=0; for(size_t i=0;i<U;i++){ if((fb[i>>3]>>(7-(i&7)))&1) out[i]=lb[j++]; else out[i]=i>=R?out[i-R]:0; } da.push_back(now()-t);
     if(r==0&&memcmp(out.data(),d.data(),U)){puts("BAD act");return 1;}
   }
   printf("{\"U\":%zu,\"plain\":%zu,\"enc_plain_us\":%.1f,\"dec_plain_us\":%.1f,\"delta\":%zu,\"enc_delta_us\":%.1f,\"dec_delta_us\":%.1f,\"act\":%zu,\"enc_act_us\":%.1f,\"dec_act_us\":%.1f,\"ok\":true}\n",
