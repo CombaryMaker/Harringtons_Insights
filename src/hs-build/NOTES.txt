@@ -1,0 +1,67 @@
+HARRINGTON SETS BUILD SCHEDULER FOR MAKE (hs_build + hs_cc shim) - 31 October 2026
+Michael Hugh Harrington. MIT License. Same compiler, same flags, same objects, same executable: only the ORDER
+in which compile jobs start changes.
+
+THE PROBLEM
+make -jN starts compiles in Makefile order and fills free cores as it goes. Source files differ in cost by 100x or
+more; when heavy files come late, one core grinds on them at the end while the others sit idle (the long tail).
+Linking stays single-threaded with the standard linker and is untouched here.
+
+THE APPROACH
+hs_build asks make which objects it will build (make -n), sorts them heaviest first - by measured compile time from a
+previous build (profile written by the hs_cc shim, which runs the real compiler unchanged) or by source size when
+there is no profile - and hands make the heaviest 10% as explicit goals followed by the normal target. make still
+resolves every prerequisite, so dependency order is respected; the heavy files start first, the light ones follow in
+Makefile order, and linking/other work overlaps with compiling as in a normal make. (Michael's suggestion - treat only
+the big jobs specially and leave the small ones alone - is exactly this: a single compile cannot be split without
+changing the output, but the heavy ones can be moved to the front.)
+  hs_build [--jobs N] [--profile FILE] [--pre TARGET] [--top F] [--no-shim] -- MAKE_TARGETS
+  --pre: for projects that generate headers without declaring them as object prerequisites (OpenSSL: build_generated).
+
+RESULTS (cloud, 2 vCPUs, gcc 13.3, GNU make 4.3; OpenSSL 3.3.2, no-tests, 2,116 compile jobs, SOURCE_DATE_EPOCH set;
+outputs = openssl executable + libcrypto/libssl shared and static libraries, compared by SHA-256)
+  plain make -j2 (Makefile order), with timing shim      158.5 s
+  plain make -j2, no shim, after make clean              153.7 s
+  hs_build, source-size estimate                         145.5 s   (1.06-1.09x)
+  hs_build, measured profile from the first build        151.1 s   (1.02-1.05x)
+Outputs: the openssl executable and all four libraries were byte-identical across every shimmed build; the no-shim
+build differs ONLY in libcrypto, because OpenSSL embeds the compiler command line ("compiler: hs_cc gcc ...") in its
+version string - a build with --no-shim avoids that. Compile work was the same in every run (2,116 jobs, 262-285 CPU-s).
+
+WHAT THE MEASURED TIMES SAY ABOUT MORE CORES (openssl_core_simulation.txt: greedy list scheduling of the measured
+per-file compile times, make's real start order vs heaviest-first)
+  cores:   2       4       6       8       12      16
+  gain:    1.001x  1.009x  1.024x  1.039x  1.069x  1.100x   (compile phase only)
+OpenSSL's tail is small - its heaviest file (apps/speed.c) takes only 2.3 s and sits at position 2,109 of 2,116 in
+make's order - so the gain is modest and grows with core count. Projects with a few very expensive files (large C++
+translation units of 30-120 s) are where this approach pays; that test has not been run yet.
+
+WHAT WENT WRONG ON THE WAY (kept for the record)
+- First attempts were 30% SLOWER: hs_build was given the "all" target, which in OpenSSL also builds 853 manual pages
+  (about 46 s), while plain "make" with no target builds only build_sw. Like-for-like fixed it.
+- Objects compiled as explicit goals failed after make clean because OpenSSL's generated headers are not declared as
+  prerequisites of the objects (--pre build_generated added).
+- Handing make all 2,000 objects as goals did not hurt (no-op pass 0.96 s), but the heavy 10% is enough.
+LIMITS
+- GNU make projects (CMake "Unix Makefiles", autotools, hand-written Makefiles). Ninja already schedules by critical
+  path and was not compared. Visual Studio / MSBuild projects are not covered; hs_build.exe is untested on Windows.
+- The gain is bounded by the long tail of the specific project; linking is not sped up.
+FILES: hs_build.cpp, hs_cc.cpp (+ .exe builds), simulate.py, openssl_core_simulation.txt, openssl_run_log.txt.
+
+VERSION 1.1 - 1 November 2026 (Windows preparation; found while getting ready for the desktop test)
+Three bugs fixed before any Windows run:
+- hs_build sent make's output to /dev/null, which does not exist under cmd.exe on Windows (it is NUL); every
+  make call would have failed. Fixed: NUL on Windows, /dev/null elsewhere.
+- hs_build's command lines start with a quoted program name; cmd.exe strips the wrong quotes from such a line
+  unless the whole line is wrapped in one more pair. Fixed (same rule hs_gs and hs_ocr already follow).
+- hs_cc on Windows passed the compiler arguments to _spawnvp unquoted, so any path with a space (for example
+  "Documents\data compression\...") was split into two arguments. Fixed: arguments are quoted by the Microsoft
+  C runtime rules.
+- The dry run (make -n) now uses the same CC/CXX as the real build. Some projects put a hash of the compiler
+  settings into their object paths (zstd: lib/obj/conf_<hash>/), so a dry run with a different CC listed object
+  files that the real build never makes.
+New limitation found (cloud, zstd 1.5.6 lib, not a bug that can be patched around): projects that build their
+objects in a RECURSIVE make (zstd's lib Makefile calls itself with BUILD_DIR=..., CMake's generated Makefiles
+call a make per target) have no rule for the object files at the top level, so they cannot be handed to make as
+goals. hs_build works on flat Makefiles such as OpenSSL's; recursive builds would need hs_build to run inside the
+inner make, which is not done. The CMake claim in LIMITS above is therefore withdrawn until tested.

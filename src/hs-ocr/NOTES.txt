@@ -1,0 +1,35 @@
+HARRINGTON SETS WRAPPER FOR TESSERACT OCR (hs_ocr) - 31 October 2026
+Michael Hugh Harrington. MIT License (the wrapper; Tesseract is Apache-2.0 and is not included).
+
+THE PROBLEM
+Tesseract OCRs the pages of a document one after another. Its OpenMP threads only work inside one page, and on the
+test machine they gave no gain at all (365 s with them, 359 s with one thread, same text).
+
+THE HARRINGTON SETS APPROACH (same scheduling as hs_gs and HsTika)
+The document's page images (Tesseract's own list-file input, or a folder) are cut into contiguous page sets taken
+from a shared queue, shrinking toward the end (guided). One single-threaded Tesseract process runs per core, and the
+text is joined in page order with Tesseract's page separator (form feed) between sets, exactly as a single run
+writes it between pages. Dense small-print pages take many times longer than sparse ones, so balancing matters.
+
+  hs_ocr LIST.txt|FOLDER OUTBASE [--jobs N] [--tesseract PATH] [--split equal|guided] [--check] [-- -l eng]
+
+RESULTS (cloud, 2 vCPUs, Tesseract 5.3.4, English; 180 generated "scanned" pages: 100 normal, 40 nearly blank,
+40 dense small-print pages at the end - gen_pages.py)
+  plain Tesseract, its own threads:   365.3 s
+  plain Tesseract, 1 thread:          358.7 s
+  equal split, 2 processes:           212.2 s (1.72x) - one process busy 212.2 s, the other 149.7 s
+  hs_ocr guided, 2 processes:         180.9 s (2.02x vs plain default, 1.98x vs plain 1-thread) - 180.9 s / 178.5 s
+Correctness: text byte-identical to plain Tesseract for both splits (180 pages), and on a 12-page check.
+
+NOTABLE
+- Tesseract's built-in threading gave nothing on whole documents; running separate single-threaded processes on
+  balanced page sets reached the full 2x of 2 cores.
+- An early version joined sets without the page separator and was not identical - Tesseract writes a form feed
+  BETWEEN pages, so the wrapper adds one between sets (fixed and rechecked).
+
+LIMITS
+- Input is a list or folder of page images; multi-page TIFF/PDF must be split into page images first.
+- Text output (OUTBASE.txt); hOCR/ALTO/PDF output modes are not merged. A custom page_separator setting is not
+  supported.
+FILES: hs_ocr.cpp (source), hs_ocr.exe (Windows build, not yet run on Windows; needs Tesseract installed),
+gen_pages.py (makes the test pages).

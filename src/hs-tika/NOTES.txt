@@ -1,0 +1,44 @@
+HARRINGTON SETS WRAPPER FOR APACHE TIKA (HsTika) - 31 October 2026
+Michael Hugh Harrington. MIT License (the wrapper; Apache Tika is Apache-2.0 and is not included).
+
+THE PROBLEM
+Tika's own parallel mode (Tika Pipes) spreads SEPARATE documents across workers. One large PDF is parsed on a single
+thread, and with OCR (Tika runs Tesseract on images when it is installed) a long scanned or mixed document can take
+minutes on one core.
+
+THE HARRINGTON SETS APPROACH (same scheduling as hs_gs)
+The PDF is split into contiguous page sets that come from a shared queue and shrink toward the end (guided), each set
+is parsed by Tika's normal AutoDetectParser on its own thread inside one Java process, and the text is joined in page
+order. The last set keeps the whole document structure, so the document-level text Tika writes after the pages
+(bookmarks/outline, forms, attachments) appears exactly once, in the same place. Text-only PDFs (no images) are
+parsed the normal way, because they are so fast that splitting costs more than it saves. If a PDF cannot be split
+(unusual or damaged structure), the wrapper falls back to one normal parse, so the output is still the same.
+
+  java -cp tika-app.jar:hs_tika.jar HsTika INPUT.pdf OUTPUT.txt [--jobs N] [--split equal|guided|force] [--plain]
+  java -cp tika-app.jar:hs_tika.jar HsTika --checkdir FOLDER MINPAGES JOBS    (compares plain vs wrapper for every PDF)
+  (Windows: use ; instead of : between the jar names)
+
+RESULTS (cloud, 2 vCPUs, Tika 3.3.3 with Tesseract OCR, Java 21; output = Tika body text, same handler in both modes)
+Correctness:
+- Clean generated set (gen.py: 20 PDFs from Dickens, Webster and Canterbury texts, with and without scanned pages):
+  20 of 20 identical.
+- pdf.js test suite, every PDF with 3+ pages: 54 identical, 0 different; 2 unusual files first failed to split and
+  now fall back and match; the other 17 errors were password-locked (10) or broken files Tika itself cannot open (7).
+- clean_text_1500.pdf, clean_mixed.pdf and the 409-page mixed.pdf: identical in every run.
+Speed:
+- clean_mixed.pdf (400 text pages + 40 scanned pages, OCR): plain 118.0-119.9 s | equal split 116.8-122.7 s (one
+  thread 121.7 s, the other 2.1 s) | HsTika 62.4-65.5 s (1.80-1.91x).
+- mixed.pdf (352-page book + 57 image-heavy pages from the pdf.js suite): plain 146.0-148.1 s | equal split
+  141.6-146.1 s | HsTika 81.6-84.9 s (1.74-1.79x).
+- clean_text_1500.pdf (1,500 text-only pages): plain 3.7-3.8 s; the first version split it and was slower (4.6-4.7 s);
+  now text-only PDFs are parsed normally (3.5 s).
+
+NOTABLE
+- The equal split, the usual trick, gained nothing on mixed documents: all the expensive OCR pages landed on one
+  thread. Guided page sets came close to the 2x limit of 2 cores.
+
+LIMITS
+- PDF only (page-based); Word, Excel and other formats stay single-threaded (use Tika Pipes for many files).
+- Each thread loads its own copy of the PDF (memory = jobs x PDF size, plus Tika's normal use).
+- Tika's metadata output is not part of this comparison (body text only).
+FILES: HsTika.java (source), hs_tika.jar (compiled), gen.py (makes the clean test PDFs; needs reportlab and Pillow).

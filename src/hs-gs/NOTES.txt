@@ -1,0 +1,50 @@
+HARRINGTON SETS WRAPPER FOR GHOSTSCRIPT (hs_gs) - 30 October 2026
+Michael Hugh Harrington. MIT License (the wrapper; Ghostscript is AGPL/commercial from Artifex and is not included).
+
+THE PROBLEM
+Ghostscript renders a PDF page after page on one core. Its built-in -dNumRenderingThreads only splits a single page
+into bands, which helps little for whole documents. The common workaround - give each of N processes an equal page
+range - balances badly, because image-heavy pages take many times longer than text pages: the process that gets the
+heavy pages finishes long after the others.
+
+THE HARRINGTON SETS APPROACH
+Several Ghostscript processes render the same PDF, each taking contiguous page sets (contiguous pages share fonts
+and images, so each process keeps its caches warm). Sets come from a shared queue and shrink toward the end of the
+document (each set = remaining pages / (2 x jobs)), so expensive pages are spread out automatically and no process
+is left working alone at the end. Page images are renamed to their true page numbers, so the output files are the
+same files a single Ghostscript run writes.
+
+  hs_gs INPUT.pdf --out DIR/page_%04d.png [--jobs N] [--gs PATH] [--split equal|guided] [--check] -- -sDEVICE=png16m -r150
+  --check runs one plain Ghostscript process too and compares every page file byte for byte.
+
+RESULTS (cloud machine, 2 vCPUs, Ghostscript 10.02.1; test PDFs from the pdf.js test suite)
+mixed.pdf = the 352-page book freeculture.pdf + 57 image-heavy pages at the end (409 pages, 37,425,270 bytes):
+  png16m 150 dpi: plain Ghostscript 42.5-43.2 s
+                  Ghostscript built-in -dNumRenderingThreads=2 (banded): 40.4 s (1.06x)
+                  equal page ranges, 2 processes: 36.0 s (1.20x) - one process busy 36.0 s, the other only 6.1 s
+                  hs_gs guided page sets, 2 processes: 23.1 s (1.84x) - processes busy 23.1 s and 22.8 s
+  jpeg 100 dpi:   plain 17.6 s, hs_gs 10.6 s (1.65x)
+freeculture.pdf alone (352 text pages), png16m 150 dpi: plain 10.8 s, hs_gs 6.4 s (1.70x)
+Correctness: every page image byte-identical to the plain Ghostscript output in all runs (409 + 409 + 352 pages).
+
+NOTABLE
+- Balancing is the whole story on mixed documents: the equal split gained only 1.20x because one process got all
+  57 heavy pages; guided page sets reached 1.84x of a possible 2x on the same file.
+
+LIMITS
+- Page-per-file raster devices only (png*, jpeg, tiff*, pnm, bmp ...); pdfwrite and multi-page TIFF are not merged.
+- Each process opens the whole PDF, so very large PDFs pay the open/parse cost once per process.
+- Page count is read with Ghostscript's own PDF procedures (needs -dNOSAFER for that one call).
+FILES: hs_gs.cpp (source), hs_gs.exe (Windows build, not yet run on Windows; needs Ghostscript installed, default
+command gswin64c, or --gs "C:\Program Files\gs\gs10.xx\bin\gswin64c.exe"), make_mixed.sh (test PDF recipe).
+
+DESKTOP RESULTS (1 November 2026; AMD Ryzen 5 7500X3D 6 cores / 12 threads, Windows 11; Ghostscript 10.08.0 portable
+from conda-forge; same mixed.pdf recipe, 409 pages, png16m 150 dpi, 12 jobs)
+  plain Ghostscript, one process:            56.5 s / 56.4 s
+  Ghostscript -dNumRenderingThreads=12:      53.4 s   (1.06x)
+  equal page ranges, 12 processes (hs_gs --split equal):   31.3 s / 31.2 s   (1.81x) - busiest process 30.3 s, least busy 2.7 s
+  hs_gs guided page sets, 12 processes:      12.1 s / 11.1 s   (4.7-5.1x) - busiest 10.6-11.0 s, least busy 9.1-9.4 s
+Every page image byte-identical to plain Ghostscript in every run (409 pages each).
+NOTABLE: on 12 threads the gap between the usual equal split and guided sets is larger than on 2 cores - the equal
+split leaves one process holding the image-heavy end of the document (30 s) while another finishes in 2.7 s.
+hs_gs.exe ran unchanged on Windows (first Windows run).
