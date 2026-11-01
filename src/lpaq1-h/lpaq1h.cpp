@@ -171,6 +171,11 @@ To compile (g++ 3.4.5, upx 3.00w):
 #define NDEBUG  // remove for debugging
 #include <assert.h>
 #include <signal.h>
+#ifdef _WIN32
+// Windows has no random() or sigaction/SIGUSR1 (reported by xman on encode.su, Nov 2026); they are only used by the
+// debugging "autonomous" mode and the SIGUSR1 progress dump, never by normal compression, so output is unchanged.
+#define random() rand()
+#endif
 
 // 8, 16, 32 bit unsigned types (adjust as appropriate)
 typedef unsigned char  U8;
@@ -482,7 +487,7 @@ HashTable<B>::HashTable(int n): t(0), N(n) {
   assert(B>=2 && (B&B-1)==0);
   assert(N>=B*4 && (N&N-1)==0);
   alloc(t, N+B*4+64);
-  t+=64-int(((long)t)&63);  // align on cache line boundary
+  t+=64-int(((size_t)t)&63);  // align on cache line boundary (size_t: long is 32-bit on 64-bit Windows)
 }
 
 template <int B>
@@ -850,10 +855,12 @@ int streammode=0;
 
 int main(int argc, char **argv) {
 
+#ifndef _WIN32
   {
        struct sigaction sa = {{&usr1}};
        sigaction(SIGUSR1, &sa, NULL);
   }
+#endif
   // Check arguments
   if (argc!=4 || !isdigit(argv[1][0]) && argv[1][0]<'a' && argv[1][0]>'z') {
     printf(

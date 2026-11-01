@@ -52,3 +52,13 @@ lpaq1-h best-of in parallel and decodes the blocks in parallel (format "LPHP"). 
   x-ray   438,616 -> 444,765, decode 12.5 -> 6.5 s, compress 69.0 -> 36.6 s
   dickens 215,212 -> 227,103, decode 12.4 -> 7.0 s, compress 69.7 -> 41.6 s
 Note: text loses most (dickens +5.5%) because every block starts with an empty model; larger blocks lose less.
+
+WINDOWS BUILD FIX (1 November 2026, reported by xman on encode.su: "not compilable")
+lpaq1h.cpp used three POSIX-only things that Windows compilers do not have: random(), struct sigaction and SIGUSR1.
+They are used only by the base program's debugging "autonomous" mode and its SIGUSR1 progress dump, never by normal
+compression or decompression, so on Windows random() now maps to rand() and the signal handler is skipped. A pointer
+alignment cast used (long), which is 32-bit on 64-bit Windows; it now uses size_t. Linux output checked byte-identical
+before and after the change (first 3 MB of Silesia samba, level 6). Windows builds: windows/lpaq1h64.exe and
+windows/lpaq1h32.exe (built with Zig/Clang; on Windows 7 a GCC/MinGW build is recommended - Clang builds were reported
+to hang there).
+  Build with MinGW:  g++ -O2 lpaq1h.cpp -o lpaq1h.exe
