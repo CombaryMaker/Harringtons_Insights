@@ -27,19 +27,20 @@ How it works, briefly:
 Results on one desktop (Ryzen 5 7500X3D, 6 cores / 12 threads, NVMe, Windows 11), 4 GB public file (the 12 Silesia
 files joined and repeated), 12 threads, median of several runs, every decode checked by SHA-256:
 
-  tool                          1,000,000 bits down to   compress   decode
-  zstd -3, one thread                   314,102           14.7 s    3.73 s
-  zstd -3 -T12                          314,102            2.9 s    4.25 s
-  pzstd -3 -p 12                        315,013            4.1 s    2.85 s
-  hs_zstd, 4 MB blocks, 12 jobs         315,391            2.9 s    2.27 s
-  hs_zstd, 16 MB blocks, 12 jobs        314,315            3.5 s    2.51 s
+  tool                            compressed bytes   ratio   compress   decode
+  zstd -3, one thread               1,264,836,194   3.184    14.7 s    3.73 s
+  zstd -3 -T12                      1,264,836,194   3.184     2.9 s    4.25 s
+  pzstd -3 -p 12                    1,268,506,060   3.174     4.1 s    2.85 s
+  hs_zstd, 4 MB blocks, 12 jobs     1,270,027,824   3.171     2.9 s    2.27 s
+  hs_zstd, 16 MB blocks, 12 jobs    1,265,694,589   3.182     3.5 s    2.51 s
+  (input 4,026,833,020 bytes; ratio = input / compressed)
 
 hs_zstd's decode times include forcing the output to disk (FlushViewOfFile/FlushFileBuffers); zstd's and pzstd's
 do not. Decoding scales to about 4-6 threads and then becomes disk-write bound (4 MB blocks: 7.5 s on 1 thread,
 3.2 s on 4, 2.4 s on 12). Decoder private memory is about 130 MB (4 MB blocks) to 300 MB (16 MB), versus about
 10 MB for zstd and 160 MB for pzstd. On a 3.2 GB public mixed tar (Linux source, Blender, pdf.js, CSV) hs_zstd
 decoded in 1.75 s vs zstd 2.23 s and pzstd 1.92 s, and the grouping made it slightly smaller than both
-(244,338 vs 244,965 and 246,879 per million). zstd --long was smaller than everything on that tar (233,113).
+(ratio 4.093 vs 4.082 and 4.051). zstd --long had the best ratio on that tar (4.290).
 
 What I think is and is not new: independent frames and parallel decoding are what pzstd and the seekable format
 already do, and the grouping is prior work. The part that seems to carry the speed is decoding each frame

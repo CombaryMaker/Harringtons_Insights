@@ -7,13 +7,15 @@ prior work and credits.
 
 **4 GB public Silesia file, 6-core / 12-thread desktop, every decode verified exact:**
 
-| tool | 1,000,000 bits down to | compress | decode median | decoder memory |
-|---|---|---|---|---|
-| zstd -3, one thread | 314,102 | 14.7 s | 3.73 s | ~10 MB |
-| zstd -3 -T12 | 314,102 | 2.9 s | 4.25 s | ~10 MB |
-| pzstd -3 -p 12 | 315,013 | 4.1 s | 2.85 s | ~160 MB |
-| **hs_zstd 1.3, 4 MB blocks, 12 jobs** | 315,391 | 2.9 s | **2.27 s** | ~130 MB |
-| hs_zstd 1.3, 16 MB blocks, 12 jobs | 314,315 | 3.5 s | 2.51 s | ~300 MB |
+| tool | compressed bytes | ratio | compress | decode median | decoder memory |
+|---|---|---|---|---|---|
+| zstd -3, one thread | 1,264,836,194 | 3.184 | 14.7 s | 3.73 s | ~10 MB |
+| zstd -3 -T12 | 1,264,836,194 | 3.184 | 2.9 s | 4.25 s | ~10 MB |
+| pzstd -3 -p 12 | 1,268,506,060 | 3.174 | 4.1 s | 2.85 s | ~160 MB |
+| **hs_zstd 1.3, 4 MB blocks, 12 jobs** | 1,270,027,824 | 3.171 | 2.9 s | **2.27 s** | ~130 MB |
+| hs_zstd 1.3, 16 MB blocks, 12 jobs | 1,265,694,589 | 3.182 | 3.5 s | 2.51 s | ~300 MB |
+
+Input 4,026,833,020 bytes; ratio = input size / compressed size (higher is better).
 
 hs_zstd's decode times include forcing the output to disk (`--flush`); the other tools' do not. Core scaling,
 a 3.2 GB public mixed tar, the Sets-vs-plain-blocks ablation and a 2 GB race are in the `results-*.txt` files.

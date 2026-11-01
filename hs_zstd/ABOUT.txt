@@ -27,7 +27,7 @@ WHAT THE RESULTS SHOW (details in the results files; one 6-core / 12-thread Wind
   Silesia file, 12 threads: hs_zstd 4 MB blocks decodes in 2.27-2.43 s vs pzstd 2.85-3.53 s, zstd 3.73 s; the
   grouping (Sets) adds no speed over plain block splitting.
 - Size: the grouping helps only where the kind of data changes inside the file. Equal to plain blocks on Silesia;
-  smaller on a 3.2 GB public mixed tar (1,000,000 bits down to 244,338 vs 245,319) and 9% smaller on a synthetic
+  smaller on a 3.2 GB public mixed tar (ratio 4.093 vs 4.076 for plain blocks) and 9% smaller on a synthetic
   file switching data type every 1 MB. zstd --long is smaller still when repeats lie further apart than a block.
 - Memory: decoder private memory about 116-300 MB depending on block size, against about 7-15 MB for zstd.
 - Every round trip in every test was verified (SHA-256 or CRC-32 plus length).

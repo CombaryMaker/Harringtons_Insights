@@ -17,3 +17,6 @@ Memory: peak private bytes (PeakPagedMemorySize) sampled every 10-20 ms; hs_zstd
 Control: --sets 0 (plain block splitting in file order, same blocks, same container) is reported next to every Sets
   result, so the effect of grouping is separated from the effect of parallel frames.
 Scripts: the PowerShell runners that produced each log are in src/hs-zstd/ of this repository.
+
+Note on the raw logs: their "bits/M" column is compressed size per million input bits (compressed bytes / input bytes x 1,000,000);
+the ratio used in the README is input bytes / compressed bytes. Both are computed from the same byte counts, which every log also lists.
