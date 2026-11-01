@@ -1,0 +1,7 @@
+silesia.tar 211,957,760 bytes
+tool                                                  bytes  ratio%   comp s  decode s  exact
+HCM v3.6.1 fast                                  43,795,425  20.66%   1025.1    196.38  yes
+HCM v3.6.1 max                                   43,004,910  20.29%   1029.2    226.54  yes
+HCM v3.6.1 Harrington's Sets 16 MB, 2 cores      43,189,460  20.38%    453.1    107.77  yes
+hs_zstd -19 Harrington's Sets 16 MB, 2 jobs      53,498,614  25.24%     55.2      0.34  yes
+hs_zstd -19 plain blocks 16 MB, 2 jobs           53,547,274  25.26%     51.2      0.33  yes

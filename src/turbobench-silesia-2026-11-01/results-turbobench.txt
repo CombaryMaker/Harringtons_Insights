@@ -1,0 +1,12 @@
+      C Size  ratio%      C MB/s    D MB/s Rank    Name            File
+    40485026  19.10%        0.34      0.32  11     zpaq 5          silesia.tar.tbb
+    41855581  19.75%        1.60      1.65   6     kanzi 9         silesia.tar.tbb
+    48677116  22.97%        1.20     65.82   4🥈   lzma 9          silesia.tar.tbb
+    48774140  23.01%        0.94     71.92   8     xz 9            silesia.tar.tbb
+    49294928  23.26%       15.10     16.11   2🏆   bsc 0           silesia.tar.tbb
+    49528131  23.37%        0.35    190.62   9     brotli 11       silesia.tar.tbb
+    52305790  24.68%        1.08    730.83   5🥉   zstd 22         silesia.tar.tbb
+    52874872  24.95%        1.68    562.45   3🥇   zstd 19         silesia.tar.tbb
+    59387051  28.02%        4.04      4.60  10     bzip3 0         silesia.tar.tbb
+    66497774  31.37%      186.03    874.71   1👑   zstd 3          silesia.tar.tbb
+    67643913  31.91%        8.37    196.05   7     zlib 9          silesia.tar.tbb

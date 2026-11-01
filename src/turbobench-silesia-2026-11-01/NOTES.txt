@@ -1,0 +1,31 @@
+SILESIA: TURBOBENCH 2026.11.01 vs HARRINGTON INSIGHTS TOOLS - 1 November 2026 (cloud, 2-core Xeon @ 2.10 GHz)
+Michael Hugh Harrington. MIT License.
+File: silesia.tar built from the 12 standard Silesia files (211,957,760 bytes). TurboBench release v2026.11.01
+(linux-x86_64 binary), -i1,1, single thread, in-memory timing. Our tools: whole command-line runs (wall clock,
+includes file I/O and start-up), every decode compared byte for byte - all exact.
+
+  tool                                         bytes        size%    compress            decode
+  zpaq 5 (TurboBench)                          40,485,026   19.10%   0.34 MB/s (~623 s)  0.32 MB/s (~662 s)
+  kanzi 9 (TurboBench)                         41,855,581   19.75%   1.60 MB/s (~132 s)  1.65 MB/s (~128 s)
+  HCM v3.6.1 max                               43,004,910   20.29%   1,029.2 s           226.5 s
+  HCM v3.6.1 Harrington's Sets 16 MB, 2 cores  43,189,460   20.38%     453.1 s           107.8 s
+  HCM v3.6.1 fast                              43,795,425   20.66%   1,025.1 s           196.4 s
+  lzma 9 (TurboBench)                          48,677,116   22.97%   1.20 MB/s           65.8 MB/s
+  xz 9 (TurboBench)                            48,774,140   23.01%   0.94 MB/s           71.9 MB/s
+  bsc (TurboBench)                             49,294,928   23.26%   15.1 MB/s           16.1 MB/s
+  brotli 11 (TurboBench)                       49,528,131   23.37%   0.35 MB/s           190.6 MB/s
+  zstd 22 (TurboBench)                         52,305,790   24.68%   1.08 MB/s           730.8 MB/s
+  zstd 19 (TurboBench)                         52,874,872   24.95%   1.68 MB/s           562.5 MB/s
+  hs_zstd -19 Harrington's Sets 16 MB, 2 jobs  53,498,614   25.24%      55.2 s             0.34 s
+  hs_zstd -19 plain blocks 16 MB, 2 jobs       53,547,274   25.26%      51.2 s             0.33 s
+  bzip3 (TurboBench)                           59,387,051   28.02%   4.04 MB/s           4.60 MB/s
+  zstd 3 (TurboBench)                          66,497,774   31.37%   186.0 MB/s          874.7 MB/s
+  zlib 9 (TurboBench)                          67,643,913   31.91%   8.37 MB/s           196.1 MB/s
+
+FINDINGS
+- HCM beats every LZ/BWT codec in the run (lzma, xz, bsc, brotli, zstd, bzip3) on size, but not the two
+  context-mixing codecs zpaq 5 and kanzi 9; kanzi 9 is both smaller and faster than HCM.
+- NOTABLE: HCM in Harrington's Sets mode (2 cores) was SMALLER than single-stream HCM fast (43,189,460 vs
+  43,795,425) and 2.26x faster to compress, 1.82x faster to decode - the same pattern as the industrial data test.
+- hs_zstd Sets vs plain blocks: Sets 48,660 bytes smaller (0.1%); both about 1% larger than single-stream zstd 19.
+- xz-hi: run separately (its settings search takes over 1.5 hours on a 212 MB file); see results-xzhi.txt.
