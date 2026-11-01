@@ -95,11 +95,12 @@ static void features(const uint8_t *c, size_t L, array<double, 7> &F, double &e)
     F = {ctl / L, alpha / L, digit / L, space / L, high / L, h[0] / L, e / 8};
 }
 static bool g_raw_rule = true;   // 1.5: --raw entropy (default) | off
+static int g_maxk = 3;           // 1.5: --sets N (0-3), most sets k-means may form; 0 or 1 keeps file order in one set (control)
 static vector<int> labels(const vector<array<double, 7>> &F, const vector<double> &E, const vector<size_t> &Ls) {
     size_t nw = F.size(); vector<int> lab(nw, 0); vector<size_t> idx;
     for (size_t i = 0; i < nw; i++) { if (g_raw_rule && E[i] > 7.99 && Ls[i] >= 4096) lab[i] = RAW; else idx.push_back(i); }   // 1.5: --raw off skips the rule
-    int K = idx.size() >= 48 ? 3 : (idx.size() >= 16 ? 2 : 1);
-    if (!idx.empty()) {
+    int K = idx.size() >= 48 ? 3 : (idx.size() >= 16 ? 2 : 1); K = min(K, max(1, g_maxk));   // 1.5: --sets 0 = plain block splitting
+    if (!idx.empty() && K > 1) {
         size_t m = idx.size(); auto d2 = [&](const array<double, 7> &a, const array<double, 7> &b) { double s = 0; for (int k = 0; k < 7; k++) s += (a[k] - b[k]) * (a[k] - b[k]); return s; };
         vector<array<double, 7>> C{F[idx[0]]};
         for (int k = 1; k < K; k++) {
@@ -371,7 +372,7 @@ int main(int argc, char **argv) {
     crc_init();
     if (argc < 4 || (strcmp(argv[1], "c") && strcmp(argv[1], "d"))) {
         fprintf(stderr, "Harrington Sets wrapper 1.5 (streaming, direct decode, safe smoothing), Michael Hugh Harrington, MIT License\n"
-                        "  hs_wrap c IN OUT --comp \"COMPRESSOR {in} {out}\" [--jobs N] [--block-mb B] [--raw entropy|off]\n"
+                        "  hs_wrap c IN OUT --comp \"COMPRESSOR {in} {out}\" [--jobs N] [--block-mb B] [--raw entropy|off] [--sets 0-3]\n"
                         "  hs_wrap d IN OUT --decomp \"DECOMPRESSOR {in} {out}\" [--jobs N]\n"
                         "  hs_wrap d IN OUT --decomp \"DECOMPRESSOR\" [--jobs N]   (no {in}/{out}: direct, stdin->stdout, no temp files; --hold N caps decoded blocks in memory)\n");
         return 2;
@@ -380,7 +381,7 @@ int main(int argc, char **argv) {
     for (int i = 4; i + 1 < argc; i += 2) {
         string k = argv[i];
         if (k == "--comp") comp = argv[i + 1]; else if (k == "--decomp") decomp = argv[i + 1];
-        else if (k == "--jobs") jobs = atoi(argv[i + 1]); else if (k == "--hold") g_hold = atol(argv[i + 1]); else if (k == "--raw") g_raw_rule = string(argv[i + 1]) != "off"; else if (k == "--block-mb") bmb = atol(argv[i + 1]);
+        else if (k == "--jobs") jobs = atoi(argv[i + 1]); else if (k == "--hold") g_hold = atol(argv[i + 1]); else if (k == "--raw") g_raw_rule = string(argv[i + 1]) != "off"; else if (k == "--sets") g_maxk = atoi(argv[i + 1]); else if (k == "--block-mb") bmb = atol(argv[i + 1]);
         else { fprintf(stderr, "unknown option %s\n", k.c_str()); return 2; }
     }
     bool c = argv[1][0] == 'c';
