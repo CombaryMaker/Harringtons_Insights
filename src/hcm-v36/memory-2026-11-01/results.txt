@@ -1,0 +1,59 @@
+HCM v3.6.1 decoder memory, desktop, 11/01/2026 02:50:20
+CPU: AMD Ryzen 5 7500X3D 6-Core Processor           , threads 12
+file       variant          bytes in   decode s   peak private MB   peak working set MB   exact
+dickens    single stream     2,224,460       4.6              55.8                  56.5   True
+dickens    blocks 16 MB      2,224,460       4.2              55.7                  55.4   True
+dickens    Sets 16 MB        2,261,579       2.7             137.6                 121.7   True
+dickens    Sets 4 MB         2,284,700       1.7             178.4                 158.6   True
+mozilla    single stream    13,351,973      24.1             106.9                 111.3   True
+mozilla    blocks 16 MB     13,412,925      10.4             229.8                 192.2   True
+mozilla    Sets 16 MB       13,419,759       9.5             270.6                 235.8   True
+mozilla    Sets 4 MB        13,601,880       6.3             549.1                 536.5   True
+mr         single stream     2,137,406       3.4              55.5                  57.8   True
+mr         blocks 16 MB      2,137,406       3.4              55.5                  57.8   True
+mr         Sets 16 MB        2,137,436       3.4              55.6                  58.1   True
+mr         Sets 4 MB         2,151,328       1.3             137.4                 132.8   True
+nci        single stream     1,416,262       9.3              76.0                  74.2   True
+nci        blocks 16 MB      1,421,501       5.4             117.0                 108.8   True
+nci        Sets 16 MB        1,429,751       4.6             157.9                 135.7   True
+nci        Sets 4 MB         1,456,188       1.7             403.3                 337.9   True
+ooffice    single stream     2,281,809       3.0              51.9                  56.3   True
+ooffice    blocks 16 MB      2,281,809       3.1              51.8                  56.3   True
+ooffice    Sets 16 MB        2,281,839       3.0              52.0                  56.6   True
+ooffice    Sets 4 MB         2,303,213       1.8              92.8                  97.2   True
+osdb       single stream     2,373,920       4.8              55.6                  60.0   True
+osdb       blocks 16 MB      2,373,920       4.9              55.6                  60.0   True
+osdb       Sets 16 MB        2,373,950       4.9              55.8                  60.4   True
+osdb       Sets 4 MB         2,439,852       2.1             137.5                 141.5   True
+reymont    single stream     1,093,130       2.5              49.9                  54.3   True
+reymont    blocks 16 MB      1,093,130       2.5              49.9                  54.3   True
+reymont    Sets 16 MB        1,093,160       2.5              50.0                  54.7   True
+reymont    Sets 4 MB         1,107,683       1.3              90.5                  89.4   True
+samba      single stream     3,400,668       8.3              66.6                  71.0   True
+samba      blocks 16 MB      3,443,819       6.5             107.6                 100.5   True
+samba      Sets 16 MB        3,406,084       4.2             148.6                 131.2   True
+samba      Sets 4 MB         3,492,921       2.3             271.3                 251.9   True
+sao        single stream     3,921,719       4.0              52.9                  57.3   True
+sao        blocks 16 MB      3,921,719       4.0              52.9                  57.3   True
+sao        Sets 16 MB        3,942,040       2.4              93.9                  98.4   True
+sao        Sets 4 MB         3,942,040       2.4              93.9                  98.4   True
+webster    single stream     6,442,803      17.2              89.6                  89.4   True
+webster    blocks 16 MB      6,555,957       8.8             171.5                 145.0   True
+webster    Sets 16 MB        6,590,053       6.9             212.4                 166.9   True
+webster    Sets 4 MB         6,834,454       3.0             498.6                 434.7   True
+x-ray      single stream     3,666,372       3.8              54.1                  55.8   True
+x-ray      blocks 16 MB      3,666,372       3.8              54.0                  55.8   True
+x-ray      Sets 16 MB        3,679,617       2.2             135.9                 126.9   True
+x-ray      Sets 4 MB         3,684,721       1.6             176.8                 165.8   True
+xml        single stream       350,519       1.8              48.1                  48.1   True
+xml        blocks 16 MB        350,519       1.8              48.1                  48.1   True
+xml        Sets 16 MB          347,395       1.0              89.0                  83.5   True
+xml        Sets 4 MB           347,395       1.0              89.1                  83.5   True
+
+TOTALS (sum of decode s, highest peak private MB):
+  single stream       86.8 s     106.9 MB
+  blocks 16 MB        58.8 s     229.8 MB
+  Sets 16 MB          47.3 s     270.6 MB
+  Sets 4 MB           26.6 s     549.1 MB
+FINISHED 11/01/2026 02:54:06
+DONE 

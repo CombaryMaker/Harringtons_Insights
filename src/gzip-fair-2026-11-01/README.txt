@@ -21,3 +21,5 @@ What this shows, plainly:
   zstd - the Sets gain shows on mixed data, not here.
 - hs_wrap's compression times were lost to a harness bug (its status line was captured into the timer) and were re-timed
   separately; see compress-retime.txt.
+
+hs_wrap 1.5 compress, re-timed: Sets 24.9 s, plain blocks 24.5 s (see src/hcm-v36/memory-2026-11-01/README.txt).
