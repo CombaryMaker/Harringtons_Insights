@@ -1,0 +1,12 @@
+plant.tar 163,870,720 bytes (7 datasets)
+method                                              bytes   ratio  comp s decode s  exact
+gzip -9                                        30,563,416    5.36    94.5     2.05  yes
+zstd -19                                       22,989,339    7.13   135.4     0.34  yes
+xz -9                                          21,919,100    7.48   161.4     2.21  yes
+zstd -19 -T2 (one stream)                      22,989,339    7.13    79.6     0.22  yes
+hs_zstd -19 plain blocks, 4 MB, 2 jobs         23,372,624    7.01    51.2     0.27  yes
+hs_zstd -19 Harrington Sets, 4 MB, 2 jobs      23,375,395    7.01    52.4     0.24  yes
+hs_zstd -19 plain blocks, 16 MB, 2 jobs        23,010,511    7.12    67.6     0.29  yes
+hs_zstd -19 Harrington Sets, 16 MB, 2 jobs     23,052,992    7.11    65.4     0.28  yes
+HCM v3.6.1 fast (one core)                     17,987,330    9.11   638.9   120.65  yes
+HCM v3.6.1 Harrington Sets 16 MB (2 cores)     17,675,237    9.27   240.7    62.11  yes
