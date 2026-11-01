@@ -1,4 +1,4 @@
-DRAFT - NOT POSTED. For Michael Hugh Harrington to approve before it goes to https://github.com/facebook/zstd/issues
+POSTED 2026-11-01 as https://github.com/meta/zstd/issues/4879 (zstd repo moved from facebook/zstd to meta/zstd)
 
 TITLE:
 Parallel decompression of a single large file into a memory-mapped output (hs_zstd) - results for evaluation
