@@ -1,0 +1,33 @@
+﻿hs_build desktop test (rerun, tools built from source on this PC) started 11/01/2026 04:35:29
+CPU: AMD Ryzen 5 7500X3D 6-Core Processor           , threads 12
+verified: w64devkit 2.4.0, proj.zip, hs_build.cpp 1.1, hs_cc.cpp 1.1 are the intended files
+built hs_build.exe and hs_cc.exe from source on this PC with w64devkit g++
+gcc: gcc.exe (GCC) 15.2.0   make: GNU Make 4.4.1
+
+=== zstd 1.5.6 library, 25 compile jobs, gcc -O2, 12 jobs (wall seconds; objects compared with the first plain build)
+plain make -j12 (warm-up):            10.07 s   (25 objects)
+plain make -j12 run 1:                9.06 s   objects same: True
+plain make -j12 run 2:                9.05 s   objects same: True
+plain make -j12 run 3:                9.09 s   objects same: True
+plain make -j12 with timing shim 1:   10.11 s   objects same: True
+plain make -j12 with timing shim 2:   10.07 s   objects same: True
+hs_build, source-size estimate 1:     9.72 s   objects same: True   [hs_build: 25 compile jobs, 0 with measured times (source-size estimate), 12 jobs; heaviest first: zstd_compress.o]
+hs_build, source-size estimate 2:     9.08 s   objects same: True   [hs_build: 25 compile jobs, 0 with measured times (source-size estimate), 12 jobs; heaviest first: zstd_compress.o]
+hs_build, measured profile 1:         9.09 s   objects same: True   [hs_build: 25 compile jobs, 25 with measured times (profile), 12 jobs; heaviest first: zstd_lazy.o]
+hs_build, measured profile 2:         9.09 s   objects same: True   [hs_build: 25 compile jobs, 25 with measured times (profile), 12 jobs; heaviest first: zstd_lazy.o]
+hs_build, measured profile 3:         9.1 s   objects same: True   [hs_build: 25 compile jobs, 25 with measured times (profile), 12 jobs; heaviest first: zstd_lazy.o]
+plain make -j12 run 4:                10.07 s   objects same: True
+plain make -j12 run 5:                9.08 s   objects same: True
+
+measured compile times (seconds, from the profile), heaviest 8:
+  zstd_lazy.o                  8.84
+  zstd_opt.o                   2.73
+  zstd_compress.o              2.52
+  huf_decompress.o             2.51
+  zstd_fast.o                  2.39
+  zstd_double_fast.o           2.38
+  zstd_decompress_block.o      2.34
+  huf_compress.o               1.29
+
+FINISHED 11/01/2026 04:37:42
+DONE

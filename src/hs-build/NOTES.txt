@@ -65,3 +65,17 @@ objects in a RECURSIVE make (zstd's lib Makefile calls itself with BUILD_DIR=...
 call a make per target) have no rule for the object files at the top level, so they cannot be handed to make as
 goals. hs_build works on flat Makefiles such as OpenSSL's; recursive builds would need hs_build to run inside the
 inner make, which is not done. The CMake claim in LIMITS above is therefore withdrawn until tested.
+
+DESKTOP RESULT (1 November 2026; AMD Ryzen 5 7500X3D 6 cores / 12 threads, Windows 11; w64devkit 2.4.0 portable:
+gcc 15.2.0, GNU make 4.4.1; hs_build/hs_cc 1.1 compiled from source on the PC; project = public zstd 1.5.6 library
+sources, 25 C files, plain one-rule Makefile, gcc -O2, 12 jobs)
+  plain make -j12:                 9.05-10.07 s  (5 runs)
+  plain make -j12 + timing shim:   10.07-10.11 s
+  hs_build, source-size estimate:  9.08-9.72 s
+  hs_build, measured profile:      9.09-9.10 s   (3 runs)
+Objects byte-identical to the plain build in every run. RESULT: NO GAIN on this project, and none was possible:
+one file (zstd_lazy.c, 8.84 s) takes almost the whole build by itself; with 12 cores every other file finishes
+while it compiles, so reordering cannot shorten the build below that one file. hs_build pays only when a project
+has many heavy files competing for cores near the end of the build (more heavy files than cores).
+NOTE: the first desktop attempt used a prebuilt hs_cc.exe (cross-built with Zig); Windows Defender quarantined
+it as a false positive. Building hs_build and hs_cc on the PC from source with gcc avoided that.
