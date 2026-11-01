@@ -1,0 +1,14 @@
+packJPG SETTINGS SEARCH PROBE - 1 November 2026 (cloud, 2 cores). Michael Hugh Harrington. MIT License.
+Question: would an internal "search" option in packJPG (YadeWira/packJPG v5.0g fork), trying its own segment count
+(-s 1..49) and noise threshold (-t 0..10) per file and keeping the smallest, beat its automatic choice? Custom
+settings are stored in the .pjg and the normal release decoder reads them (checked: byte-identical JPEG back).
+Grid: 14 segment values x 11 thresholds = 154 settings per file. Public camera JPEGs from GitHub repos
+(merbanan/rtl_433_tests, uccser/cs-unplugged), first 4 files:
+  001.jpg   758,785 B   auto 562,905   best 562,853 (s12 t7)   saved     52 B
+  002.jpg   781,862 B   auto 578,631   best 578,589 (s12 t7)   saved     42 B
+  003.jpg 1,039,455 B   auto 748,374   best 748,291 (s12 t7)   saved     83 B
+  004.jpg 3,587,186 B   auto 2,746,348 best 2,744,892 (s15 t8) saved  1,456 B
+  total: auto 4,636,258, best 4,634,625 - 1,633 bytes saved (0.04%) for 154x the compression time.
+VERDICT: not worth an option. packJPG's automatic settings are already within a few hundredths of a percent of the
+best of its own settings. Remaining openings are speed only (largest-files-first queue; more than 3 threads on one
+image), not size.
