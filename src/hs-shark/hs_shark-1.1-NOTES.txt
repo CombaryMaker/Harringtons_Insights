@@ -1,0 +1,23 @@
+hs_shark 1.1 - Harrington Sets wrapper for tshark, with a mode switch
+Michael Hugh Harrington, 2026-10-31. MIT License.
+
+--mode classic  (default) = the original 1.0 plan: write each shard as its own capture file, run tshark on the
+                 shard files, write tshark's output to files, merge.
+--mode direct   = new: no shard files and no output files. Each tshark reads its shard from a pipe (tshark -r -)
+                 fed straight from the original capture, and its output is read straight into memory for the merge.
+Both modes give byte-identical output (checked against each other and against plain single-core tshark).
+
+CLOUD RESULTS (2 cores; fields frame.number, frame.time_relative, ip.src, ip.dst, tcp.stream, Protocol, Info)
+  904 MB capture, 967,488 packets:
+    plain tshark (1 core)          39.6 s
+    classic, first run             83.6 s  (55.6 s of it writing the 904 MB of shard files to a cold disk)
+    classic, second run            26.7 s  (1.48x vs plain)
+    direct                         22.4-22.7 s  (1.75x vs plain; 1.19x vs warm classic; 3.7x vs cold classic)
+  113 MB capture, 120,936 packets: classic 4.3-4.6 s (first, cold run 12.6 s), direct 4.0-4.4 s, plain 5.1 s.
+  Filtered run (-Y tcp.analysis.flags with tcp.stream, uses the extra mapping pass): direct identical to plain.
+The direct mode's biggest win is that it never writes a second copy of the capture to disk, which on a cold
+disk was most of the classic mode's time.
+
+TO TEST ON THE DESKTOP (needs Wireshark installed):
+  hs_shark.exe CAPTURE.pcap --jobs 12 --out a.txt --mode classic --check -- -T fields -e frame.number -e ip.src ...
+  hs_shark.exe CAPTURE.pcap --jobs 12 --out b.txt --mode direct  --check -- (same fields)

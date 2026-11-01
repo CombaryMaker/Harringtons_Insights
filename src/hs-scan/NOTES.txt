@@ -1,0 +1,49 @@
+HARRINGTON SETS SCAN WRAPPER (hs_scan) FOR YARA AND CLAMAV - 30 October 2026
+Michael Hugh Harrington. MIT License (the wrapper; YARA is BSD-3, ClamAV is GPL-2 - not included here).
+
+WHAT IT DOES
+YARA and ClamAV already use several cores, but only across SEPARATE files (yara -p, clamd threads). One large
+file - a memory dump, disk image, packet capture or big log - is scanned on one core. hs_scan reads the file in
+64 KB windows, groups them into Harrington Sets (same labelling as hs_wrap; nothing is skipped, every byte is
+scanned), cuts each contiguous run into pieces of at most B MB, and writes each piece plus the next 64 KB of the
+original file as a scan unit. Units are scanned in parallel; hits are mapped back to original file offsets and
+duplicates from the overlap zones are removed. Units are grouped by set, so each set can get its own rule file.
+
+  hs_scan yara RULES INPUT [--rules-set N=FILE] [--jobs N] [--block-mb B] [--overlap-kb K]
+  hs_scan clam INPUT --db SIGS [--clam-args "..."] [--jobs N] ...        (one clamscan per job)
+  hs_scan clamd INPUT [--clam-args "-c clamdscan.conf"] ...               (uses a running clamd)
+A precompiled YARA rules file (.yarc, made with yarac) is detected and used with -C.
+
+RESULTS (cloud, 2 cores; 150,298,955-byte test file = 6 Silesia files with 3 MB of random data after each,
+847 planted markers including at 64 KB and 1 MB boundaries, 4 EICAR test strings; YARA 4.5.0, ClamAV 1.5.4)
+Correctness, YARA: every match offset identical to a plain yara scan for the marker, EICAR and regex rules
+  (847 / 4 / 167 matches), at default settings and again with 1 MB pieces and 1 KB overlap (about 150 boundaries).
+Correctness, ClamAV: with the marker/EICAR signatures, both plain clamscan and hs_scan found both signatures.
+  With 30,000 random synthetic signatures (--allmatch, raw scanning) plain found 98 distinct signatures and
+  hs_scan 92; all 6 misses were unbounded-gap ("*") signatures whose parts were farther apart than the
+  overlap - the expected limit. Every bounded signature matched.
+Speed, YARA (400 scan-heavy rules, precompiled):
+  plain yara 10.8 s | yara -p 2 on the one file 11.5 s (no gain: -p only splits across files) | hs_scan 2 jobs 5.8 s
+  = about 1.9x faster on 2 cores.
+Speed, ClamAV (60,000 signatures, raw scanning): plain clamscan 7.1-7.3 s, clamd --multiscan on the one file 7.1 s,
+  hs_scan 6.5-7.3 s - no gain on this machine. Two plain clamscan processes on two halves of the file also gave no
+  gain (8.2 s), so this 2-vCPU cloud machine itself does not scale ClamAV (shared core / cache); it needs a real
+  multi-core test on the desktop.
+
+NOTABLE
+- ClamAV refuses to scan any file over 2 GiB ("scanning files greater than 2147483647 bytes is not supported").
+  hs_scan scans such files, because every unit is small. This may be the strongest practical point for ClamAV.
+- YARA rule compilation can dominate run time with big rule sets (8.5 s of a 9.4 s scan in one test); hs_scan
+  compiles once per run, and precompiled .yarc rules avoid it entirely.
+
+LIMITS (true of any chunked scan)
+- Rules that need the whole file (filesize, header/entry-point conditions, PE/ELF modules, ClamAV archive and
+  container unpacking) see one unit at a time; the unit at offset 0 keeps true header offsets. Scan normal files
+  normally; use hs_scan for raw-pattern scanning of big blobs.
+- Matches longer than the overlap, or multi-string rules whose strings are farther apart than the overlap, can be
+  missed (raise --overlap-kb). In the test, a rule needing two markers ~70 MB apart was found by plain YARA only.
+- Needs about the input size in free disk space while running (units are removed afterwards).
+- clamd caches results of files it has already scanned; time it on fresh files.
+
+FILES: hs_scan.cpp (source), hs_scan.exe (Windows build, not yet run on Windows), rules.yar and sigs.ndb (test
+rules/signatures), cmp2.py (compares plain YARA offsets with hs_scan offsets).
