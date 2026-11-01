@@ -1,0 +1,67 @@
+BANK AND SEISMIC DATA TESTS - 1 November 2026 (cloud machine, 2 cores). Michael Hugh Harrington. MIT License.
+Every decode compared byte for byte with the original; all exact.
+
+SEISMIC (real public data): 8 station-day recordings from EarthScope (FDSN dataselect), 2024-01-01, the day of the
+M7.5 Noto earthquake: IU.MAJO (Japan), IU.ANMO, IU.COLA, IU.KONO, IU.TATO, II.PFO (BHZ) and IU.MAJO, IU.ANMO (HHZ).
+Archive format Steim2 in miniSEED; decoded to 132,250,680 bytes of 32-bit samples with steim.c (every record's
+reverse integration constant checked). SHA-256 of the downloaded files in seismic-data-sha256.txt.
+  method                                   bytes        vs Steim2   ratio   compress s   decode s
+  Steim2 in miniSEED (archive standard)    42,413,056   1.000       3.12        -          0.39
+  zstd -19 on raw samples                  43,266,256   0.980       3.06      82.9         0.58
+  xz -9 on raw samples                     38,160,844   1.111       3.47     120.6         3.93
+  difference + byte shuffle, zstd -19      34,782,226   1.219       3.80      66.5         0.75
+  difference + byte shuffle, xz -9         31,139,192   1.362       4.25      86.7         3.03
+  Harrington record delta, zstd -19        58,013,095   0.731       2.28      79.7         1.06
+  Harrington record delta, xz -9           49,853,596   0.851       2.65     106.3         4.24
+  HCM v3.6.1 on raw samples                28,594,207   1.483       4.63     569.9       144.97
+  difference + byte shuffle, HCM v3.6.1    33,443,709   1.268       3.95     379.3       101.49
+HCM on the raw samples is 1.48x smaller than Steim2 and beats every other method, but decodes about 370x slower
+than Steim2: an archive-storage result, not a live-data one. Record delta picked a record length of 3 bytes for
+4-byte samples and made the data larger; seismic samples are not fixed-layout records (its size-and-speed check
+would switch it off).
+
+BANK (synthetic data in public formats, gen_bank.py; no real people, accounts or banks): 180 NACHA ACH files
+(94-character records; payroll and bill-payment batches; routing numbers random with valid ABA check digits) and
+360 ATM electronic journals (12 ATMs x 30 days). Three tar archives: ACH only, journals only, and a mixed daily backup.
+  ach.tar 64,143,360 bytes        bytes        ratio   compress s   decode s
+    gzip -9                        18,378,293    3.49       16.6        0.77
+    zstd -19                       13,577,145    4.72       70.0        0.16
+    xz -9                          12,875,868    4.98       91.6        1.43
+    record delta + zstd -19        17,707,264    3.62       68.1        0.40
+    record delta + xz -9           16,466,516    3.90       85.5        1.83
+    HCM v3.6.1 fast                10,051,902    6.38      229.3       59.34
+  ej.tar 55,552,000 bytes
+    gzip -9                         4,910,341   11.31        2.0        0.32
+    zstd -19                        3,634,839   15.28       65.9        0.09
+    xz -9                           3,723,224   14.92       35.4        0.47
+    record delta + zstd -19         5,697,147    9.75       52.2        0.27
+    record delta + xz -9            4,921,624   11.29       32.5        0.70
+    HCM v3.6.1 fast                 1,945,687   28.55      152.9       41.01
+  mixed.tar 119,685,120 bytes
+    gzip -9                        23,367,914    5.12       18.9        0.84
+    zstd -19                       17,413,034    6.87      140.1        0.21
+    xz -9                          16,950,308    7.06      126.3        1.87
+    record delta + zstd -19        25,334,678    4.72      111.6        0.71
+    record delta + xz -9           22,761,988    5.26      115.2        2.66
+    HCM v3.6.1 fast                12,126,393    9.87      385.9      102.24
+HCM is the smallest on all three (22%, 47% and 28% smaller than the best standard tool) at a large decode-time cost.
+Record delta made every bank archive larger: ACH records are mostly random fields (accounts, amounts, names), and
+the journals are variable-length text lines; its size-and-speed check would switch it off.
+
+HARRINGTON SETS (hs_zstd 1.3, level 19, 2 jobs) vs plain blocks vs zstd -19 -T2
+  mixed.tar 119,685,120 bytes     bytes        ratio   compress s   decode s
+    zstd -19 -T2 (one stream)      17,413,034    6.87       74.0        0.16
+    plain blocks, 4 MB             17,707,270    6.76       42.5        0.23
+    Harrington Sets, 4 MB          17,522,588    6.83       46.5        0.26
+    plain blocks, 16 MB            17,497,009    6.84       58.2        0.33
+    Harrington Sets, 16 MB         17,247,784    6.94       59.8        0.30
+  seismic, all 8 days joined, 132,250,680 bytes
+    zstd -19 -T2 (one stream)      43,331,308    3.05       56.6        0.77
+    plain blocks, 4 MB             43,620,023    3.03       31.6        0.45
+    Harrington Sets, 4 MB          43,609,236    3.03       31.0        0.46
+    plain blocks, 16 MB            43,299,999    3.05       46.6        0.44
+    Harrington Sets, 16 MB         43,267,519    3.06       49.5        0.48
+On the mixed bank backup, Sets at 16 MB was smaller than plain blocks (1.4%) and smaller than single-stream zstd
+(1.0%) while compressing faster than zstd -T2; decode on 2 cores was slower than zstd's (0.30 s vs 0.16 s). On the
+seismic data Sets and plain blocks tie: quiet and quake stretches do not differ enough in byte statistics.
+Timings are from a shared 2-core cloud machine; sizes are exact.

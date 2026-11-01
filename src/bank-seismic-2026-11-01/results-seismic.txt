@@ -1,0 +1,11 @@
+8 real station-day files (EarthScope, 2024-01-01, includes the M7.5 Noto earthquake), 132,250,680 bytes as int32 samples
+method                                        bytes vs Steim2  ratio  comp s decode s  exact
+Steim2 in miniSEED (archive standard)    42,413,056     1.000   3.12       -     0.39  yes (Xn checks)
+zstd -19 on raw samples                  43,266,256     0.980   3.06    82.9     0.58  yes
+xz -9 on raw samples                     38,160,844     1.111   3.47   120.6     3.93  yes
+difference+shuffle, zstd -19             34,782,226     1.219   3.80    66.5     0.75  yes
+difference+shuffle, xz -9                31,139,192     1.362   4.25    86.7     3.03  yes
+Harrington record delta, zstd -19        58,013,095     0.731   2.28    79.7     1.06  yes
+Harrington record delta, xz -9           49,853,596     0.851   2.65   106.3     4.24  yes
+HCM v3.6.1 on raw samples                28,594,207     1.483   4.63   569.9   144.97  yes
+difference+shuffle, HCM v3.6.1           33,443,709     1.268   3.95   379.3   101.49  yes

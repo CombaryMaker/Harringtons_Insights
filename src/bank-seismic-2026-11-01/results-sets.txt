@@ -1,0 +1,16 @@
+
+=== mixed.tar  119,685,120 bytes, 2 jobs, level 19
+method                                          bytes   ratio  comp s decode s  exact
+zstd -19 -T2 (one stream)                  17,413,034    6.87    74.0     0.16  yes
+hs_zstd plain blocks, 4 MB                 17,707,270    6.76    42.5     0.23  yes
+hs_zstd Harrington Sets, 4 MB              17,522,588    6.83    46.5     0.26  yes
+hs_zstd plain blocks, 16 MB                17,497,009    6.84    58.2     0.33  yes
+hs_zstd Harrington Sets, 16 MB             17,247,784    6.94    59.8     0.30  yes
+
+=== seismic_all.i32  132,250,680 bytes, 2 jobs, level 19
+method                                          bytes   ratio  comp s decode s  exact
+zstd -19 -T2 (one stream)                  43,331,308    3.05    56.6     0.77  yes
+hs_zstd plain blocks, 4 MB                 43,620,023    3.03    31.6     0.45  yes
+hs_zstd Harrington Sets, 4 MB              43,609,236    3.03    31.0     0.46  yes
+hs_zstd plain blocks, 16 MB                43,299,999    3.05    46.6     0.44  yes
+hs_zstd Harrington Sets, 16 MB             43,267,519    3.06    49.5     0.48  yes

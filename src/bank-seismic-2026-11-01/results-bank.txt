@@ -1,0 +1,27 @@
+
+=== ach.tar  64,143,360 bytes
+method                                        bytes   ratio  comp s decode s  exact
+gzip -9                                  18,378,293    3.49    16.6     0.77  yes
+zstd -19                                 13,577,145    4.72    70.0     0.16  yes
+xz -9                                    12,875,868    4.98    91.6     1.43  yes
+Harrington record delta + zstd -19       17,707,264    3.62    68.1     0.40  yes
+Harrington record delta + xz -9          16,466,516    3.90    85.5     1.83  yes
+HCM v3.6.1 fast                          10,051,902    6.38   229.3    59.34  yes
+
+=== ej.tar  55,552,000 bytes
+method                                        bytes   ratio  comp s decode s  exact
+gzip -9                                   4,910,341   11.31     2.0     0.32  yes
+zstd -19                                  3,634,839   15.28    65.9     0.09  yes
+xz -9                                     3,723,224   14.92    35.4     0.47  yes
+Harrington record delta + zstd -19        5,697,147    9.75    52.2     0.27  yes
+Harrington record delta + xz -9           4,921,624   11.29    32.5     0.70  yes
+HCM v3.6.1 fast                           1,945,687   28.55   152.9    41.01  yes
+
+=== mixed.tar  119,685,120 bytes
+method                                        bytes   ratio  comp s decode s  exact
+gzip -9                                  23,367,914    5.12    18.9     0.84  yes
+zstd -19                                 17,413,034    6.87   140.1     0.21  yes
+xz -9                                    16,950,308    7.06   126.3     1.87  yes
+Harrington record delta + zstd -19       25,334,678    4.72   111.6     0.71  yes
+Harrington record delta + xz -9          22,761,988    5.26   115.2     2.66  yes
+HCM v3.6.1 fast                          12,126,393    9.87   385.9   102.24  yes
