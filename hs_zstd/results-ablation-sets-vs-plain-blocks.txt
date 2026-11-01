@@ -1,0 +1,56 @@
+hs_zstd 1.3/1.4-test ablation, desktop, 11/01/2026 01:02:23, jobs=12, decode rounds=5, --flush on, SHA-256 verified
+CPU: AMD Ryzen 5 7500X3D 6-Core Processor           , threads 12, RAM 15 GB
+
+=== switch_1mb.bin  (25,165,824 bytes)
+1.3 default (Sets, raw off, safe), 16 MB         bits/M   535,584  bytes    13,478,425  comp    0.11 s (  56.1 MB)  decode med  0.060 s  all [0.065 0.060 0.060 0.060 0.033]  peak   45.7 MB
+plain blocks --sets 0, 16 MB                     bits/M   588,404  bytes    14,807,670  comp    0.07 s (  54.8 MB)  decode med  0.046 s  all [0.040 0.048 0.048 0.046 0.045]  peak   45.6 MB
+1.2 rule (--raw entropy --smooth 1.2), 16 MB     bits/M   638,311  bytes    16,063,625  comp    0.06 s (  44.8 MB)  decode med  0.041 s  all [0.041 0.035 0.046 0.033 0.049]  peak   37.5 MB
+Sets --raw test, 16 MB                           bits/M   540,925  bytes    13,612,813  comp    0.08 s (  52.9 MB)  decode med  0.044 s  all [0.053 0.044 0.035 0.034 0.047]  peak   37.6 MB
+1.4 --merge 0.1 (close centres merged), 16 MB    bits/M   535,584  bytes    13,478,425  comp    0.06 s (  55.7 MB)  decode med  0.041 s  all [0.041 0.049 0.038 0.047 0.034]  peak   46.3 MB
+1.4 --autok 0.2 (sets by separation), 16 MB      bits/M   535,584  bytes    13,478,425  comp    0.06 s (  55.7 MB)  decode med  0.042 s  all [0.042 0.033 0.041 0.058 0.061]  peak   47.2 MB
+1.4 --autok 0.3 (sets by separation), 16 MB      bits/M   535,584  bytes    13,478,425  comp    0.06 s (  55.7 MB)  decode med  0.043 s  all [0.041 0.050 0.061 0.043 0.037]  peak   45.4 MB
+1.3 default (Sets, raw off, safe), 4 MB          bits/M   550,021  bytes    13,841,743  comp    0.05 s (  65.7 MB)  decode med  0.033 s  all [0.025 0.044 0.033 0.032 0.033]  peak     61 MB
+plain blocks --sets 0, 4 MB                      bits/M   588,829  bytes    14,818,367  comp    0.06 s (    59 MB)  decode med  0.033 s  all [0.039 0.029 0.030 0.036 0.033]  peak   25.9 MB
+1.2 rule (--raw entropy --smooth 1.2), 4 MB      bits/M   652,198  bytes    16,413,089  comp    0.03 s (  52.2 MB)  decode med  0.032 s  all [0.053 0.032 0.031 0.030 0.033]  peak   51.6 MB
+zstd -3, one thread                              bits/M   588,400  bytes    14,807,563  comp    0.13 s (  43.2 MB)  decode med  0.039 s  all [0.041 0.033 0.033 0.041 0.039]  peak   10.4 MB
+zstd -3 -T12                                     bits/M   588,400  bytes    14,807,563  comp    0.07 s (    49 MB)  decode med  0.040 s  all [0.040 0.037 0.038 0.041 0.042]  peak   10.4 MB
+zstd -3 --long=27, one thread                    bits/M   585,601  bytes    14,737,134  comp    0.12 s (  38.6 MB)  decode med  0.053 s  all [0.039 0.042 0.055 0.056 0.053]  peak   30.6 MB
+pzstd -3 -p 12                                   bits/M   589,253  bytes    14,829,038  comp    0.10 s (  48.2 MB)  decode med  0.038 s  all [0.037 0.038 0.053 0.048 0.030]  peak     39 MB
+1.3-made file decoded exactly by the 1.2 exe: yes
+
+=== dup_random_chunks.bin  (50,331,648 bytes)
+1.3 default (Sets, raw off, safe), 16 MB         bits/M   731,991  bytes    36,842,315  comp    0.07 s ( 108.1 MB)  decode med  0.053 s  all [0.056 0.051 0.044 0.053 0.057]  peak   88.6 MB
+plain blocks --sets 0, 16 MB                     bits/M   765,178  bytes    38,512,680  comp    0.07 s ( 104.2 MB)  decode med  0.055 s  all [0.052 0.055 0.056 0.055 0.057]  peak   93.2 MB
+1.2 rule (--raw entropy --smooth 1.2), 16 MB     bits/M 1,000,001  bytes    50,331,685  comp    0.04 s (  18.1 MB)  decode med  0.072 s  all [0.085 0.069 0.072 0.071 0.084]  peak   53.3 MB
+Sets --raw test, 16 MB                           bits/M   764,604  bytes    38,483,780  comp    0.09 s (  61.8 MB)  decode med  0.056 s  all [0.051 0.052 0.059 0.060 0.056]  peak   60.8 MB
+1.4 --merge 0.1 (close centres merged), 16 MB    bits/M   764,402  bytes    38,473,611  comp    0.10 s ( 103.8 MB)  decode med  0.057 s  all [0.057 0.053 0.064 0.057 0.068]  peak   95.9 MB
+1.4 --autok 0.2 (sets by separation), 16 MB      bits/M   731,991  bytes    36,842,315  comp    0.07 s ( 107.9 MB)  decode med  0.057 s  all [0.057 0.067 0.056 0.056 0.057]  peak   90.9 MB
+1.4 --autok 0.3 (sets by separation), 16 MB      bits/M   731,991  bytes    36,842,315  comp    0.08 s ( 106.6 MB)  decode med  0.055 s  all [0.056 0.050 0.054 0.055 0.068]  peak   87.8 MB
+1.3 default (Sets, raw off, safe), 4 MB          bits/M   754,401  bytes    37,970,250  comp    0.05 s (   113 MB)  decode med  0.047 s  all [0.039 0.039 0.050 0.049 0.047]  peak  106.9 MB
+plain blocks --sets 0, 4 MB                      bits/M   765,183  bytes    38,512,926  comp    0.06 s ( 108.1 MB)  decode med  0.041 s  all [0.040 0.040 0.041 0.049 0.046]  peak  101.8 MB
+1.2 rule (--raw entropy --smooth 1.2), 4 MB      bits/M 1,000,001  bytes    50,331,685  comp    0.04 s (  18.2 MB)  decode med  0.086 s  all [0.073 0.071 0.089 0.086 0.087]  peak   53.3 MB
+zstd -3, one thread                              bits/M   765,174  bytes    38,512,466  comp    0.12 s (  54.4 MB)  decode med  0.040 s  all [0.052 0.036 0.053 0.036 0.040]  peak   10.2 MB
+zstd -3 -T12                                     bits/M   765,174  bytes    38,512,466  comp    0.05 s (  99.7 MB)  decode med  0.039 s  all [0.037 0.039 0.038 0.040 0.042]  peak   10.3 MB
+zstd -3 --long=27, one thread                    bits/M   431,868  bytes    21,736,643  comp    0.12 s (  65.2 MB)  decode med  0.056 s  all [0.057 0.051 0.056 0.055 0.057]  peak     56 MB
+pzstd -3 -p 12                                   bits/M   765,651  bytes    38,536,458  comp    0.05 s (  94.1 MB)  decode med  0.039 s  all [0.039 0.026 0.054 0.055 0.027]  peak    7.8 MB
+1.3-made file decoded exactly by the 1.2 exe: yes
+
+=== silesia_joined.bin  (211,938,580 bytes)
+1.3 default (Sets, raw off, safe), 16 MB         bits/M   314,617  bytes    66,679,523  comp    0.26 s ( 407.9 MB)  decode med  0.148 s  all [0.151 0.137 0.152 0.139 0.148]  peak  254.7 MB
+plain blocks --sets 0, 16 MB                     bits/M   314,308  bytes    66,614,016  comp    0.27 s (   419 MB)  decode med  0.140 s  all [0.139 0.135 0.145 0.140 0.145]  peak  265.2 MB
+1.2 rule (--raw entropy --smooth 1.2), 16 MB     bits/M   314,314  bytes    66,615,351  comp    0.27 s ( 405.5 MB)  decode med  0.146 s  all [0.174 0.154 0.131 0.146 0.129]  peak  259.2 MB
+Sets --raw test, 16 MB                           bits/M   314,546  bytes    66,664,472  comp    0.32 s ( 407.7 MB)  decode med  0.139 s  all [0.154 0.140 0.135 0.139 0.138]  peak  272.8 MB
+1.4 --merge 0.1 (close centres merged), 16 MB    bits/M   314,617  bytes    66,679,523  comp    0.25 s ( 408.1 MB)  decode med  0.140 s  all [0.170 0.134 0.361 0.140 0.140]  peak  256.9 MB
+1.4 --autok 0.2 (sets by separation), 16 MB      bits/M   314,617  bytes    66,679,523  comp    0.24 s ( 408.1 MB)  decode med  0.150 s  all [0.150 0.164 0.137 0.145 0.159]  peak  257.3 MB
+1.4 --autok 0.3 (sets by separation), 16 MB      bits/M   314,302  bytes    66,612,694  comp    0.26 s ( 418.2 MB)  decode med  0.142 s  all [0.135 0.152 0.144 0.142 0.136]  peak    271 MB
+1.3 default (Sets, raw off, safe), 4 MB          bits/M   315,579  bytes    66,883,341  comp    0.18 s ( 166.4 MB)  decode med  0.126 s  all [0.126 0.128 0.125 0.140 0.119]  peak  251.8 MB
+plain blocks --sets 0, 4 MB                      bits/M   314,965  bytes    66,753,131  comp    0.19 s ( 165.8 MB)  decode med  0.124 s  all [0.124 0.131 0.125 0.123 0.119]  peak  232.6 MB
+1.2 rule (--raw entropy --smooth 1.2), 4 MB      bits/M   315,645  bytes    66,897,401  comp    0.21 s ( 183.3 MB)  decode med  0.123 s  all [0.126 0.123 0.118 0.125 0.121]  peak    257 MB
+zstd -3, one thread                              bits/M   314,034  bytes    66,555,979  comp    0.68 s (  49.3 MB)  decode med  0.201 s  all [0.189 0.205 0.201 0.218 0.198]  peak   10.3 MB
+zstd -3 -T12                                     bits/M   314,034  bytes    66,555,979  comp    0.18 s ( 185.9 MB)  decode med  0.208 s  all [0.192 0.314 0.200 0.208 0.217]  peak   10.4 MB
+zstd -3 --long=27, one thread                    bits/M   311,478  bytes    66,014,258  comp    0.90 s (   154 MB)  decode med  0.217 s  all [0.218 0.212 0.215 0.227 0.217]  peak  136.3 MB
+pzstd -3 -p 12                                   bits/M   314,855  bytes    66,729,930  comp    0.18 s ( 172.8 MB)  decode med  0.101 s  all [0.113 0.101 0.115 0.100 0.101]  peak    148 MB
+1.3-made file decoded exactly by the 1.2 exe: yes
+
+FINISHED 11/01/2026 01:03:13
+DONE 

@@ -1,0 +1,59 @@
+DRAFT - NOT POSTED. For Michael Hugh Harrington to approve before it goes to https://github.com/facebook/zstd/issues
+
+TITLE:
+Parallel decompression of a single large file into a memory-mapped output (hs_zstd) - results for evaluation
+
+BODY:
+Hello zstd maintainers,
+
+I am Michael Hugh Harrington. I have built a small MIT-licensed tool, hs_zstd, that uses libzstd 1.5.6 unmodified to
+compress one large file as many independent zstd frames and then decompress those frames on every core at once,
+each core writing its frames straight into their final place in a memory-mapped output file. I would be grateful
+if you could take a look and tell me whether the approach is useful to zstd, or point out what I have missed.
+I have signed the Meta CLA in case any part of it is ever worth contributing.
+
+Code, Windows build, methodology and raw logs:
+https://github.com/CombaryMaker/Harringtons_Insights/tree/main/hs_zstd
+
+How it works, briefly:
+1. The file is read in 64 KB windows and each window is grouped by simple byte statistics (k-means, at most three
+   groups). This grouping is established work (McDaniel and Heydari 2003; Li, Wang, Stolfo and Herzog 2005) and
+   only matters for size when the kind of data changes inside the file; --sets 0 turns it off.
+2. Each group is cut into blocks (4 or 16 MB) and every block is compressed as an independent zstd frame, in
+   parallel, at level 3.
+3. A small run-length map and a CRC-32 let the decoder put every byte back. All frames are decoded in parallel,
+   directly into the memory-mapped output where a frame maps to one contiguous range.
+
+Results on one desktop (Ryzen 5 7500X3D, 6 cores / 12 threads, NVMe, Windows 11), 4 GB public file (the 12 Silesia
+files joined and repeated), 12 threads, median of several runs, every decode checked by SHA-256:
+
+  tool                          1,000,000 bits down to   compress   decode
+  zstd -3, one thread                   314,102           14.7 s    3.73 s
+  zstd -3 -T12                          314,102            2.9 s    4.25 s
+  pzstd -3 -p 12                        315,013            4.1 s    2.85 s
+  hs_zstd, 4 MB blocks, 12 jobs         315,391            2.9 s    2.27 s
+  hs_zstd, 16 MB blocks, 12 jobs        314,315            3.5 s    2.51 s
+
+hs_zstd's decode times include forcing the output to disk (FlushViewOfFile/FlushFileBuffers); zstd's and pzstd's
+do not. Decoding scales to about 4-6 threads and then becomes disk-write bound (4 MB blocks: 7.5 s on 1 thread,
+3.2 s on 4, 2.4 s on 12). Decoder private memory is about 130 MB (4 MB blocks) to 300 MB (16 MB), versus about
+10 MB for zstd and 160 MB for pzstd. On a 3.2 GB public mixed tar (Linux source, Blender, pdf.js, CSV) hs_zstd
+decoded in 1.75 s vs zstd 2.23 s and pzstd 1.92 s, and the grouping made it slightly smaller than both
+(244,338 vs 244,965 and 246,879 per million). zstd --long was smaller than everything on that tar (233,113).
+
+What I think is and is not new: independent frames and parallel decoding are what pzstd and the seekable format
+already do, and the grouping is prior work. The part that seems to carry the speed is decoding each frame
+directly into its final location in a memory-mapped output instead of through per-thread buffers and an ordered
+writer. If that is already known or tried, I would be glad to learn why it was not adopted.
+
+Limits: the .hsz container needs hs_zstd to reassemble (each block inside is a standard zstd frame); memory is
+higher than zstd's; all numbers come from one Windows machine; repeats farther apart than one block are lost.
+
+Credit to Andrew Goodwin (University of Sydney), whose review supplied the plain-blocks control, two bug fixes and
+the fair-baseline method used here.
+
+License: MIT, Copyright (c) 2026 Michael Hugh Harrington.
+
+Thank you for zstd and for your time.
+Michael Hugh Harrington
+michaelhh@gmail.com

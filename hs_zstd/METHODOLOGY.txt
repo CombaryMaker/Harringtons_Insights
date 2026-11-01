@@ -1,0 +1,19 @@
+METHODOLOGY FOR THE hs_zstd RESULTS
+
+Machine: AMD Ryzen 5 7500X3D, 6 cores / 12 threads, 15 GB usable RAM, NVMe SSD, Windows 11. zstd 1.5.6 (zstd and
+pzstd command-line tools, MinGW Windows builds from the official 1.5.6 sources), hs_zstd 1.3 linked with the same library. Level 3 everywhere.
+Data (public only):
+  - silesia_4gb.bin: the 12 Silesia corpus files joined in alphabetical order and repeated 19 times, 4,026,833,020
+    bytes, SHA-256 1676242130E38A24E49A9E1345BA3FAD3F4A85563357849D72253304AA5F65EB.
+  - mixed_4gb.tar: a tar of Linux 6.6 source, Blender 4.2.3 Windows portable, the pdf.js repository and the NYT
+    covid-19-data repository, 3,179,306,496 bytes; archive URLs and hashes in test-data-sources-and-hashes.txt.
+  - 2 GB race: Silesia repeated to 2 GB. Ablation: two seeded synthetic files from Andrew Goodwin's make_testfiles.py.
+Timing: wall clock of the whole process, 3-5 decode rounds per point, median reported, order of tools fixed per file.
+  hs_zstd decodes with --flush (FlushViewOfFile + FlushFileBuffers before the clock stops); zstd and pzstd write
+  normally, so their times may stop while data is still in the write cache - this favours them.
+Verification: every decode compared with the original by SHA-256 (or by length + CRC-32 in the 2 GB race).
+Memory: peak private bytes (PeakPagedMemorySize) sampled every 10-20 ms; hs_zstd's working set also counts pages of
+  the memory-mapped output and is not used as a memory figure.
+Control: --sets 0 (plain block splitting in file order, same blocks, same container) is reported next to every Sets
+  result, so the effect of grouping is separated from the effect of parallel frames.
+Scripts: the PowerShell runners that produced each log are in src/hs-zstd/ of this repository.

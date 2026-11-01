@@ -1,0 +1,45 @@
+ABOUT hs_zstd
+Michael Hugh Harrington, 2026. MIT License. zstd (BSD/GPL-2 dual licence, Meta Platforms) is linked in unmodified.
+
+WHAT IT IS
+hs_zstd compresses one large file as many independent zstd frames and decompresses them on all cores at once, each
+core writing its frames straight into their final place in a memory-mapped output file. A single ordinary zstd
+frame cannot be decoded in parallel, and the zstd command line decodes on one thread; pzstd decodes its own
+multi-frame files in parallel but through intermediate buffers. hs_zstd is a separate tool with its own container
+(.hsz): every block inside it is a standard zstd frame, but the container needs hs_zstd to reassemble.
+
+HOW IT WORKS
+1. Pass 1 (all cores): the file is read in 64 KB windows; each window gets 7 byte statistics (shares of control
+   bytes, letters, digits, spaces, high bytes and zeros, plus entropy) and a CRC-32 per range.
+2. The windows are grouped into at most 3 sets with k-means on those statistics (short runs are merged; tiny sets
+   fold into the largest). This grouping step is established work: byte-frequency "fingerprints" and their
+   clustering come from McDaniel and Heydari (2003) and Li, Wang, Stolfo and Herzog (2005); see REFERENCES.
+3. Each set's windows, in file order, form one stream; streams are cut into blocks of B MB (default 16, also 4) and
+   every block is compressed as an independent zstd frame (level 3 by default) on its own core.
+4. A run-length map (about 5 bytes per run) records which set each window belongs to, so decoding puts every byte
+   back in place. A CRC-32 of the whole file is stored and checked.
+5. Decoding: all frames are decoded in parallel; a frame whose output is one contiguous piece of the file is decoded
+   directly into the memory-mapped output with no intermediate buffer.
+Option --sets 0 turns the grouping off (plain block splitting in file order) - the control for what grouping adds.
+
+WHAT THE RESULTS SHOW (details in the results files; one 6-core / 12-thread Windows desktop, NVMe)
+- Speed comes mainly from parallel independent frames plus decoding straight into the output. On a 4 GB public
+  Silesia file, 12 threads: hs_zstd 4 MB blocks decodes in 2.27-2.43 s vs pzstd 2.85-3.53 s, zstd 3.73 s; the
+  grouping (Sets) adds no speed over plain block splitting.
+- Size: the grouping helps only where the kind of data changes inside the file. Equal to plain blocks on Silesia;
+  smaller on a 3.2 GB public mixed tar (1,000,000 bits down to 244,338 vs 245,319) and 9% smaller on a synthetic
+  file switching data type every 1 MB. zstd --long is smaller still when repeats lie further apart than a block.
+- Memory: decoder private memory about 116-300 MB depending on block size, against about 7-15 MB for zstd.
+- Every round trip in every test was verified (SHA-256 or CRC-32 plus length).
+
+CREDITS
+zstd by Yann Collet and the zstd contributors (Meta). The test options (--sets, --raw, --smooth, --flush), the fix
+of two faults in version 1.2 and the fair-baseline methodology came from Andrew Goodwin's (University of Sydney)
+review; he also identified the prior work on byte-frequency grouping.
+
+REFERENCES
+McDaniel, M. and Heydari, M. H. (2003). Content based file type detection algorithms. Proc. 36th Hawaii
+  International Conference on System Sciences (HICSS 2003), IEEE.
+Li, W.-J., Wang, K., Stolfo, S. J. and Herzog, B. (2005). Fileprints: identifying file types by n-gram analysis.
+  Proc. 6th IEEE SMC Information Assurance Workshop, pp. 64-71. doi:10.1109/IAW.2005.1495935.
+Collet, Y. and Kucherawy, M. (2021). Zstandard Compression and the 'application/zstd' Media Type. RFC 8878.

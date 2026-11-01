@@ -1,0 +1,23 @@
+4 GB race, desktop, 11/01/2026 01:18:02, jobs=12, decode rounds=5, hs_zstd with --flush, SHA-256 verified
+CPU: AMD Ryzen 5 7500X3D 6-Core Processor           , threads 12, RAM 15 GB
+
+=== silesia_4gb.bin  (4,026,833,020 bytes)  sha256 1676242130E38A24E49A9E1345BA3FAD3F4A85563357849D72253304AA5F65EB
+hs_zstd 1.3 (Sets, raw off, safe), 16 MB       bits/M   314,315  bytes   1,265,694,589  comp    3.50 s (  663.4 MB)  decode med   2.51 s  all [2.65 2.51 2.90 2.40 2.43]  peak  3951.5 MB
+plain blocks --sets 0, 16 MB                   bits/M   314,165  bytes   1,265,088,590  comp    3.24 s (  550.1 MB)  decode med   2.39 s  all [2.35 2.52 2.39 2.43 2.36]  peak    3902 MB
+1.2 rule (--raw entropy --smooth 1.2), 16 MB   bits/M   314,294  bytes   1,265,608,808  comp    3.13 s (    604 MB)  decode med   2.39 s  all [2.55 2.39 2.40 2.38 2.33]  peak  3940.6 MB
+hs_zstd 1.3 (Sets, raw off, safe), 4 MB        bits/M   315,391  bytes   1,270,027,824  comp    2.94 s (  193.3 MB)  decode med   2.27 s  all [2.37 2.25 2.27 2.22 2.29]  peak  3915.7 MB
+plain blocks --sets 0, 4 MB                    bits/M   315,230  bytes   1,269,379,994  comp    3.07 s (  195.4 MB)  decode med   2.20 s  all [2.30 2.20 2.29 2.18 2.19]  peak  3882.2 MB
+zstd -3, one thread                            bits/M   314,102  bytes   1,264,836,194  comp   14.71 s (   53.2 MB)  decode med   3.73 s  all [3.55 3.77 3.78 3.73 3.72]  peak    10.4 MB
+zstd -3 -T12                                   bits/M   314,102  bytes   1,264,836,194  comp    2.93 s (  214.7 MB)  decode med   4.25 s  all [11.86 4.25 3.45 4.55 4.11]  peak    10.4 MB
+zstd -3 --long=27 -T12                         bits/M   311,386  bytes   1,253,900,488  comp    4.76 s (  187.3 MB)  decode med   3.79 s  all [3.79 3.53 4.40 3.63 4.40]  peak   136.6 MB
+pzstd -3 -p 12                                 bits/M   315,013  bytes   1,268,506,060  comp    4.09 s (    170 MB)  decode med   2.85 s  all [2.55 2.98 2.21 2.85 2.95]  peak   158.2 MB
+Get-Item : Cannot find path 'C:\Users\MHarrington\Documents\data 
+compression\HCM-tests\race4gb-2026-11-01\mixed_4gb.tar' because it does not exist.
+At C:\Users\MHarrington\Documents\data compression\HCM-tests\race4gb-2026-11-01\race_4gb.ps1:28 char:9
++   $n = (Get-Item $f).Length; $ref = (Get-FileHash $f -Algorithm SHA25 ...
++         ~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (C:\Users\MHarri...1\mixed_4gb.tar:String) [Get-Item], ItemNotFoundExcep 
+   tion
+    + FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.GetItemCommand
+ 
+DONE 
