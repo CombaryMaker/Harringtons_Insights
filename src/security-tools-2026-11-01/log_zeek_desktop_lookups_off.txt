@@ -1,0 +1,19 @@
+== second plain run (internet on, same settings as the first), Mon Nov  2 00:58:59 CST 2026
+plain run 1 vs plain run 2: notice                 plain       24  split       24  differ: 1 plain-only, 1 split-only rows ALL LOGS: 35,927 of 35,928 plain rows matched exactly 
+== full test with online lookups off (plain and all shard runs load offline.zeek)
+== Zeek exact-match desktop test, started Mon Nov  2 00:59:06 CST 2026
+machine: 12 CPUs visible (AMD Ryzen 5 7500X3D 6-Core Processor), RAM 7 GB
+capture verified: big8m.pcap 19 bytes, same SHA-256 as the cloud test
+plain zeek: 6.50 s
+2 shards: total 7.37 s (split 2.17, zeek 4.85, merge 0.39) [964792 packets, 1452 sets, 2 shards, 964320 clock ticks]
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+4 shards: total 6.19 s (split 2.13, zeek 3.50, merge 0.60) [964792 packets, 1452 sets, 4 shards, 2892960 clock ticks]
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+6 shards: total 8.43 s (split 2.45, zeek 5.24, merge 0.78) [964792 packets, 1452 sets, 6 shards, 4821600 clock ticks]
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+8 shards: total 9.94 s (split 2.97, zeek 5.94, merge 1.08) [964792 packets, 1452 sets, 8 shards, 6750240 clock ticks]
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+12 shards: total 9.96 s (split 3.83, zeek 4.92, merge 1.25) [964792 packets, 1452 sets, 12 shards, 10607520 clock ticks]
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+== finished Mon Nov  2 00:59:58 CST 2026
+DONE

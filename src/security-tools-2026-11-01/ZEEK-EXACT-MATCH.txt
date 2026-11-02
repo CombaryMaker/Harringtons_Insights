@@ -61,3 +61,27 @@ FILES (added or changed)
   zeekcmp.py             comparison (hs_* raw logs skipped)
   notimerthrottle.zeek   redef max_timer_expires = 0;
   bench_zeek3.sh         benchmark; log_zeek_exact.txt its output
+
+DESKTOP RESULT (2026-11-02, AMD Ryzen 5 7500X3D, 6 cores / 12 threads, WSL 2 Ubuntu 24.04, 7 GB given to Linux)
+  Same capture (SHA-256 checked), same Zeek 8.0.4 build, max_timer_expires = 0 in every run.
+  With Zeek's online malware-hash lookups off (offline.zeek: TeamCymruMalwareHashRegistry::match_file_types set to
+  match nothing) - every row identical:
+  run          split s   zeek s   merge s   total s   rows identical
+  plain           -         -        -        6.50     -
+  2 shards      2.17      4.85     0.39      7.37     35,920 of 35,920
+  4 shards      2.13      3.50     0.60      6.19     35,920 of 35,920
+  6 shards      2.45      5.24     0.78      8.43     35,920 of 35,920
+  8 shards      2.97      5.94     1.08      9.94     35,920 of 35,920
+  12 shards     3.83      4.92     1.25      9.96     35,920 of 35,920
+  With the lookups on (Zeek's default local.zeek, internet available), the only rows that differ are
+  TeamCymruMalwareHashRegistry::Match notices (1 per shard count to 8 of 35,928): Zeek asks Team Cymru's DNS service
+  about a file hash and stamps the notice with the network time the answer arrives, which depends on internet
+  response time. Two plain runs with the lookups on also differ from each other in one such row - the difference is
+  not caused by the split. (The cloud machine has no internet, so the lookups never answered there: 16 notices
+  instead of 24.)
+  Speed: Zeek reads this capture at about 139 MB/s on one core (903 MB in 6.5 s). In exact mode every shard still
+  steps its clock through every packet time (clock ticks), the split and merge are single-threaded, and the best
+  total was 4 shards, 6.19 s (1.05x). The Zeek part alone went from 6.50 s to 3.50 s (1.86x). Exactness costs most
+  of the parallel gain at this capture size.
+  Files: start.ps1 (Windows side: checks the package and Ubuntu's official image, imports a WSL Linux kept in the test
+  folder), go.sh, run_pc.sh, offline.sh; logs log_zeek_desktop_*.txt.

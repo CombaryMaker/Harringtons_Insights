@@ -1,0 +1,14 @@
+﻿2026-11-02 00:48:30 setup started
+2026-11-02 00:48:30 bundle verified (SHA-256 matches the cloud-tested package)
+2026-11-02 00:48:30 downloading Ubuntu 24.04 WSL image from cloud-images.ubuntu.com (357 MB)
+2026-11-02 00:48:45 Ubuntu image verified (matches Ubuntu's published SHA-256)
+2026-11-02 00:50:45 WSL 2 import failed (code 1), trying WSL 1
+2026-11-02 00:51:45 STOP: WSL import failed (code 1), see wsl_import_log.txt
+2026-11-02 00:51:45 DONE
+2026-11-02 00:55:00 setup started
+2026-11-02 00:55:00 bundle verified (SHA-256 matches the cloud-tested package)
+2026-11-02 00:55:01 Ubuntu image verified (matches Ubuntu's published SHA-256)
+2026-11-02 00:55:12 imported as WSL 2
+2026-11-02 00:55:12 starting test inside ZeekTest (progress in results.txt)
+2026-11-02 00:56:22 test finished (code 0)
+2026-11-02 00:56:22 DONE
