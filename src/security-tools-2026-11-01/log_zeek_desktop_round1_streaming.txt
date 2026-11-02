@@ -1,0 +1,107 @@
+== streaming test, files verified, Mon Nov  2 01:31:35 CST 2026
+machine: 12 CPUs visible (AMD Ryzen 5 7500X3D 6-Core Processor), RAM 7 GB
+captures verified: big8m.pcap 903342560 bytes and big64.pcap 7226740312 bytes (SHA-256 match the cloud)
+
+==== big8m.pcap (903342560 bytes)
+plain zeek: 7.54 s
+4 pieces: total 6.66 s (plan+zeek 6.16, merge 0.53)
+    plan 0.16 s, zeek 5.99 s (4 processes, 0 failed), 964792 packets, 1452 sets
+      shard 00:    225.8 MB,   241136 packets,    80217 ticks, done at   6.15 s
+      shard 01:    225.8 MB,   241414 packets,    80249 ticks, done at   6.08 s
+      shard 02:    225.8 MB,   241151 packets,    80345 ticks, done at   6.11 s
+      shard 03:    225.8 MB,   241091 packets,    80299 ticks, done at   6.14 s
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+6 pieces: total 6.64 s (plan+zeek 6.00, merge 0.66)
+    plan 0.16 s, zeek 5.83 s (6 processes, 0 failed), 964792 packets, 1452 sets
+      shard 00:    176.8 MB,   179884 packets,    90764 ticks, done at   4.99 s
+      shard 01:    176.8 MB,   179884 packets,    90764 ticks, done at   4.93 s
+      shard 02:    137.4 MB,   151194 packets,    88651 ticks, done at   5.99 s
+      shard 03:    137.4 MB,   151472 packets,    88683 ticks, done at   5.86 s
+      shard 04:    137.4 MB,   151209 packets,    88779 ticks, done at   6.00 s
+      shard 05:    137.4 MB,   151149 packets,    88733 ticks, done at   5.96 s
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+8 pieces: total 6.07 s (plan+zeek 5.09, merge 1.02)
+    plan 0.19 s, zeek 5.85 s (8 processes, 0 failed), 964792 packets, 1452 sets
+      shard 00:    112.9 MB,   120357 packets,    93929 ticks, done at   6.01 s
+      shard 01:    112.9 MB,   120986 packets,    93879 ticks, done at   6.04 s
+      shard 02:    112.9 MB,   120493 packets,    93919 ticks, done at   6.02 s
+      shard 03:    112.9 MB,   120684 packets,    93954 ticks, done at   5.87 s
+      shard 04:    112.9 MB,   120616 packets,    93893 ticks, done at   5.91 s
+      shard 05:    112.9 MB,   120438 packets,    93908 ticks, done at   6.02 s
+      shard 06:    112.9 MB,   120560 packets,    93879 ticks, done at   5.85 s
+      shard 07:    112.9 MB,   120658 packets,    93818 ticks, done at   5.98 s
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+12 pieces: total 5.78 s (plan+zeek 4.79, merge 1.02)
+    plan 0.20 s, zeek 4.58 s (12 processes, 0 failed), 964792 packets, 1452 sets
+      shard 00:     88.4 MB,    89942 packets,    99198 ticks, done at   3.13 s
+      shard 01:     88.4 MB,    89942 packets,    99198 ticks, done at   3.24 s
+      shard 02:     88.4 MB,    89942 packets,    99198 ticks, done at   3.48 s
+      shard 03:     88.4 MB,    89942 packets,    99198 ticks, done at   3.33 s
+      shard 04:     88.4 MB,    89942 packets,    99198 ticks, done at   3.07 s
+      shard 05:     88.4 MB,    89942 packets,    99198 ticks, done at   3.52 s
+      shard 06:     88.4 MB,    89942 packets,    99198 ticks, done at   3.37 s
+      shard 07:     88.4 MB,    89942 packets,    99198 ticks, done at   3.04 s
+      shard 08:     49.0 MB,    61252 packets,    97085 ticks, done at   4.57 s
+      shard 09:     49.0 MB,    61530 packets,    97117 ticks, done at   4.72 s
+      shard 10:     49.0 MB,    61267 packets,    97213 ticks, done at   4.55 s
+      shard 11:     49.0 MB,    61207 packets,    97167 ticks, done at   4.78 s
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+
+==== big64.pcap (7226740312 bytes)
+plain zeek: 81.81 s
+4 pieces: total 91.88 s (plan+zeek 86.93, merge 4.97)
+    plan 45.65 s, zeek 41.92 s (4 processes, 0 failed), 7718336 packets, 11532 sets
+      shard 00:   1806.7 MB,  1928674 packets,   642626 ticks, done at  87.58 s
+      shard 01:   1806.7 MB,  1932402 packets,   640439 ticks, done at  87.05 s
+      shard 02:   1806.7 MB,  1928199 packets,   642632 ticks, done at  87.05 s
+      shard 03:   1806.7 MB,  1929061 packets,   642704 ticks, done at  87.00 s
+    known_hosts            plain      675  split      615  differ: 60 plain-only, 0 split-only rows
+    known_services         plain      419  split      389  differ: 30 plain-only, 0 split-only rows
+    software               plain      796  split      706  differ: 90 plain-only, 0 split-only rows
+    ALL LOGS: 284,436 of 284,616 plain rows matched exactly
+6 pieces: total 50.45 s (plan+zeek 42.76, merge 7.73)
+    plan 4.55 s, zeek 39.01 s (6 processes, 0 failed), 7718336 packets, 11532 sets
+      shard 00:   1204.5 MB,  1286364 packets,   718451 ticks, done at  43.55 s
+      shard 01:   1204.5 MB,  1287197 packets,   717522 ticks, done at  43.56 s
+      shard 02:   1204.5 MB,  1286112 packets,   717778 ticks, done at  43.46 s
+      shard 03:   1204.5 MB,  1289800 packets,   716621 ticks, done at  43.46 s
+      shard 04:   1204.5 MB,  1283454 packets,   708942 ticks, done at  43.47 s
+      shard 05:   1204.5 MB,  1285409 packets,   709074 ticks, done at  43.55 s
+    known_hosts            plain      675  split      615  differ: 60 plain-only, 0 split-only rows
+    known_services         plain      419  split      389  differ: 30 plain-only, 0 split-only rows
+    software               plain      796  split      706  differ: 90 plain-only, 0 split-only rows
+    ALL LOGS: 284,436 of 284,616 plain rows matched exactly
+8 pieces: total 53.23 s (plan+zeek 43.02, merge 10.24)
+    plan 3.62 s, zeek 40.40 s (8 processes, 0 failed), 7718336 packets, 11532 sets
+      shard 00:    903.3 MB,   965321 packets,   750961 ticks, done at  43.98 s
+      shard 01:    903.3 MB,   965749 packets,   750834 ticks, done at  43.83 s
+      shard 02:    903.3 MB,   964067 packets,   751413 ticks, done at  43.87 s
+      shard 03:    903.3 MB,   966097 packets,   751626 ticks, done at  43.95 s
+      shard 04:    903.3 MB,   964202 packets,   750158 ticks, done at  43.84 s
+      shard 05:    903.3 MB,   964250 packets,   751493 ticks, done at  43.82 s
+      shard 06:    903.3 MB,   964288 packets,   751356 ticks, done at  44.01 s
+      shard 07:    903.3 MB,   964362 packets,   751468 ticks, done at  43.76 s
+    known_hosts            plain      675  split      615  differ: 60 plain-only, 0 split-only rows
+    known_services         plain      419  split      389  differ: 30 plain-only, 0 split-only rows
+    software               plain      796  split      706  differ: 90 plain-only, 0 split-only rows
+    ALL LOGS: 284,436 of 284,616 plain rows matched exactly
+12 pieces: total 56.73 s (plan+zeek 35.56, merge 21.21)
+    plan 4.61 s, zeek 30.74 s (12 processes, 0 failed), 7718336 packets, 11532 sets
+      shard 00:    602.2 MB,   643922 packets,   793932 ticks, done at  34.73 s
+      shard 01:    602.2 MB,   646178 packets,   791938 ticks, done at  34.78 s
+      shard 02:    602.2 MB,   643634 packets,   793971 ticks, done at  34.74 s
+      shard 03:    602.2 MB,   643619 packets,   793976 ticks, done at  35.03 s
+      shard 04:    602.2 MB,   643092 packets,   785064 ticks, done at  34.01 s
+      shard 05:    602.2 MB,   642584 packets,   785133 ticks, done at  33.99 s
+      shard 06:    602.2 MB,   642127 packets,   785190 ticks, done at  34.89 s
+      shard 07:    602.2 MB,   642541 packets,   785109 ticks, done at  33.83 s
+      shard 08:    602.2 MB,   642988 packets,   784254 ticks, done at  33.80 s
+      shard 09:    602.2 MB,   642278 packets,   784820 ticks, done at  34.18 s
+      shard 10:    602.2 MB,   642545 packets,   784565 ticks, done at  35.34 s
+      shard 11:    602.2 MB,   642828 packets,   784620 ticks, done at  33.99 s
+    known_hosts            plain      675  split      615  differ: 60 plain-only, 0 split-only rows
+    known_services         plain      419  split      389  differ: 30 plain-only, 0 split-only rows
+    software               plain      796  split      706  differ: 90 plain-only, 0 split-only rows
+    ALL LOGS: 284,436 of 284,616 plain rows matched exactly
+== finished Mon Nov  2 01:38:52 CST 2026
+DONE

@@ -85,3 +85,36 @@ DESKTOP RESULT (2026-11-02, AMD Ryzen 5 7500X3D, 6 cores / 12 threads, WSL 2 Ubu
   of the parallel gain at this capture size.
   Files: start.ps1 (Windows side: checks the package and Ubuntu's official image, imports a WSL Linux kept in the test
   folder), go.sh, run_pc.sh, offline.sh; logs log_zeek_desktop_*.txt.
+
+SPEED WORK (2026-11-02, desktop, same machine and settings as above; every run compared row by row with plain Zeek)
+  1. Thinned clock ticks (hs_pcapsplit --ticks=G): a tick only when a shard's clock is G or more behind. Exact at
+     G = 1 ms and 10 ms for 2-12 shards (10 ms: 9x fewer ticks); 100 ms and 1 s were not exact. Fewer ticks barely
+     changed the time - ticks were not the bottleneck on this machine.
+  2. Streaming runner (hs_zeek_par): the capture is mapped into memory, the sets and shards are planned (0.2 s for the
+     903 MB capture, instead of a 2 s split to disk), and every Zeek reads its shard through a pipe (zeek -r -).
+     A one-pass variant (hs_zeek_par1, reads the capture once, assigns sets as they appear) was exact but slower:
+     its single reader thread set the pace (66-73 s on the 7.2 GB capture).
+  3. Merge: logs that need no per-host decisions (conn, dns, http, files, ...) are joined shard by shard without
+     parsing, as a Zeek cluster's logger does (plain Zeek does not write them in time order either; the comparison
+     is row by row as sets of rows). Only known_hosts, known_certs, known_services, software and notice are parsed.
+     Times are compared as whole microseconds. Merge time on the 7.2 GB capture went from 13.1 s to 1.4 s.
+  4. Bigger capture: bigcapn.cpp builds N copies of the same public base (8 copies, 100,000,000 s apart, reproduces
+     big8m.pcap exactly). 64 copies 10,000,000 s apart = 7,226,740,312 bytes, 7,718,336 packets,
+     SHA-256 93a45045d265854fc82b9947fc794663fe88d985ea8a96dfac7286a262a9f28e.
+
+  Final (round 3, hs_zeek_par, 10 ms ticks, fast merge):
+  capture   run          plan s   zeek s   merge s   total s   vs plain   rows identical
+  903 MB    plain           -        -        -        6.54        -       -
+  903 MB    8 shards      0.19     5.07     0.19      5.43     1.20x     35,920 of 35,920
+  903 MB    12 shards     0.20     3.98     0.18      4.35     1.50x     35,920 of 35,920
+  7.2 GB    plain           -        -        -       50.34        -       -
+  7.2 GB    8 shards      5.58    37.97     1.02     44.68     1.13x     284,416 of 284,416
+  7.2 GB    12 shards     7.24    27.51     1.41     36.32     1.39x     284,416 of 284,416
+
+  Per-shard times (hs_zeek_par prints them): shards with fewer bytes sometimes finished later - web and file
+  traffic costs Zeek more work per byte, so balancing shards by bytes does not fully balance the work.
+
+  Zeek oddity found on the way: a first 7.2 GB capture with copies 40,000,000 s apart reached timestamps near
+  3.7e9 s (year 2087). From about 3.36e9 s on, plain Zeek wrote times in scientific notation and logged the same
+  host in known_hosts, known_services and software again every few seconds instead of once a day. With realistic
+  dates (the capture above ends in 2027) Zeek behaves normally and the split matches exactly.

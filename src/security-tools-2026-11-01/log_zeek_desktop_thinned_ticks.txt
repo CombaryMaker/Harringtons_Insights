@@ -1,0 +1,52 @@
+hs_pcapsplit_v2 verified
+==== tick setting: --ticks (=N: tick only when the shard clock is N microseconds or more behind)
+== Zeek exact-match desktop test, started Mon Nov  2 01:18:07 CST 2026
+machine: 12 CPUs visible (AMD Ryzen 5 7500X3D 6-Core Processor), RAM 7 GB
+capture verified: big8m.pcap 19 bytes, same SHA-256 as the cloud test
+plain zeek: 6.46 s
+2 shards: total 7.42 s (split 2.42, zeek 4.66, merge 0.38) [964792 packets, 1452 sets, 2 shards, 964320 clock ticks]
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+4 shards: total 6.78 s (split 2.05, zeek 4.19, merge 0.58) [964792 packets, 1452 sets, 4 shards, 2892960 clock ticks]
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+6 shards: total 7.76 s (split 2.40, zeek 4.70, merge 0.70) [964792 packets, 1452 sets, 6 shards, 4821600 clock ticks]
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+8 shards: total 9.02 s (split 2.37, zeek 4.75, merge 1.94) [964792 packets, 1452 sets, 8 shards, 6750240 clock ticks]
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+12 shards: total 7.90 s (split 2.67, zeek 4.14, merge 1.13) [964792 packets, 1452 sets, 12 shards, 10607520 clock ticks]
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+== finished Mon Nov  2 01:18:56 CST 2026
+DONE
+==== tick setting: --ticks=10000 (=N: tick only when the shard clock is N microseconds or more behind)
+== Zeek exact-match desktop test, started Mon Nov  2 01:18:56 CST 2026
+machine: 12 CPUs visible (AMD Ryzen 5 7500X3D 6-Core Processor), RAM 7 GB
+capture verified: big8m.pcap 19 bytes, same SHA-256 as the cloud test
+plain zeek: 6.61 s
+2 shards: total 7.27 s (split 2.35, zeek 4.57, merge 0.40) [964792 packets, 1452 sets, 2 shards, 106407 clock ticks]
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+4 shards: total 6.30 s (split 1.82, zeek 3.99, merge 0.53) [964792 packets, 1452 sets, 4 shards, 321110 clock ticks]
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+6 shards: total 6.92 s (split 1.90, zeek 4.39, merge 0.67) [964792 packets, 1452 sets, 6 shards, 536374 clock ticks]
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+8 shards: total 6.98 s (split 1.84, zeek 4.30, merge 0.87) [964792 packets, 1452 sets, 8 shards, 751179 clock ticks]
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+12 shards: total 7.01 s (split 1.76, zeek 4.19, merge 1.10) [964792 packets, 1452 sets, 12 shards, 1182166 clock ticks]
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+== finished Mon Nov  2 01:19:40 CST 2026
+DONE
+==== tick setting: --ticks=1000 (=N: tick only when the shard clock is N microseconds or more behind)
+== Zeek exact-match desktop test, started Mon Nov  2 01:19:40 CST 2026
+machine: 12 CPUs visible (AMD Ryzen 5 7500X3D 6-Core Processor), RAM 7 GB
+capture verified: big8m.pcap 19 bytes, same SHA-256 as the cloud test
+plain zeek: 5.51 s
+2 shards: total 6.97 s (split 1.95, zeek 4.66, merge 0.40) [964792 packets, 1452 sets, 2 shards, 432174 clock ticks]
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+4 shards: total 6.98 s (split 2.04, zeek 4.39, merge 0.58) [964792 packets, 1452 sets, 4 shards, 1297399 clock ticks]
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+6 shards: total 7.16 s (split 1.84, zeek 4.69, merge 0.67) [964792 packets, 1452 sets, 6 shards, 2162839 clock ticks]
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+8 shards: total 7.67 s (split 2.15, zeek 4.68, merge 0.88) [964792 packets, 1452 sets, 8 shards, 3028138 clock ticks]
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+12 shards: total 7.18 s (split 2.15, zeek 3.98, merge 1.09) [964792 packets, 1452 sets, 12 shards, 4759159 clock ticks]
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+== finished Mon Nov  2 01:20:24 CST 2026
+DONE

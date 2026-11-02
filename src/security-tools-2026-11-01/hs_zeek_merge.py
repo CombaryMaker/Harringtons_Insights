@@ -2,7 +2,8 @@
 # Michael Hugh Harrington, 2026. MIT License.
 # Shards are made by hs_pcapsplit --ticks (every shard's clock advances as in the plain run) and run with
 # hs_shard.zeek loaded. Merge rules:
-#  - every log: rows joined and put in time order (stable: shard order, then row order);
+#  - logs with no per-host decisions (conn, dns, http, files, ...): rows joined shard by shard, unparsed, as a Zeek
+#    cluster's logger does; the rest are parsed and put in network-time order before Zeek's rules are replayed;
 #  - software.log and known_services.log: rebuilt by replaying Zeek 8's own rules (base/frameworks/software/main.zeek,
 #    policy/protocols/conn/known-services.zeek) over the raw inputs all shards recorded, in network-time order:
 #      software: per host a table (expires 1 day after the host entry is created); an entry is logged when its name
@@ -11,10 +12,11 @@
 #        services not yet in the set, unless all its services are already there and the entry exists;
 #  - known_hosts / known_certs: a row is kept unless the same entry was logged in the 24 h before (Zeek's store expiry);
 #  - shard self-health notices (CaptureLoss::*) dropped; hs_*_raw logs are inputs only and not written.
+# Logs are merged in parallel, one per core.
 # Usage: hs_zeek_merge.py OUTDIR SHARD_DIR...
 import os, sys, glob
 from decimal import Decimal
-out, shards = sys.argv[1], sys.argv[2:]; os.makedirs(out, exist_ok=True); DAY = Decimal(86400)
+out, shards = sys.argv[1], sys.argv[2:]; os.makedirs(out, exist_ok=True); DAY = 86400 * 1000000
 def read(path):
     head, fields, rows = [], [], []
     for line in open(path, errors='replace'):
@@ -24,8 +26,13 @@ def read(path):
         else: rows.append(line.rstrip('\n').split('\t'))
     return head, fields, rows
 def T(v):
-    try: return Decimal(v)
-    except Exception: return Decimal(0)   # logs whose first column is not a time keep their shard/row order
+    # network time in whole microseconds (exact, and much faster to sort than Decimal); Zeek prints times above about
+    # 2^31 s in scientific notation, which goes through Decimal
+    try:
+        if 'e' not in v and 'E' not in v:
+            a, _, b = v.partition('.'); return int(a) * 1000000 + int((b + '000000')[:6])
+        return int(Decimal(v) * 1000000)
+    except Exception: return 0   # logs whose first column is not a time keep their shard/row order
 def raw(name, delayed_ts_col=None):
     # Order = Zeek's processing order: by network time; at one network time, timers fire first (in order of their
     # scheduled time) and then the packet's own events. A known_services commit is a timer when its info.ts is
@@ -37,15 +44,15 @@ def raw(name, delayed_ts_col=None):
             h, fields, rows = read(p); c = fields.index(delayed_ts_col) if delayed_ts_col else None
             for ri, r in enumerate(rows):
                 nt = T(r[0]); ts = T(r[c]) if c is not None else nt
-                allrows.append(((nt, 0, ts) if ts < nt else (nt, 1, Decimal(0)), si, ri, r))
+                allrows.append(((nt, 0, ts) if ts < nt else (nt, 1, 0), si, ri, r))
     allrows.sort(key=lambda x: x[:3]); return fields, [x[3] for x in allrows]
 def header(name):
     for s in shards:
         if os.path.exists(f'{s}/{name}.log'): return read(f'{s}/{name}.log')[0:2]
     return None, None
 names = sorted({os.path.basename(p)[:-4] for s in shards for p in glob.glob(s + '/*.log')})
-for n in names:
-    if n.startswith('hs_'): continue
+def merge_one(n):
+    if n.startswith('hs_'): return
     head, fields = header(n)
     if n == 'software' and any(os.path.exists(f'{s}/hs_software_raw.log') for s in shards):
         rf, rows = raw('hs_software_raw'); ix = {f: i for i, f in enumerate(rf)}; tracked = {}; outrows = []
@@ -67,6 +74,15 @@ for n in names:
             vals = {'ts': r[ix['info.ts']], 'host': key[0], 'port_num': key[1], 'port_proto': r[ix['info.port_proto']],
                     'service': ','.join(sorted(add)) if add else '(empty)'}
             outrows.append('\t'.join(vals[f] for f in fields))
+    elif n not in ('known_hosts', 'known_certs', 'notice'):
+        # logs with no per-host decisions: rows are joined shard by shard without parsing, the way a Zeek cluster's
+        # logger interleaves rows from its workers (plain Zeek does not write these in time order either)
+        with open(f'{out}/{n}.log', 'w') as f:
+            f.writelines(head)
+            for s in shards:
+                if os.path.exists(f'{s}/{n}.log'):
+                    with open(f'{s}/{n}.log', errors='replace') as g: f.writelines(l for l in g if not l.startswith('#'))
+        return
     else:
         _, rows = raw(n); outrows = ['\t'.join(r) for r in rows]
         if n in ('known_hosts', 'known_certs'):
@@ -78,3 +94,9 @@ for n in names:
             outrows = keep
         if n == 'notice': outrows = [l for l in outrows if '\tCaptureLoss::' not in l]
     with open(f'{out}/{n}.log', 'w') as f: f.writelines(head + [l + '\n' for l in outrows])
+# Each log is merged on its own core (the logs are independent); largest logs first so they start early.
+if __name__ == '__main__':
+    import multiprocessing as mp
+    size = lambda n: sum(os.path.getsize(f'{s}/{n}.log') for s in shards if os.path.exists(f'{s}/{n}.log'))
+    todo = sorted(names, key=size, reverse=True)
+    with mp.get_context('fork').Pool(min(len(todo), os.cpu_count() or 1)) as pool: pool.map(merge_one, todo, chunksize=1)

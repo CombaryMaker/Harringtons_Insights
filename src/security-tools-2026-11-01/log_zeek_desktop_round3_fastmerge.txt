@@ -1,0 +1,61 @@
+== round 3, files verified, Mon Nov  2 01:56:39 CST 2026
+
+==== big64r.pcap (7226740312 bytes, SHA-256 verified)
+plain zeek: 50.34 s
+8 pieces: total 44.68 s (plan+zeek 43.68, merge 1.02)
+    plan 5.58 s, zeek 37.97 s (8 processes, 0 failed), 7718336 packets, 11532 sets
+      shard 00:    903.3 MB,   965321 packets,   750961 ticks, done at  43.54 s
+      shard 01:    903.3 MB,   965749 packets,   750834 ticks, done at  43.35 s
+      shard 02:    903.3 MB,   964067 packets,   751413 ticks, done at  43.54 s
+      shard 03:    903.3 MB,   966097 packets,   751626 ticks, done at  43.43 s
+      shard 04:    903.3 MB,   964202 packets,   750158 ticks, done at  43.53 s
+      shard 05:    903.3 MB,   964250 packets,   751493 ticks, done at  43.55 s
+      shard 06:    903.3 MB,   964288 packets,   751356 ticks, done at  43.55 s
+      shard 07:    903.3 MB,   964362 packets,   751468 ticks, done at  43.23 s
+    ALL LOGS: 284,416 of 284,416 plain rows matched exactly
+12 pieces: total 36.32 s (plan+zeek 34.94, merge 1.41)
+    plan 7.24 s, zeek 27.51 s (12 processes, 0 failed), 7718336 packets, 11532 sets
+      shard 00:    602.2 MB,   643922 packets,   793932 ticks, done at  33.25 s
+      shard 01:    602.2 MB,   646178 packets,   791938 ticks, done at  33.51 s
+      shard 02:    602.2 MB,   643634 packets,   793971 ticks, done at  33.32 s
+      shard 03:    602.2 MB,   643619 packets,   793976 ticks, done at  34.75 s
+      shard 04:    602.2 MB,   643092 packets,   785064 ticks, done at  33.56 s
+      shard 05:    602.2 MB,   642584 packets,   785133 ticks, done at  34.04 s
+      shard 06:    602.2 MB,   642127 packets,   785190 ticks, done at  33.25 s
+      shard 07:    602.2 MB,   642541 packets,   785109 ticks, done at  32.85 s
+      shard 08:    602.2 MB,   642988 packets,   784254 ticks, done at  34.30 s
+      shard 09:    602.2 MB,   642278 packets,   784820 ticks, done at  33.35 s
+      shard 10:    602.2 MB,   642545 packets,   784565 ticks, done at  34.13 s
+      shard 11:    602.2 MB,   642828 packets,   784620 ticks, done at  34.49 s
+    ALL LOGS: 284,416 of 284,416 plain rows matched exactly
+
+==== big8m.pcap (903342560 bytes, SHA-256 verified)
+plain zeek: 6.54 s
+8 pieces: total 5.43 s (plan+zeek 5.27, merge 0.19)
+    plan 0.19 s, zeek 5.07 s (8 processes, 0 failed), 964792 packets, 1452 sets
+      shard 00:    112.9 MB,   120357 packets,    93929 ticks, done at   5.21 s
+      shard 01:    112.9 MB,   120986 packets,    93879 ticks, done at   5.25 s
+      shard 02:    112.9 MB,   120493 packets,    93919 ticks, done at   5.11 s
+      shard 03:    112.9 MB,   120684 packets,    93954 ticks, done at   5.22 s
+      shard 04:    112.9 MB,   120616 packets,    93893 ticks, done at   5.17 s
+      shard 05:    112.9 MB,   120438 packets,    93908 ticks, done at   5.25 s
+      shard 06:    112.9 MB,   120560 packets,    93879 ticks, done at   5.19 s
+      shard 07:    112.9 MB,   120658 packets,    93818 ticks, done at   5.23 s
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+12 pieces: total 4.35 s (plan+zeek 4.20, merge 0.18)
+    plan 0.20 s, zeek 3.98 s (12 processes, 0 failed), 964792 packets, 1452 sets
+      shard 00:     88.4 MB,    89942 packets,    99198 ticks, done at   2.72 s
+      shard 01:     88.4 MB,    89942 packets,    99198 ticks, done at   2.76 s
+      shard 02:     88.4 MB,    89942 packets,    99198 ticks, done at   2.73 s
+      shard 03:     88.4 MB,    89942 packets,    99198 ticks, done at   2.82 s
+      shard 04:     88.4 MB,    89942 packets,    99198 ticks, done at   2.80 s
+      shard 05:     88.4 MB,    89942 packets,    99198 ticks, done at   2.82 s
+      shard 06:     88.4 MB,    89942 packets,    99198 ticks, done at   2.98 s
+      shard 07:     88.4 MB,    89942 packets,    99198 ticks, done at   2.59 s
+      shard 08:     49.0 MB,    61252 packets,    97085 ticks, done at   4.09 s
+      shard 09:     49.0 MB,    61530 packets,    97117 ticks, done at   3.95 s
+      shard 10:     49.0 MB,    61267 packets,    97213 ticks, done at   4.18 s
+      shard 11:     49.0 MB,    61207 packets,    97167 ticks, done at   4.03 s
+    ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+== finished Mon Nov  2 01:59:19 CST 2026
+DONE
