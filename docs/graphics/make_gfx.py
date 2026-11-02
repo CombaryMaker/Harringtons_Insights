@@ -1,40 +1,48 @@
 # make_gfx.py - ten cartoon SVG illustrations for michaelharrington.com/compression.html
 # Michael Hugh Harrington, 2026. MIT License.
-# Flat cartoon style: thick navy outlines, soft drop shadows, bright fills, rounded shapes.
+# Editorial illustration style (v2): no faces, muted palette, fine outlines, serif titles, figure numbers.
+# v1 (bright children's-cartoon style) is in the GitHub history.
 import math, os
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'svg'); os.makedirs(OUT, exist_ok=True)
-INK = '#22304A'; CORAL = '#FF7A59'; SUN = '#FFC93C'; TEAL = '#2EC4B6'; SKY = '#6EC1FF'; GRAPE = '#9B7BFF'
-LEAF = '#7BD389'; PAPER = '#FFFFFF'; STEEL = '#C9D6E8'; DARKSTEEL = '#8EA3C0'; PINK = '#FF9EC4'
-FONT = "'Trebuchet MS', 'Arial Rounded MT Bold', 'Segoe UI', Arial, sans-serif"
+INK = '#263142'; CORAL = '#C2674B'; SUN = '#D8A443'; TEAL = '#3E7F7A'; SKY = '#5E86AD'; GRAPE = '#7D6A93'
+LEAF = '#7E9E6E'; PAPER = '#FBF9F4'; STEEL = '#CDD3D9'; DARKSTEEL = '#8A96A3'; PINK = '#C98F86'
+BG = '#F2EEE5'; LANE = '#E2DDD1'; GLASS = '#E1E9EC'; SCREEN = '#2F3B4C'; SUBINK = '#4C5668'
+FONT = "'Helvetica Neue', 'Segoe UI', Inter, Arial, sans-serif"
+SERIF = "Georgia, Cambria, Caladea, 'Times New Roman', serif"
+SWF = 0.6    # outline weight relative to v1
+RF = 0.45    # corner rounding relative to v1
 W, H = 800, 460
+FIG = [0]
 
 def svg(title, bg, body, caption):
+    FIG[0] += 1
     return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" role="img" aria-label="{title}. {caption}">
 <title>{title}</title>
 <defs>
-  <filter id="soft" x="-10%" y="-10%" width="130%" height="140%"><feDropShadow dx="0" dy="5" stdDeviation="0" flood-color="{INK}" flood-opacity="0.18"/></filter>
+  <filter id="soft" x="-10%" y="-10%" width="130%" height="140%"><feDropShadow dx="2" dy="3" stdDeviation="0" flood-color="{INK}" flood-opacity="0.10"/></filter>
 </defs>
-<rect x="0" y="0" width="{W}" height="{H}" rx="28" fill="{bg}"/>
-<g stroke="{INK}" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" font-family="{FONT}">
-<text x="40" y="58" font-size="30" font-weight="700" fill="{INK}" stroke="none">{title}</text>
+<rect x="0.5" y="0.5" width="{W-1}" height="{H-1}" rx="6" fill="{BG}" stroke="#D6CFBF" stroke-width="1"/>
+<g stroke="{INK}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" font-family="{FONT}">
+<text x="40" y="34" font-size="11.5" font-weight="600" letter-spacing="2.5" fill="{DARKSTEEL}" stroke="none">FIG. {FIG[0]:02d}</text>
+<text x="40" y="62" font-size="27" font-weight="700" fill="{INK}" stroke="none" font-family="{SERIF}">{title}</text>
 {body}
-<text x="{W/2}" y="{H-24}" font-size="19" fill="{INK}" stroke="none" text-anchor="middle">{caption}</text>
+<text x="{W/2}" y="{H-24}" font-size="17.5" font-style="italic" fill="{SUBINK}" stroke="none" text-anchor="middle" font-family="{SERIF}">{caption}</text>
 </g>
 </svg>
 '''
 
 def rect(x, y, w, h, fill, r=12, sw=4, extra=''):
-    return f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{r}" fill="{fill}" stroke-width="{sw}" {extra}/>'
+    return f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{r*RF:.1f}" fill="{fill}" stroke-width="{sw*SWF:.2f}" {extra}/>'
 def circ(cx, cy, r, fill, sw=4):
-    return f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="{fill}" stroke-width="{sw}"/>'
+    return f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="{fill}" stroke-width="{sw*SWF:.2f}"/>'
 def poly(pts, fill, sw=4):
-    return '<polygon points="' + ' '.join(f'{x:.1f},{y:.1f}' for x, y in pts) + f'" fill="{fill}" stroke-width="{sw}"/>'
+    return '<polygon points="' + ' '.join(f'{x:.1f},{y:.1f}' for x, y in pts) + f'" fill="{fill}" stroke-width="{sw*SWF:.2f}"/>'
 def line(x1, y1, x2, y2, sw=4, color=INK, dash=''):
     d = f' stroke-dasharray="{dash}"' if dash else ''
-    return f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{color}" stroke-width="{sw}"{d}/>'
+    return f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{color}" stroke-width="{sw*SWF:.2f}"{d}/>'
 def path(d, fill='none', sw=4, extra=''):
-    return f'<path d="{d}" fill="{fill}" stroke-width="{sw}" {extra}/>'
-def text(x, y, s, size=18, anchor='middle', weight='700', fill=INK):
+    return f'<path d="{d}" fill="{fill}" stroke-width="{sw*SWF:.2f}" {extra}/>'
+def text(x, y, s, size=18, anchor='middle', weight='600', fill=INK):
     return f'<text x="{x}" y="{y}" font-size="{size}" font-weight="{weight}" fill="{fill}" stroke="none" text-anchor="{anchor}">{s}</text>'
 def g(content, extra=''):
     return f'<g {extra}>{content}</g>'
@@ -58,12 +66,13 @@ def gear(cx, cy, r, fill, teeth=10, sw=4):
         pts += [(cx + rr * math.cos(a1), cy + rr * math.sin(a1)), (cx + rr * math.cos(a2), cy + rr * math.sin(a2))]
     return poly(pts, fill, sw) + circ(cx, cy, r * 0.3, PAPER, sw)
 
-def eyes(cx, cy, gap=26, r=9):
-    return (circ(cx - gap / 2, cy, r, PAPER, 3) + circ(cx + gap / 2, cy, r, PAPER, 3)
-            + f'<circle cx="{cx - gap/2 + 2}" cy="{cy + 1}" r="{r*0.45}" fill="{INK}" stroke="none"/>'
-            + f'<circle cx="{cx + gap/2 + 2}" cy="{cy + 1}" r="{r*0.45}" fill="{INK}" stroke="none"/>')
-def smile(cx, cy, w=22):
-    return path(f'M{cx-w/2},{cy} q{w/2},{w*0.55} {w},0', sw=3.5)
+def screen(x, y, w, h, lines=3):
+    # small display panel with log lines, used instead of faces
+    s = rect(x, y, w, h, SCREEN, 8, 3)
+    for i in range(lines):
+        ly = y + 10 + i * (h - 16) / max(1, lines - 1) if lines > 1 else y + h / 2
+        s += line(x + 8, ly, x + 8 + (w - 16) * (0.9 - 0.25 * (i % 2)), ly, 3, '#9FB4C4')
+    return s
 
 def conveyor(x, y, w, h=22, fill=STEEL):
     s = rect(x, y, w, h, fill, h / 2)
@@ -93,9 +102,13 @@ for i, k in enumerate('chst'):
     b += piece(k, 95 + i * 40, 246, 11)
 # machine body
 b += g(rect(255, 120, 230, 220, TEAL, 26), 'filter="url(#soft)"')
-b += rect(280, 140, 180, 70, PAPER, 14) + eyes(370, 172, 46, 13) + smile(370, 196, 30)
+b += rect(280, 140, 180, 70, SCREEN, 14)
+for i, k in enumerate('csth'):
+    b += piece(k, 316 + i * 36, 166, 9)
+b += text(370, 198, 'SORTING BY KIND', 10, weight='600', fill='#BFD0DC').replace('<text', '<text letter-spacing="1.5"')
+b += circ(452, 150, 3, LEAF, 0) + circ(442, 150, 3, SUN, 0)
 b += gear(305, 270, 30, SUN) + gear(360, 292, 22, CORAL, 8) + gear(425, 262, 34, GRAPE, 11)
-b += text(370, 330, 'SORTER', 16)
+b += text(370, 330, 'SORTER', 14, fill=PAPER).replace('<text', '<text letter-spacing="3"')
 # lanes out
 lanes = [('c', 165), ('s', 228), ('t', 291), ('h', 354)]
 for k, y in lanes:
@@ -110,15 +123,18 @@ files['01-sorting-machine'] = svg("The Sorting Machine", '#E8F6FF', b,
 # 2. One Lane or Twelve ----------------------------------------------------------------------------------
 b = ''
 def car(x, y, col):
-    return (rect(x, y, 46, 24, col, 9, 3) + rect(x + 9, y - 13, 26, 15, PAPER, 6, 3)
-            + circ(x + 11, y + 26, 6, INK, 2) + circ(x + 35, y + 26, 6, INK, 2))
+    # side-profile sedan
+    return (path(f'M{x},{y+8} L{x+10},{y+5} L{x+15},{y-8} L{x+33},{y-8} L{x+39},{y+5} L{x+46},{y+8} L{x+46},{y+22} L{x},{y+22} Z', col, 3)
+            + path(f'M{x+17},{y-5} L{x+31},{y-5} L{x+35},{y+4} L{x+13},{y+4} Z', GLASS, 2.5) + line(x + 24, y - 5, x + 24, y + 4, 2.5)
+            + circ(x + 11, y + 23, 5.5, INK, 2) + circ(x + 35, y + 23, 5.5, INK, 2)
+            + circ(x + 11, y + 23, 2, STEEL, 0) + circ(x + 35, y + 23, 2, STEEL, 0))
 def booth(x, y, open_=True):
     return (rect(x, y, 34, 44, SUN if open_ else STEEL, 6, 3) + rect(x + 6, y + 8, 22, 14, PAPER, 3, 3)
             + line(x + 34, y + 30, x + 64, y + (30 if not open_ else 12), 4, CORAL))
 cols = [CORAL, SKY, GRAPE, LEAF, SUN, PINK]
 # top: one lane, long queue
 b += text(40, 98, 'One core', 20, 'start')
-b += rect(40, 112, 720, 70, '#D7E3F2', 14, 3)
+b += rect(40, 112, 720, 70, LANE, 14, 3)
 b += booth(640, 120)
 for i in range(11):
     b += car(60 + i * 52, 140, cols[i % 6])
@@ -127,7 +143,7 @@ b += text(700, 104, 'waiting...', 15, weight='400')
 b += text(40, 222, 'Twelve cores, same cars, same order out', 20, 'start')
 for r in range(4):
     y = 232 + r * 46
-    b += rect(40, y, 720, 44, '#D7E3F2', 10, 3)
+    b += rect(40, y, 720, 44, LANE, 10, 3)
     b += booth(640, y)
     for i in range(3):
         b += car(120 + i * 150 + r * 25, y + 14, cols[(r + i) % 6])
@@ -205,7 +221,7 @@ def receipt(x, title, col):
 b += receipt(90, 'Plain run', SKY) + receipt(510, 'Split run', SUN)
 b += text(400, 210, '=', 70)
 # magnifier
-b += circ(400, 290, 46, '#DFF6FF') + line(432, 322, 470, 360, 10)
+b += circ(400, 290, 46, GLASS) + line(432, 322, 470, 360, 10)
 b += text(400, 284, 'every', 15) + text(400, 304, 'row', 15)
 # stamp
 b += g(rect(300, 96, 200, 62, 'none', 12, 5, f'stroke="{CORAL}"') + text(400, 125, 'IDENTICAL', 24, fill=CORAL)
@@ -228,8 +244,8 @@ b += text(400, 240, 'master', 15) + text(400, 258, 'clock', 15)
 # workers
 for i, x in enumerate([90, 230, 570, 710]):
     y = 330
-    b += rect(x - 50, y - 8, 100, 50, '#E2C59A', 8, 3)   # desk
-    b += circ(x, y - 40, 22, PINK, 3) + eyes(x, y - 44, 14, 5)   # head
+    b += rect(x - 52, y + 2, 104, 9, '#B9A88E', 3, 3) + line(x - 44, y + 11, x - 44, y + 42, 3) + line(x + 44, y + 11, x + 44, y + 42, 3)   # desk
+    b += screen(x - 30, y - 62, 60, 40, 3) + line(x, y - 22, x, y - 8, 4) + rect(x - 14, y - 8, 28, 8, DARKSTEEL, 3, 3)   # workstation
     b += clock(x, y - 92, 22, TEAL, -0.3)
     b += text(x, y + 66, f'piece {i+1}', 14, weight='400')
     # tick bubbles
@@ -244,7 +260,7 @@ files['06-everyone-on-the-same-clock'] = svg("Everyone on the Same Clock", '#FFF
 # 7. Heaviest First --------------------------------------------------------------------------------------
 b = ''
 def truck(x, y, loads, col):
-    s = rect(x, y, 230, 80, PAPER, 8, 4) + rect(x + 230, y + 22, 60, 58, col, 10, 4) + rect(x + 244, y + 32, 30, 20, '#DFF6FF', 4, 3)
+    s = rect(x, y, 230, 80, PAPER, 8, 4) + rect(x + 230, y + 22, 60, 58, col, 10, 4) + rect(x + 244, y + 32, 30, 20, GLASS, 4, 3)
     s += circ(x + 40, y + 86, 14, INK, 2) + circ(x + 190, y + 86, 14, INK, 2) + circ(x + 262, y + 86, 14, INK, 2)
     xx = x + 8
     for w_, c in loads:
@@ -272,12 +288,12 @@ for i in range(9):
 b += text(400, 212, 'SIEVE', 18)
 # left: noise to "store as is"
 b += arrow(280, 235, 200, 300, INK)
-b += rect(70, 300, 170, 100, '#E6E9EF', 12) + text(155, 330, 'store as is', 16)
+b += rect(70, 300, 170, 100, LANE, 12) + text(155, 330, 'store as is', 16)
 for i in range(4):
     b += piece('x', 105 + i * 34, 370, 11)
 # right: compressible to compactor
 b += arrow(520, 235, 590, 290, INK)
-b += g(rect(540, 290, 200, 110, TEAL, 16), 'filter="url(#soft)"') + text(640, 322, 'compactor', 17)
+b += g(rect(540, 290, 200, 110, TEAL, 16), 'filter="url(#soft)"') + text(640, 322, 'compactor', 17, fill=PAPER)
 b += rect(600, 336, 80, 46, PAPER, 8, 3)
 for i, k in enumerate('cst'):
     b += piece(k, 618 + i * 22, 359, 7)
@@ -316,12 +332,12 @@ b += text(40, 98, 'How many times faster, same answers (12-thread desktop)', 17,
 for i, (name, v, col) in enumerate(results):
     y = 120 + i * 56
     b += text(220, y + 30, name, 17, 'end')
-    b += rect(x0, y + 8, x1 - x0, 34, '#E6EAF2', 17, 3)
+    b += rect(x0, y + 8, x1 - x0, 34, LANE, 17, 3)
     w = (x1 - x0) * v / 7.0
     b += rect(x0, y + 8, w, 34, col, 17, 3)
-    b += text(x0 + w - 12, y + 31, f'{v}x', 16, 'end')
-    # little runner flag
-    b += line(x0 + w + 14, y + 4, x0 + w + 14, y + 44, 3) + poly([(x0 + w + 14, y + 4), (x0 + w + 38, y + 12), (x0 + w + 14, y + 20)], col, 3)
+    b += text(x1 + 14, y + 31, f'{v}x', 18, 'start', '700')
+x1x = x0 + (x1 - x0) / 7.0
+b += line(x1x, 116, x1x, 396, 2.5, SUBINK, '5 6') + text(x1x, 412, '1x', 13, weight='600', fill=SUBINK)
 b += line(x0, 396, x0, 116, 3, INK)
 b += text(x1, 408, '1x = the program on its own', 14, 'end', '400')
 files['10-the-race'] = svg("The Race", '#FFF8E1', b,
