@@ -1,0 +1,16 @@
+plain zeek run 1: 10.438102449 s
+plain zeek run 2: 10.756172507 s
+plain run 1 vs run 2: ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+split 2 shards: 8.120502147 s total (split 2.035648163 s, zeek 5.951504413 s, merge .141691889 s)
+known_services         plain      149  split      149  differ: 38 plain-only, 38 split-only rows
+software               plain      210  split      213  differ: 0 plain-only, 3 split-only rows
+ALL LOGS: 35,882 of 35,920 plain rows matched exactly
+(the first 4-shard attempt stopped when the cloud disk filled; 4 and 8 shards were rerun:)
+split 4 shards: 9.524623134 s total (split 1.686477824 s, zeek 7.277550310 s, merge .568258758 s)
+known_services         plain      149  split      148  differ: 37 plain-only, 36 split-only rows
+software               plain      210  split      217  differ: 0 plain-only, 7 split-only rows
+ALL LOGS: 35,883 of 35,920 plain rows matched exactly
+split 8 shards: 10.972978291 s total (split 1.473615362 s, zeek 8.924845132 s, merge .582256904 s)
+known_services         plain      149  split      148  differ: 49 plain-only, 48 split-only rows
+software               plain      210  split      218  differ: 0 plain-only, 8 split-only rows
+ALL LOGS: 35,871 of 35,920 plain rows matched exactly

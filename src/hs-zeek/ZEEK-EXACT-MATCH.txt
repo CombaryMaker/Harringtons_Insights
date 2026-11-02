@@ -1,0 +1,120 @@
+Zeek 8.0.4 with Harrington's Sets - exact match, 2026-11-02
+Michael Hugh Harrington. MIT License.
+
+RESULT
+  One 903 MB public capture (964,792 packets), split into 2, 4 and 8 shards, run by separate Zeek processes, merged:
+  every log row identical to the plain single-process run - 35,920 of 35,920 rows in all 17 compared logs (conn, dns,
+  http, files, ftp, smtp, snmp, ssl, x509, dhcp, weird, notice, signatures, known_hosts, known_certs,
+  known_services, software), for 2, 4 and 8 shards. Not compared: logs about the Zeek process itself (stats,
+  loaded_scripts, packet_filter, capture_loss, reporter, telemetry).
+  Condition: max_timer_expires = 0 in both the plain run and the shard runs (notimerthrottle.zeek). See "TIMER CAP".
+  Plain Zeek is itself repeatable: two plain runs, 35,920 of 35,920 rows identical.
+
+WHAT WAS NEEDED (beyond the first version in RESULTS.txt)
+  1. Clock ticks (hs_pcapsplit --ticks). A shard only sees its own packets, so its Zeek clock jumps where the plain
+     run's clock moves in small steps, and timers (connection timeouts, table expiry, delayed events) fire at other
+     network times. Each shard now also gets a 60-byte frame with EtherType 0x88B5 (IEEE local experimental) at
+     every time a packet went to another shard. Zeek reads these frames without logging anything; the shard's clock
+     now moves exactly as in the plain run.
+  2. Raw inputs + replay (hs_shard.zeek, hs_zeek_merge.py). software.log and known_services.log are decided from
+     per-host / per-server tables (Zeek 8 base/frameworks/software/main.zeek, policy/protocols/conn/
+     known-services.zeek). One server answers many clients, and the clients are in different shards, so no single
+     shard has the whole table. Each shard records every input to those decisions (Software::register and
+     Known::service_info_commit, before Zeek checks its table) with its network time. The merge replays Zeek's own
+     rules over all shards' inputs in Zeek's processing order:
+       - network time first; at one network time, timers fire before the packet's own events, in order of their
+         scheduled time (a known_services commit for a connection without a service is scheduled 5 min later);
+       - software: per host a table that expires 1 day after the host entry is created; logged when the name is new
+         for the host, the parsed version differs, or force_log is set;
+       - known_services: per (host, port, protocol) a set of services expiring 1 day after creation; an input is
+         logged with the services not yet in the set, unless the entry exists and already has them all.
+     Self-test: replaying the plain run's own recorded inputs reproduces its software.log and known_services.log
+     exactly (35,920 of 35,920 rows).
+  3. Bugs found on the way: port 53/tcp and 53/udp were first treated as one key; delayed commits firing at the same
+     network time were first ordered by shard instead of by scheduled time.
+
+TIMER CAP (max_timer_expires)
+  Zeek's default max_timer_expires = 300 lets at most 300 due timers fire per packet; the rest wait for later
+  packets. How long a timer waits therefore depends on how many other timers are due at that moment, i.e. on the
+  whole traffic load. A shard carries less load, so its timers fire on time. With the default, the only difference
+  left is one known_services row per capture copy (6 rows of 35,920): a DNS server's entry stamped 1200001215.968523
+  in the plain run and 1200001213.976013 in the shards. With max_timer_expires = 0 ("process all expired timers with
+  each new packet", Zeek's own documented value) the plain run also stamps it 1200001213.976013.
+  Setting it to 0 did not slow the plain run here: 10.39 s and 11.74 s (two runs) vs 10.44 s and 10.76 s with the
+  default.
+
+TIMES (2-core cloud machine, wall clock, including split and merge; max_timer_expires = 0)
+  run          split s   zeek s   merge s   total s   rows identical
+  plain           -         -        -       10.39     -
+  2 shards      1.72      7.16     0.62      9.50     35,920 of 35,920
+  4 shards      1.78     10.60     1.01     13.39     35,920 of 35,920
+  8 shards      2.94     18.92     1.98     23.84     35,920 of 35,920
+  (zeek s and split s from bench_zeek3_t0.log; merge s is the final merge version, timed separately.)
+  Cost of exactness: every shard reads a clock tick for each packet that went elsewhere (964,320 ticks per shard
+  at 2 shards). A tick costs about a third of a real packet here, so on 2 cores only 2 shards pay off. With 4 or 8
+  shards on 2 cores the shards wait for each other; the many-core result is not measured yet.
+
+FILES (added or changed)
+  hs_pcapsplit.cpp       --ticks option
+  hs_shard.zeek          raw-input recorder loaded in every shard
+  hs_zeek_merge.py       replay merge
+  zeekcmp.py             comparison (hs_* raw logs skipped)
+  notimerthrottle.zeek   redef max_timer_expires = 0;
+  bench_zeek3.sh         benchmark; log_zeek_exact.txt its output
+
+DESKTOP RESULT (2026-11-02, AMD Ryzen 5 7500X3D, 6 cores / 12 threads, WSL 2 Ubuntu 24.04, 7 GB given to Linux)
+  Same capture (SHA-256 checked), same Zeek 8.0.4 build, max_timer_expires = 0 in every run.
+  With Zeek's online malware-hash lookups off (offline.zeek: TeamCymruMalwareHashRegistry::match_file_types set to
+  match nothing) - every row identical:
+  run          split s   zeek s   merge s   total s   rows identical
+  plain           -         -        -        6.50     -
+  2 shards      2.17      4.85     0.39      7.37     35,920 of 35,920
+  4 shards      2.13      3.50     0.60      6.19     35,920 of 35,920
+  6 shards      2.45      5.24     0.78      8.43     35,920 of 35,920
+  8 shards      2.97      5.94     1.08      9.94     35,920 of 35,920
+  12 shards     3.83      4.92     1.25      9.96     35,920 of 35,920
+  With the lookups on (Zeek's default local.zeek, internet available), the only rows that differ are
+  TeamCymruMalwareHashRegistry::Match notices (1 per shard count to 8 of 35,928): Zeek asks Team Cymru's DNS service
+  about a file hash and stamps the notice with the network time the answer arrives, which depends on internet
+  response time. Two plain runs with the lookups on also differ from each other in one such row - the difference is
+  not caused by the split. (The cloud machine has no internet, so the lookups never answered there: 16 notices
+  instead of 24.)
+  Speed: Zeek reads this capture at about 139 MB/s on one core (903 MB in 6.5 s). In exact mode every shard still
+  steps its clock through every packet time (clock ticks), the split and merge are single-threaded, and the best
+  total was 4 shards, 6.19 s (1.05x). The Zeek part alone went from 6.50 s to 3.50 s (1.86x). Exactness costs most
+  of the parallel gain at this capture size.
+  Files: start.ps1 (Windows side: checks the package and Ubuntu's official image, imports a WSL Linux kept in the test
+  folder), go.sh, run_pc.sh, offline.sh; logs log_zeek_desktop_*.txt.
+
+SPEED WORK (2026-11-02, desktop, same machine and settings as above; every run compared row by row with plain Zeek)
+  1. Thinned clock ticks (hs_pcapsplit --ticks=G): a tick only when a shard's clock is G or more behind. Exact at
+     G = 1 ms and 10 ms for 2-12 shards (10 ms: 9x fewer ticks); 100 ms and 1 s were not exact. Fewer ticks barely
+     changed the time - ticks were not the bottleneck on this machine.
+  2. Streaming runner (hs_zeek_par): the capture is mapped into memory, the sets and shards are planned (0.2 s for the
+     903 MB capture, instead of a 2 s split to disk), and every Zeek reads its shard through a pipe (zeek -r -).
+     A one-pass variant (hs_zeek_par1, reads the capture once, assigns sets as they appear) was exact but slower:
+     its single reader thread set the pace (66-73 s on the 7.2 GB capture).
+  3. Merge: logs that need no per-host decisions (conn, dns, http, files, ...) are joined shard by shard without
+     parsing, as a Zeek cluster's logger does (plain Zeek does not write them in time order either; the comparison
+     is row by row as sets of rows). Only known_hosts, known_certs, known_services, software and notice are parsed.
+     Times are compared as whole microseconds. Merge time on the 7.2 GB capture went from 13.1 s to 1.4 s.
+  4. Bigger capture: bigcapn.cpp builds N copies of the same public base (8 copies, 100,000,000 s apart, reproduces
+     big8m.pcap exactly). 64 copies 10,000,000 s apart = 7,226,740,312 bytes, 7,718,336 packets,
+     SHA-256 93a45045d265854fc82b9947fc794663fe88d985ea8a96dfac7286a262a9f28e.
+
+  Final (round 3, hs_zeek_par, 10 ms ticks, fast merge):
+  capture   run          plan s   zeek s   merge s   total s   vs plain   rows identical
+  903 MB    plain           -        -        -        6.54        -       -
+  903 MB    8 shards      0.19     5.07     0.19      5.43     1.20x     35,920 of 35,920
+  903 MB    12 shards     0.20     3.98     0.18      4.35     1.50x     35,920 of 35,920
+  7.2 GB    plain           -        -        -       50.34        -       -
+  7.2 GB    8 shards      5.58    37.97     1.02     44.68     1.13x     284,416 of 284,416
+  7.2 GB    12 shards     7.24    27.51     1.41     36.32     1.39x     284,416 of 284,416
+
+  Per-shard times (hs_zeek_par prints them): shards with fewer bytes sometimes finished later - web and file
+  traffic costs Zeek more work per byte, so balancing shards by bytes does not fully balance the work.
+
+  Zeek oddity found on the way: a first 7.2 GB capture with copies 40,000,000 s apart reached timestamps near
+  3.7e9 s (year 2087). From about 3.36e9 s on, plain Zeek wrote times in scientific notation and logged the same
+  host in known_hosts, known_services and software again every few seconds instead of once a day. With realistic
+  dates (the capture above ends in 2027) Zeek behaves normally and the split matches exactly.

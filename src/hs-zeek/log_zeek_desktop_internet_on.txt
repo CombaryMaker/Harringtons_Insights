@@ -1,0 +1,22 @@
+bundle files verified inside Linux (1783 files)
+== Zeek exact-match desktop test, started Mon Nov  2 00:55:24 CST 2026
+machine: 12 CPUs visible (AMD Ryzen 5 7500X3D 6-Core Processor), RAM 7 GB
+capture verified: big8m.pcap 903342560 bytes, same SHA-256 as the cloud test
+plain zeek: 6.79 s
+2 shards: total 9.95 s (split 4.31, zeek 5.25, merge 0.43) [964792 packets, 1452 sets, 2 shards, 964320 clock ticks]
+    notice                 plain       24  split       24  differ: 2 plain-only, 2 split-only rows
+    ALL LOGS: 35,926 of 35,928 plain rows matched exactly
+4 shards: total 8.64 s (split 3.10, zeek 4.96, merge 0.62) [964792 packets, 1452 sets, 4 shards, 2892960 clock ticks]
+    notice                 plain       24  split       24  differ: 4 plain-only, 4 split-only rows
+    ALL LOGS: 35,924 of 35,928 plain rows matched exactly
+6 shards: total 9.42 s (split 3.57, zeek 5.15, merge 0.74) [964792 packets, 1452 sets, 6 shards, 4821600 clock ticks]
+    notice                 plain       24  split       24  differ: 4 plain-only, 4 split-only rows
+    ALL LOGS: 35,924 of 35,928 plain rows matched exactly
+8 shards: total 9.69 s (split 3.08, zeek 5.66, merge 1.00) [964792 packets, 1452 sets, 8 shards, 6750240 clock ticks]
+    notice                 plain       24  split       24  differ: 8 plain-only, 8 split-only rows
+    ALL LOGS: 35,920 of 35,928 plain rows matched exactly
+12 shards: total 7.84 s (split 2.92, zeek 4.88, merge 0.09) [964792 packets, 1452 sets, 12 shards, 10607520 clock ticks]
+    notice                 plain       24  split       24  differ: 4 plain-only, 4 split-only rows
+    ALL LOGS: 35,924 of 35,928 plain rows matched exactly
+== finished Mon Nov  2 00:56:21 CST 2026
+DONE
