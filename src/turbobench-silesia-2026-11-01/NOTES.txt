@@ -28,4 +28,4 @@ FINDINGS
 - NOTABLE: HCM in Harrington's Sets mode (2 cores) was SMALLER than single-stream HCM fast (43,189,460 vs
   43,795,425) and 2.26x faster to compress, 1.82x faster to decode - the same pattern as the industrial data test.
 - hs_zstd Sets vs plain blocks: Sets 48,660 bytes smaller (0.1%); both about 1% larger than single-stream zstd 19.
-- xz-hi: run separately (its settings search takes over 1.5 hours on a 212 MB file); see results-xzhi.txt.
+- xz-hi: did not finish. Its settings search on the 212 MB file ran past the 2-hour limit for one job, twice, and was stopped (no result). Earlier per-file Silesia results for the -hi tools (26 Oct 2026, 7z-hi vs 7-Zip Ultra) remain the -hi evidence.
