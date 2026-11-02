@@ -1,5 +1,11 @@
     .hs-fig { margin: 4px 0 24px; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: #F2EEE5; }
     .hs-fig img { width: 100%; height: auto; display: block; }
-    .content-card ol { margin: 0 0 18px 20px; padding: 0; color: #2d3944; line-height: 1.8; }
+    @media (min-width: 900px) {
+      .hs-fig { float: right; width: 54%; margin: 4px 0 16px 30px; }
+      .content-card:nth-of-type(even) .hs-fig { float: left; margin: 4px 30px 16px 0; }
+    }
+    .content-card::after { content: ""; display: block; clear: both; }
+    .content-card h3 { clear: both; }
+    .content-card ol { clear: both; margin: 0 0 18px 20px; padding: 0; color: #2d3944; line-height: 1.8; }
     .content-card ol li + li { margin-top: 8px; }
 
