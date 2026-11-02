@@ -10,6 +10,8 @@ merging. All test data is public (sources below). Outputs were compared line by 
 SHORT VERDICT
   Zeek 8.0.4       works: 1.28x faster with 2 shards; all traffic and detection logs identical; two per-host
                    inventory logs differ slightly (known_services, software).
+                   UPDATE 2026-11-02: exact match reached - every row of every compared log identical for 2, 4 and
+                   8 shards (with max_timer_expires = 0 in both runs). See ZEEK-EXACT-MATCH.txt.
   Snort 3.12.4     correct but no speed gain on 2 cores; all content alerts identical; port-scan alerts change.
   ClamAV 1.5.1     correct on this rule set but no speed gain on 2 cores (pieces cost 2.3x more total work).
   binwalk 3.1.0    negative: slower and not identical (containers larger than a piece are lost).

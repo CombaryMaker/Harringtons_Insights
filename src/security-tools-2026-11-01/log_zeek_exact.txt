@@ -1,0 +1,15 @@
+2 shards, ticks=--ticks: 9.809892300 s (split 1.722615326, zeek 7.159669055, merge .935447941) [964792 packets, 1452 sets, 2 shards, 964320 clock ticks]
+   known_services         plain      149  split      149  differ: 2 plain-only, 2 split-only rows
+   ALL LOGS: 35,918 of 35,920 plain rows matched exactly
+4 shards, ticks=--ticks: 13.815266069 s (split 1.777302811, zeek 10.596669253, merge 1.450235366) [964792 packets, 1452 sets, 4 shards, 2892960 clock ticks]
+   known_services         plain      149  split      149  differ: 4 plain-only, 4 split-only rows
+   ALL LOGS: 35,916 of 35,920 plain rows matched exactly
+8 shards, ticks=--ticks: 24.083337154 s (split 2.942122268, zeek 18.921548488, merge 2.229166401) [964792 packets, 1452 sets, 8 shards, 6750240 clock ticks]
+   known_services         plain      149  split      149  differ: 4 plain-only, 4 split-only rows
+   ALL LOGS: 35,916 of 35,920 plain rows matched exactly
+
+final merge version (timed separately), compared with plain run with max_timer_expires=0:
+2 shards: ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+4 shards: ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+8 shards: ALL LOGS: 35,920 of 35,920 plain rows matched exactly
+default max_timer_expires (300), 2 shards: ALL LOGS: 35,914 of 35,920 plain rows matched exactly

@@ -3,7 +3,7 @@
 # set/vector columns compared with elements sorted (each Zeek process prints set elements in its own hash order).
 # Logs about the Zeek process itself (stats, loaded_scripts, packet_filter, capture_loss, reporter, telemetry) skipped.
 import os, sys, glob, collections
-A, B = sys.argv[1], sys.argv[2]; SKIP = {'stats', 'loaded_scripts', 'packet_filter', 'capture_loss', 'reporter', 'telemetry'}
+A, B = sys.argv[1], sys.argv[2]; SKIP = {'stats', 'loaded_scripts', 'packet_filter', 'capture_loss', 'reporter', 'telemetry'}   # hs_* raw logs also skipped
 def rows(p):
     out = collections.Counter(); keep = []; sets = set()
     if not os.path.exists(p): return out
@@ -15,7 +15,7 @@ def rows(p):
             c = line.split('\t'); c = [','.join(sorted(v.split(','))) if i in sets else v for i, v in enumerate(c)]
             out['\t'.join(c[i] for i in keep if i < len(c))] += 1
     return out
-names = sorted({os.path.basename(p)[:-4] for p in glob.glob(A + '/*.log') + glob.glob(B + '/*.log')} - SKIP)
+names = sorted({os.path.basename(p)[:-4] for p in glob.glob(A + '/*.log') + glob.glob(B + '/*.log')} - SKIP - {n for n in [os.path.basename(p)[:-4] for p in glob.glob(A + '/hs_*.log')]})
 same = tot = 0
 for n in names:
     a = rows(f'{A}/{n}.log'); b = rows(f'{B}/{n}.log'); na, nb = sum(a.values()), sum(b.values())
