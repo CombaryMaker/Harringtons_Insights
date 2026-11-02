@@ -1,0 +1,5 @@
+plain clamscan, all limits off: 162.143571373 s: 1 names
+split 2 pieces, 1 MB overlap: 155.215664858 s: 1 names, same as plain: yes
+split 4 pieces, 1 MB overlap: 149.365485126 s: 1 names, same as plain: yes
+split 8 pieces, 1 MB overlap: 211.068854732 s: 1 names, same as plain: yes
+split 16 pieces, 1 MB overlap: 204.701087599 s: 1 names, same as plain: yes

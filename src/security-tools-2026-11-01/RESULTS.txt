@@ -1,0 +1,120 @@
+Harrington's Sets applied to four security tools - cloud tests, 2026-11-01
+Michael Hugh Harrington. MIT License.
+
+Question: can one large input be split into pieces (or conversation sets), run through several copies of a
+single-threaded security tool at once, and merged back to exactly what the plain tool reports?
+
+Machine: 2-core cloud container, 7 GB RAM. Every timing is wall clock for the whole job, including splitting and
+merging. All test data is public (sources below). Outputs were compared line by line with the plain tool's output.
+
+SHORT VERDICT
+  Zeek 8.0.4       works: 1.28x faster with 2 shards; all traffic and detection logs identical; two per-host
+                   inventory logs differ slightly (known_services, software).
+  Snort 3.12.4     correct but no speed gain on 2 cores; all content alerts identical; port-scan alerts change.
+  ClamAV 1.5.1     correct on this rule set but no speed gain on 2 cores (pieces cost 2.3x more total work).
+  binwalk 3.1.0    negative: slower and not identical (containers larger than a piece are lost).
+
+TEST DATA
+  Capture: 69 public captures from github.com/chrissanders/packets (pcapng converted to pcap, Ethernet only, by
+    ng2pcap.py), put in time order (mono.py: each capture shifted to start 1 s after the previous one), joined and
+    repeated 8 times by bigcap (hs_shark/bigcap.cpp: each copy 100,000,000 s later, IPv4 last octet XORed by copy
+    number). Result: 903,342,560 bytes, 964,792 packets, no backward time steps.
+  Image: fw.img, 811,270,144 bytes, built by mkimg.sh from public data only: Silesia corpus tar, gzip/xz/bzip2/zstd
+    copies of Silesia members, a tar of 400 Ubuntu system shared libraries, the capture above, three EICAR test
+    strings at fixed offsets (212,008,988 / 251,985,948 / 811,204,636), 64 KB alignment with 0xFF padding.
+  ClamAV rules: Neo23x0 signature-base YARA rules (commit 36ab704, 2026-10-29), all files ClamAV 1.5.1 can load
+    (737 files, 12 dropped because ClamAV refuses them), 4,667 signatures, plus one EICAR .ndb signature. The
+    official ClamAV database could not be downloaded from the cloud machine.
+  Snort rules: Snort 3 community rules (snort.org, snort3-community-rules.tar.gz), stock snort.lua, built-in rules on.
+
+1. ZEEK 8.0.4 (zeek -C -r CAPTURE local)
+  Method: hs_pcapsplit (C++) puts every packet in a set by host pair (both IP addresses, either direction); DHCP
+  (UDP 67/68) is one set because one DHCP exchange spans several address pairs; sets are spread over N shards by
+  bytes, largest first. N Zeek processes run at once. hs_zeek_merge.py joins each log in time order and applies
+  Zeek's own once-per-day rule to known_hosts / known_services / known_certs / software (an item is logged again
+  only after its 24 h store expiry); shard self-health notices (CaptureLoss) are dropped.
+  Comparison (zeekcmp.py): rows compared as multisets; connection-ID columns (uid, conn_uids - random per process)
+  ignored; set columns compared with elements sorted (each process prints set elements in its own hash order);
+  process-health logs (stats, loaded_scripts, packet_filter, capture_loss, reporter, telemetry) not compared.
+
+  run                 total s   split s   zeek s   merge s   rows identical to plain
+  plain run 1          10.44       -        -         -        -
+  plain run 2          10.76       -        -         -        35,920 of 35,920 (plain repeats exactly)
+  2 shards              8.12      2.04     5.95      0.14      35,882 of 35,920
+  4 shards              9.52      1.69     7.28      0.57      35,883 of 35,920
+  8 shards             10.97      1.47     8.92      0.58      35,871 of 35,920
+
+  Identical in every split run: conn, dns, http, files, ftp, smtp, snmp, ssl, x509, dhcp, weird, notice,
+  signatures, known_hosts, known_certs.
+  Differ: known_services (149 rows; 37-49 rows have a different first-seen time or service) and software (3-8 extra
+  rows). Both are per-host inventories that Zeek decides from everything one host does; a host-pair split gives
+  each shard only part of a host's traffic.
+  Best on this machine: 2 shards, 1.28x. The splitter reads and writes the whole capture (about 1.5-2 s); Zeek's
+  own part went from 10.4 s to 5.95 s (1.75x).
+
+2. SNORT 3.12.4 (snort -H -c snort.lua -r CAPTURE -A csv; split runs: --pcap-dir SHARDS -z 2)
+  Finding: plain Snort is not repeatable by default - two plain runs on the same file differed in 28 alert lines.
+  Option -H (deterministic hash tables) makes it repeat exactly, so every run here uses -H.
+  Split runs use Snort's own packet threads (-z 2), one shard file per thread.
+
+  run                       total s   split s   snort s   alerts   non-port-scan alerts identical (incl. time)
+  plain                       8.91       -         -        831      -
+  2 shards, -z 2              9.78      1.55      7.83      834      801 of 813
+  4 shards, -z 2              8.58      1.56      6.67      820      802 of 813
+  Ignoring the alert timestamp, all 813 non-port-scan alerts are identical in both split runs. The 11-12 that
+  differ in time are "(http_inspect) HTTP Content-Length message body was truncated", which fires when Snort
+  cleans up an idle connection; its timestamp is whichever packet triggered the cleanup.
+  Port-scan alerts (gid 122): plain 18, split 21 and 7. Port-scan detection needs one host's traffic to many hosts
+  in one place; a host-pair split separates it by design.
+  Snort startup (rule loading) is 0.47 s, so it is not the reason for the small gain.
+
+3. CLAMAV 1.5.1 (clamscan --allmatch on fw.img)
+  Method (hs_clam.py): the file is cut into N pieces, each extended by 1 MB of overlap (longer than any loaded
+  signature), pieces scanned by N clamscan processes at once, detection names merged.
+
+  run                                        seconds   detections
+  plain, default settings                      0.31    none ("OK")
+  plain, size limits raised                  120.5     none (stopped by the default 2-minute scan-time limit)
+  plain, all limits off                      162.1     Test.EICAR (3 of 3 copies found)
+  2 pieces                                   155.2     same as plain
+  4 pieces                                   149.4     same as plain
+  8 pieces                                   211.1     same as plain
+  16 pieces                                  204.7     same as plain
+  8 pieces scanned one at a time: 93.5, 35.3, 23.4, 41.2, 42.7, 44.5, 45.6, 51.3 s (sum 377.5 s).
+
+  Notes:
+  - With default settings ClamAV reports an 811 MB file clean: files over 100 MB are skipped (MaxFileSize), and a
+    scan longer than 2 minutes stops (MaxScanTime) without an alert unless --alert-exceeds-max is set. Both are
+    documented behaviour. ClamAV cannot scan any single file over 2 GiB at all.
+  - The cut pieces cost about 2.3x more total scan work than the whole file, so on 2 cores there is no gain.
+  - Same detections here, but these signatures are byte patterns. Signatures that need ClamAV to parse a whole
+    file (Windows programs, documents, archives) or that depend on position or file size were not tested and can
+    be affected by cutting. Cisco Talos' own large-archive scanner (github.com/cisco-talos/clamav-large-archive-
+    scanner) unpacks archives instead and says chunking is not supported.
+
+4. BINWALK 3.1.0 (binwalk -l LOG.json on fw.img)
+  Method (hs_binwalk.py): N pieces with 4 MB overlap, hits kept only from their own piece, hits cut short by a piece
+  edge measured again on a longer slice, hits inside an earlier hit's range dropped.
+
+  run                       seconds   hits   identical to plain
+  plain (default threads)     2.72     312     -
+  plain -t 1                  3.21      -      -
+  2 pieces                    5.60     329     no (1 plain-only, 18 split-only)
+  4 pieces                    7.02   1,148     no (2 plain-only, 838 split-only)
+  8 pieces                    7.37   1,147     no (2 plain-only, 837 split-only)
+  On a 20 MB slice with no large containers the split result was identical. On the full image it is not: the
+  211 MB and 446 MB tar archives cannot be recognised from a piece smaller than they are, so binwalk lists the
+  files inside them instead. binwalk 3 (Rust) is already fast (about 300 MB/s); splitting gives nothing.
+  Also found: binwalk 3.1.0 sometimes exits with status 0 without writing its -l JSON log when several copies run
+  at once; hs_binwalk.py retries those runs (1-6 retries per run here).
+
+FILES
+  hs_pcapsplit.cpp     host-pair splitter (C++, used for the timed Zeek and Snort runs)
+  hs_pcapsplit.py      first Python version (no DHCP set; 4 s instead of 1.5-2 s)
+  hs_zeek_merge.py     Zeek log merge
+  zeekcmp.py           Zeek log comparison
+  hs_clam.py           ClamAV piece scanner
+  hs_binwalk.py        binwalk piece scanner;  bwcmp.py  comparison
+  ng2pcap.py, mono.py  capture preparation;    mkimg.sh  image builder
+  bench_*.sh           the exact benchmark scripts;  snort_extra.lua  Snort settings added to stock snort.lua
+  log_*.txt            raw benchmark output

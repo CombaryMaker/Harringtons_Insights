@@ -1,0 +1,10 @@
+fw.img 811270144 bytes, sha256 a9c49d5a95989046, 2 cores
+== binwalk 3.1.0
+plain binwalk (default threads): 2.718634676 s
+plain binwalk -t 1: 3.213270505 s
+split 2 pieces, 4 MB overlap: 5.604293482 s (329 hits, 1 re-measured, 1 log retries) | plain 312 hits, split 329 hits, identical set: False; same offsets: False; only plain 1, only split 18
+split 4 pieces, 4 MB overlap: 7.020452826 s (1148 hits, 1 re-measured, 0 log retries) | plain 312 hits, split 1148 hits, identical set: False; same offsets: False; only plain 2, only split 838
+split 8 pieces, 4 MB overlap: 7.369949701 s (1147 hits, 2 re-measured, 6 log retries) | plain 312 hits, split 1147 hits, identical set: False; same offsets: False; only plain 2, only split 837
+== ClamAV 1.5.1, 737 rule files (Neo23x0 signature-base YARA, loadable part) + EICAR
+plain clamscan, default limits: .305732126 s: 0 found; $SEC/img/fw.img: OK
+plain clamscan, limits raised to scan all: 120.512110266 s: 0 names

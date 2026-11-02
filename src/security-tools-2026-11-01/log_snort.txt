@@ -1,0 +1,5 @@
+plain snort: 8.905042920 s
+split 2 shards, -z 2: 9.777129997 s total (split 1.545735156 s, snort 7.825653312 s)
+  alerts plain 831, split 834; non-port-scan identical incl. time: 801 of 813; identical ignoring time: True; port_scan plain 18, split 21
+split 4 shards, -z 2: 8.578264768 s total (split 1.563504017 s, snort 6.665053800 s)
+  alerts plain 831, split 820; non-port-scan identical incl. time: 802 of 813; identical ignoring time: True; port_scan plain 18, split 7
