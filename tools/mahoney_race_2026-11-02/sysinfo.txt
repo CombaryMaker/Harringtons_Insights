@@ -1,0 +1,6 @@
+date: Mon Nov  2 22:08:32 CST 2026
+cpu:  AMD Ryzen 5 7500X3D 6-Core Processor
+threads (nproc): 12
+WSL memory MB: 7478
+ZPAQ threads used: 5
+kernel: 6.18.54.1-microsoft-standard-WSL2

@@ -1,0 +1,104 @@
+MATT MAHONEY TEST SETS RACE - Harrington's Insights tools vs ZPAQ 7.15 and lpaq1
+Michael Hugh Harrington, 2-3 November 2026. MIT License.
+
+WHAT WAS RACED
+Matt Mahoney's own programs, built from his published source:
+  ZPAQ 7.15 -m4 and -m5 (public domain), lpaq1 option 9 (GPL).
+Against our tools:
+  HCM v3.6.1 fast and max (single stream), HCM Sets fast and max (Harrington's Sets, all cores),
+  hcmx max, zpaq-hi -m5 (ZPAQ with our per-block model search; output is a normal ZPAQ archive that
+  stock zpaq extracts), lpaq1-h 9 (our lpaq1 mutant, best of six flag settings per file).
+On four standard test sets:
+  Calgary corpus (18 files), Canterbury large corpus (E.coli, bible.txt, world192.txt),
+  Mahoney's Generic Compression Benchmark (uiq2 files from seeds 0, 1 and 2), and enwik9
+  (1,000,000,000 bytes, md5 e206c3450ac99950df65bf70ef61a12d).
+Every file was compressed on its own, decoded, and compared byte for byte. All 247 results are exact.
+
+MACHINE
+AMD Ryzen 5 7500X3D (6 cores, 12 threads), 16 GB RAM, Windows 11 with WSL2 (Linux 6.18, 7.5 GB
+given to WSL). All programs are static Linux builds (gcc -O3 -march=x86-64-v3) run inside WSL with
+the data in the Linux file system. ZPAQ was limited to 5 threads so that -m5 fits in WSL's memory;
+HCM Sets used all 12 threads. Times are wall clock in seconds. HCM decodes its own output as a
+check before it exits, so HCM compress time = wall time minus one decode.
+
+RESULTS (sizes in bytes, ratio = original / compressed, * = Mahoney's program)
+
+Calgary corpus (3,251,493 bytes, 18 files)
+  program             compressed   ratio  compress s  decode s  peak MB
+  hcmx max               707,392   4.596        11.7       2.7      113
+  lpaq1-h 9              709,793   4.581        61.2       9.8     1217
+  HCM max                710,258   4.578         6.4       2.5       75
+  HCM Sets max           710,798   4.574         6.3       2.6       76
+  zpaq-hi -m5            716,354   4.539        12.5       5.7      107
+  HCM fast               717,557   4.531         4.8       1.9       42
+  HCM Sets fast          718,097   4.528         5.2       2.0       43
+ *ZPAQ 7.15 -m5          718,255   4.527         5.5       5.5       90
+ *lpaq1 9                730,373   4.452        11.6      10.4     1217
+ *ZPAQ 7.15 -m4          767,905   4.234         1.5       1.6       10
+  Ours wins: hcmx max is 10,863 bytes (1.51%) smaller than ZPAQ -m5. Seven of our builds beat every
+  Mahoney program, and HCM max does it in about the same time as ZPAQ -m5 while decoding 2.2x faster.
+
+Canterbury large corpus (11,159,482 bytes, 3 files)
+  program             compressed   ratio  compress s  decode s  peak MB
+  zpaq-hi -m5          2,151,206   5.188        50.0      17.0      281
+ *ZPAQ 7.15 -m5        2,153,108   5.183        16.0      15.9      145
+  lpaq1-h 9            2,168,206   5.147        51.4       9.6     1284
+ *lpaq1 9              2,169,454   5.144        10.2       9.8     1278
+  hcmx max             2,180,478   5.118        27.7       5.9       87
+  HCM max              2,188,255   5.100        15.0       5.3       83
+  HCM Sets max         2,188,345   5.100        14.7       5.3       93
+  HCM fast             2,208,053   5.054        13.4       4.8       51
+  HCM Sets fast        2,208,143   5.054        12.9       4.8       57
+ *ZPAQ 7.15 -m4        2,242,719   4.976         3.4       3.4       35
+  Ours wins by a hair: zpaq-hi -m5 is 1,902 bytes (0.09%) smaller than ZPAQ -m5. lpaq1-h also beats
+  stock lpaq1. HCM is about 1.6% behind ZPAQ -m5 here but decodes 3x faster.
+
+Generic Compression Benchmark (19,552,881 bytes, 3 files)
+  program             compressed   ratio  compress s  decode s  peak MB
+  lpaq1-h 9            9,121,594   2.144       107.5      19.9     1295
+  zpaq-hi -m5          9,137,324   2.140        69.8      36.0      210
+ *ZPAQ 7.15 -m5        9,139,174   2.139        34.1      35.3      185
+ *lpaq1 9              9,152,676   2.136        18.1      19.3     1289
+  hcmx max             9,307,087   2.101       107.9      20.4      136
+  HCM max              9,368,500   2.087        33.7      12.8       92
+ *ZPAQ 7.15 -m4        9,404,729   2.079         9.2       9.8       58
+  HCM Sets max         9,411,934   2.077        32.0      11.3      180
+  HCM fast             9,539,490   2.050        29.2      10.7       60
+  HCM Sets fast        9,576,420   2.042        26.0       9.3      112
+  Ours wins: lpaq1-h 9 is 17,580 bytes (0.19%) smaller than ZPAQ -m5 and 31,082 bytes smaller than
+  stock lpaq1. zpaq-hi also edges ZPAQ -m5. HCM is about 2.5% behind on this benchmark.
+
+enwik9 (1,000,000,000 bytes)
+  program             compressed   ratio  compress s  decode s  peak MB
+ *lpaq1 9            164,508,919   6.079       643.4     675.6     1538
+  zpaq-hi -m5        168,215,145   5.945       868.2     468.8     5815
+ *ZPAQ 7.15 -m5      168,590,741   5.932       412.7     422.5     5039
+ *ZPAQ 7.15 -m4      179,455,249   5.572       135.9     148.2     2699
+  HCM max            187,028,826   5.347      1402.6     501.2     2336
+  HCM Sets max       192,181,500   5.203       289.1     100.3     4974
+  HCM Sets fast      196,048,761   5.101       250.6      92.0     4481
+  Mahoney wins on size: lpaq1 9 is 3,706,226 bytes (2.25%) smaller than our best, zpaq-hi -m5.
+  zpaq-hi does beat ZPAQ -m5 by 375,596 bytes. lpaq1-h and hcmx were not run on enwik9 (time).
+
+WHAT STANDS OUT
+1. Score: our tools take the smallest result on three of the four sets (Calgary, Canterbury large,
+   Generic Compression Benchmark). Mahoney's lpaq1 takes enwik9, his home ground (large English text).
+2. Decode speed on enwik9: HCM Sets max decodes the full gigabyte in 100 s, 4.2x faster than ZPAQ -m5
+   (422 s) and 6.7x faster than lpaq1 (676 s), for a file 14% larger than ZPAQ -m5. HCM Sets fast
+   decodes in 92 s. HCM single stream decodes in 501 s, so the speed comes from Harrington's Sets
+   spreading the work over all cores.
+3. zpaq-hi beats stock ZPAQ -m5 on every set (Calgary, Canterbury large, GCB, enwik9), and its archives
+   are still extracted by unmodified zpaq.
+4. Memory: HCM max peaks at 2.3 GB on enwik9 against 5.0 GB for ZPAQ -m5 (5 threads).
+
+FILES IN THIS FOLDER
+  go.sh              the race script (verifies every program and data file by SHA-256 first)
+  summary.py         builds results_summary.txt from results.csv
+  race.cmd, race.ps1 Windows launcher (keeps the PC awake, starts the WSL run)
+  runt.c             timing helper: wall time, CPU time, peak memory, exit code
+  results.csv        every file, every program: sizes, compress/decode times, memory, exact check
+  results_summary.txt  the tables above
+  progress.txt       the run log with start and finish times
+  sysinfo.txt        machine details recorded by the script
+Sources of the programs: ZPAQ 7.15 and lpaq1 from mattmahoney.net; HCM, hcmx, zpaq-hi and lpaq1-h
+from this repository (hcm/, tools/hcmx, src/zpaq-hi, src/lpaq1-h).

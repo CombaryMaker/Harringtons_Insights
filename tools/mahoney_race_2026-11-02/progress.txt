@@ -1,0 +1,50 @@
+2026-11-02 22:08:24 start in /mnt/c/Users/MHarrington/Documents/data compression/HCM-tests/mahoney-sets-2026-11-02
+2026-11-02 22:08:32 all tools and data verified (sha256 of 9 tool files, 24 data files, enwik9 md5 e206c345...)
+2026-11-02 22:08:32 cpu threads 12, WSL memory 7478 MB, ZPAQ threads 5
+2026-11-02 22:08:36 calgary zpaq_m4 done
+2026-11-02 22:08:47 calgary zpaq_m5 done
+2026-11-02 22:09:09 calgary lpaq1_9 done
+2026-11-02 22:09:18 calgary hcm_fast done
+2026-11-02 22:09:29 calgary hcm_max done
+2026-11-02 22:09:42 calgary hcm_sets_fast done
+2026-11-02 22:09:53 calgary hcm_sets_max done
+2026-11-02 22:10:11 calgary hcmx_max done
+2026-11-02 22:11:25 calgary lpaq1h_9 done
+2026-11-02 22:11:43 calgary zpaqhi_m5 done
+2026-11-02 22:11:50 large zpaq_m4 done
+2026-11-02 22:12:22 large zpaq_m5 done
+2026-11-02 22:12:42 large lpaq1_9 done
+2026-11-02 22:13:05 large hcm_fast done
+2026-11-02 22:13:31 large hcm_max done
+2026-11-02 22:13:53 large hcm_sets_fast done
+2026-11-02 22:14:19 large hcm_sets_max done
+2026-11-02 22:14:58 large hcmx_max done
+2026-11-02 22:16:02 large lpaq1h_9 done
+2026-11-02 22:17:12 large zpaqhi_m5 done
+2026-11-02 22:17:31 gcb zpaq_m4 done
+2026-11-02 22:18:40 gcb zpaq_m5 done
+2026-11-02 22:19:18 gcb lpaq1_9 done
+2026-11-02 22:20:11 gcb hcm_fast done
+2026-11-02 22:21:10 gcb hcm_max done
+2026-11-02 22:21:58 gcb hcm_sets_fast done
+2026-11-02 22:22:55 gcb hcm_sets_max done
+2026-11-02 22:25:29 gcb hcmx_max done
+2026-11-02 22:27:40 gcb lpaq1h_9 done
+2026-11-02 22:29:36 gcb zpaqhi_m5 done
+2026-11-02 22:29:36 small sets finished - summary written
+2026-11-02 22:29:36 enwik9 zpaq_m4 starting
+2026-11-02 22:34:30 enwik9 zpaq_m4 done: enwik9,enwik9,zpaq_m4,1000000000,179455249,135.924,135.924,148.229,2763388,2334100,yes
+2026-11-02 22:34:30 enwik9 zpaq_m5 starting
+2026-11-02 22:48:47 enwik9 zpaq_m5 done: enwik9,enwik9,zpaq_m5,1000000000,168590741,412.670,412.670,422.480,5160312,4699156,yes
+2026-11-02 22:48:47 enwik9 hcm_sets_fast starting
+2026-11-02 22:56:11 enwik9 hcm_sets_fast done: enwik9,enwik9,hcm_sets_fast,1000000000,196048761,342.575,-588.825,91.956,4588456,2147348,yes
+2026-11-02 22:56:11 enwik9 hcm_sets_max starting
+2026-11-02 23:04:44 enwik9 hcm_sets_max done: enwik9,enwik9,hcm_sets_max,1000000000,192181500,389.381,-651.419,100.312,5093740,2143672,yes
+2026-11-02 23:04:44 enwik9 lpaq1_9 starting
+2026-11-02 23:27:15 enwik9 lpaq1_9 done: enwik9,enwik9,lpaq1_9,1000000000,164508919,643.368,643.368,675.552,1575124,1575252,yes
+2026-11-02 23:27:15 enwik9 zpaqhi_m5 starting
+2026-11-02 23:50:13 enwik9 zpaqhi_m5 done: enwik9,enwik9,zpaqhi_m5,1000000000,168215145,868.157,868.157,468.829,5954800,5078424,yes
+2026-11-02 23:50:13 enwik9 hcm_max starting
+2026-11-03 00:31:31 enwik9 hcm_max done: enwik9,enwik9,hcm_max,1000000000,187028826,1903.855,1385.655,501.249,2392360,1231308,yes
+2026-11-03 00:31:32 work folder inside Linux removed
+DONE
