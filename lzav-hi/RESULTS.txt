@@ -1,0 +1,206 @@
+lzav-hi raw results - 2026-11-06 - cloud VM: Intel Xeon @ 2.10GHz, 2 vCPU (1 thread/core), 7.6 GB RAM, gcc 13.3 -O3
+LZAV upstream commit ff1a1419 (v7.1), lzav.h sha256 67a7827ee68cef5c11ae17719738b718f4311540f5a81522cdc81a8c7e47c53b (identical to upstream)
+LZ4 v1.10.0. In-memory timing, median of runs; every output decoded (LZAV outputs by the STOCK lzav_decompress) and memcmp-checked.
+Silesia from github.com/DataCompression/corpus-collection (sun.aei.polsl.pl did not resolve); file sizes total 211,938,580 bytes; hashes below.
+
+=== Silesia per-file, part 1 (5 runs each; LZ4 rows only measured here)
+=== Silesia (12 files, per file)
+file         codec            orig         comp    ratio   c_time_s    c_MB/s   d_time_s    d_MB/s verify
+dickens      lzav         10192446      4467894   2.281x     0.0534    190.69     0.0073    1390.4 OK
+dickens      lzavhi       10192446      3890742   2.620x     0.3117     32.69     0.0077    1328.6 OK
+dickens      hi2fast      10192446      3506794   2.906x     4.1545      2.45     0.0068    1504.2 OK
+dickens      hi2          10192446      3099717   3.288x    10.1118      1.01     0.0080    1272.7 OK
+dickens      hi2m5        10192446      3109103   3.278x     9.8117      1.04     0.0078    1299.3 OK
+dickens      lz4          10192446      6428742   1.585x     0.0289    352.38     0.0037    2788.9 OK
+dickens      lz4hc9       10192446      4432823   2.299x     0.5103     19.97     0.0041    2509.0 OK
+dickens      lz4hc12      10192446      4376097   2.329x     0.9138     11.15     0.0041    2496.3 OK
+mozilla      lzav         51220480     23425443   2.187x     0.1497    342.08     0.0288    1778.4 OK
+mozilla      lzavhi       51220480     21084065   2.429x     1.0037     51.03     0.0346    1481.5 OK
+mozilla      hi2fast      51220480     19241900   2.662x    14.8729      3.44     0.0505    1014.6 OK
+mozilla      hi2          51220480     18573657   2.758x    30.7602      1.67     0.0434    1179.4 OK
+mozilla      hi2m5        51220480     18864673   2.715x    29.2724      1.75     0.0475    1077.4 OK
+mozilla      lz4          51220480     26435667   1.938x     0.0906    565.21     0.0209    2453.3 OK
+mozilla      lz4hc9       51220480     22078791   2.320x     1.4239     35.97     0.0200    2554.6 OK
+mozilla      lz4hc12      51220480     22014250   2.327x     8.1839      6.26     0.0193    2660.1 OK
+mr           lzav          9970564      4614916   2.161x     0.0337    295.62     0.0048    2076.8 OK
+mr           lzavhi        9970564      4167468   2.392x     0.2352     42.40     0.0076    1313.8 OK
+mr           hi2fast       9970564      3830808   2.603x     2.0560      4.85     0.0096    1038.1 OK
+mr           hi2           9970564      3550421   2.808x     6.9326      1.44     0.0089    1115.8 OK
+mr           hi2m5         9970564      3572475   2.791x     6.7515      1.48     0.0086    1164.1 OK
+mr           lz4           9970564      5440937   1.833x     0.0179    557.65     0.0030    3360.6 OK
+mr           lz4hc9        9970564      4245211   2.349x     0.5606     17.78     0.0031    3166.4 OK
+mr           lz4hc12       9970564      4189363   2.380x     1.3369      7.46     0.0031    3233.9 OK
+nci          lzav         33553445      4133604   8.117x     0.0541    619.88     0.0121    2773.7 OK
+nci          lzavhi       33553445      3270524  10.259x     0.2776    120.85     0.0101    3327.8 OK
+nci          hi2fast      33553445      2636449  12.727x     5.4471      6.16     0.0101    3320.9 OK
+nci          hi2          33553445      2129903  15.754x    22.9641      1.46     0.0093    3623.2 OK
+nci          hi2m5        33553445      2138829  15.688x    22.8921      1.47     0.0098    3426.6 OK
+nci          lz4          33553445      5533040   6.064x     0.0383    876.17     0.0088    3828.5 OK
+nci          lz4hc9       33553445      3673771   9.133x     0.8763     38.29     0.0071    4693.3 OK
+nci          lz4hc12      33553445      3617512   9.275x     2.2082     15.20     0.0077    4385.8 OK
+ooffice      lzav          6152192      4002800   1.537x     0.0193    318.27     0.0028    2176.9 OK
+ooffice      lzavhi        6152192      3523972   1.746x     0.1817     33.87     0.0058    1056.1 OK
+ooffice      hi2fast       6152192      3268436   1.882x     1.5407      3.99     0.0059    1048.1 OK
+ooffice      hi2           6152192      3178226   1.936x     2.7599      2.23     0.0055    1121.8 OK
+ooffice      hi2m5         6152192      3259820   1.887x     2.5421      2.42     0.0056    1107.0 OK
+ooffice      lz4           6152192      4338918   1.418x     0.0139    443.15     0.0023    2702.9 OK
+ooffice      lz4hc9        6152192      3543764   1.736x     0.1864     33.01     0.0023    2722.2 OK
+ooffice      lz4hc12       6152192      3535250   1.740x     0.4165     14.77     0.0022    2752.6 OK
+osdb         lzav         10085684      3992706   2.526x     0.0231    437.49     0.0036    2830.7 OK
+osdb         lzavhi       10085684      3974076   2.538x     0.1997     50.50     0.0045    2233.2 OK
+osdb         hi2fast      10085684      3746763   2.692x     2.9755      3.39     0.0066    1539.5 OK
+osdb         hi2          10085684      3542883   2.847x     6.4413      1.57     0.0053    1907.3 OK
+osdb         hi2m5        10085684      3548342   2.842x     6.3101      1.60     0.0042    2377.3 OK
+osdb         lz4          10085684      5256666   1.919x     0.0195    518.37     0.0034    2963.0 OK
+osdb         lz4hc9       10085684      3977505   2.536x     0.1920     52.52     0.0035    2847.7 OK
+osdb         lz4hc12      10085684      3946233   2.556x     0.4248     23.74     0.0027    3719.5 OK
+reymont      lzav          6627202      2341124   2.831x     0.0264    251.23     0.0048    1368.0 OK
+reymont      lzavhi        6627202      2061031   3.215x     0.1271     52.14     0.0037    1797.9 OK
+reymont      hi2fast       6627202      1753428   3.780x     1.7875      3.71     0.0033    2011.2 OK
+reymont      hi2           6627202      1526418   4.342x     5.2728      1.26     0.0048    1386.1 OK
+reymont      hi2m5         6627202      1520680   4.358x     5.2153      1.27     0.0036    1859.0 OK
+reymont      lz4           6627202      3181387   2.083x     0.0198    333.98     0.0025    2599.2 OK
+reymont      lz4hc9        6627202      2111095   3.139x     0.4446     14.91     0.0021    3192.6 OK
+reymont      lz4hc12       6627202      2063052   3.212x     0.7921      8.37     0.0021    3188.5 OK
+samba        lzav         21606400      6025064   3.586x     0.0523    413.28     0.0093    2326.1 OK
+samba        lzavhi       21606400      5390329   4.008x     0.2863     75.48     0.0095    2272.0 OK
+samba        hi2fast      21606400      4763139   4.536x     4.3659      4.95     0.0089    2421.3 OK
+samba        hi2          21606400      4567227   4.731x    10.5335      2.05     0.0091    2363.3 OK
+samba        hi2m5        21606400      4594880   4.702x     9.9713      2.17     0.0090    2404.9 OK
+samba        lz4          21606400      7716839   2.800x     0.0375    576.83     0.0064    3371.2 OK
+samba        lz4hc9       21606400      6139489   3.519x     0.4883     44.24     0.0063    3444.6 OK
+samba        lz4hc12      21606400      6095902   3.544x     2.2071      9.79     0.0060    3622.2 OK
+sao          lzav          7251944      6220873   1.166x     0.0221    327.67     0.0030    2430.0 OK
+sao          lzavhi        7251944      5765462   1.258x     0.2373     30.56     0.0034    2154.2 OK
+sao          hi2fast       7251944      5546260   1.308x     1.6316      4.44     0.0044    1657.7 OK
+sao          hi2           7251944      5419980   1.338x     3.0962      2.34     0.0043    1705.2 OK
+
+=== Silesia per-file, part 2 (scope cut to save usage: 3 runs, lzav/lzavhi/hi2 only)
+file         codec            orig         comp    ratio   c_time_s    c_MB/s   d_time_s    d_MB/s verify
+sao          lzav          7251944      6220873   1.166x     0.0234    309.41     0.0032    2260.2 OK
+sao          lzavhi        7251944      5765462   1.258x     0.2224     32.61     0.0036    2026.8 OK
+sao          hi2           7251944      5419980   1.338x     3.1921      2.27     0.0052    1385.1 OK
+webster      lzav         41458703     14572860   2.845x     0.1655    250.49     0.0301    1378.8 OK
+webster      lzavhi       41458703     12266884   3.380x     1.1032     37.58     0.0335    1237.5 OK
+webster      hi2          41458703      9220731   4.496x    45.4372      0.91     0.0352    1178.0 OK
+x-ray        lzav          8474240      8474285   1.000x     0.0023   3719.03     0.0007   11812.9 OK
+x-ray        lzavhi        8474240      7127262   1.189x     0.3483     24.33     0.0070    1210.7 OK
+x-ray        hi2           8474240      6374626   1.329x     5.2151      1.62     0.0141     602.4 OK
+xml          lzav          5345280       881730   6.062x     0.0084    636.61     0.0017    3079.1 OK
+xml          lzavhi        5345280       706801   7.563x     0.0431    124.10     0.0016    3326.7 OK
+xml          hi2           5345280       562420   9.504x     2.1612      2.47     0.0021    2574.2 OK
+
+TOTAL (sum of per-file medians)
+TOTAL        lzav         62530167     30149748   2.074x     0.1996    313.24     0.0357    1750.0 (48.22% of original)
+TOTAL        lzavhi       62530167     25866409   2.417x     1.7170     36.42     0.0457    1368.7 (41.37% of original)
+TOTAL        hi2          62530167     21577757   2.898x    56.0056      1.12     0.0566    1105.3 (34.51% of original)
+
+=== Silesia totals (12 files; lzav, lzavhi, hi2 rows)
+lzav     211938580 -> 83153299  2.549x  39.23%  c 346.53 MB/s  d 1941 MB/s
+lzavhi   211938580 -> 73228616  2.894x  34.55%  c 48.83 MB/s  d 1640 MB/s
+hi2      211938580 -> 61746209  3.432x  29.13%  c 1.40 MB/s  d 1404 MB/s
+
+=== hs_lzav (Sets / parallel wrapper), 4 MB blocks, stock lzav default inside, 3 runs
+silesia.tar.cat codec=lzav block=4MB sets_max=0 sets_used=1 blocks=51 (non-contiguous 0) orig=211938580 comp=84597227 (payload 84596798 + map/table 429) ratio=2.505x c_time(2T)=1.008s c_MB/s=210.2
+  decode threads=1 d_time=0.1057s d_MB/s=2005.8 verify=OK (byte-for-byte)
+  decode threads=2 d_time=0.0964s d_MB/s=2197.7 verify=OK (byte-for-byte)
+silesia.tar.cat codec=lzav block=4MB sets_max=3 sets_used=3 blocks=53 (non-contiguous 10) orig=211938580 comp=84398488 (payload 84397958 + map/table 530) ratio=2.511x c_time(2T)=1.100s c_MB/s=192.6
+  decode threads=1 d_time=0.1147s d_MB/s=1847.3 verify=OK (byte-for-byte)
+  decode threads=2 d_time=0.0997s d_MB/s=2124.9 verify=OK (byte-for-byte)
+mixed_1mb.bin codec=lzav block=4MB sets_max=0 sets_used=1 blocks=10 (non-contiguous 0) orig=40806376 comp=25284336 (payload 25284235 + map/table 101) ratio=1.614x c_time(2T)=0.136s c_MB/s=300.3
+  decode threads=1 d_time=0.0160s d_MB/s=2550.1 verify=OK (byte-for-byte)
+  decode threads=2 d_time=0.0179s d_MB/s=2276.6 verify=OK (byte-for-byte)
+mixed_1mb.bin codec=lzav block=4MB sets_max=3 sets_used=3 blocks=12 (non-contiguous 10) orig=40806376 comp=25395170 (payload 25394928 + map/table 242) ratio=1.607x c_time(2T)=0.151s c_MB/s=270.2
+  decode threads=1 d_time=0.0198s d_MB/s=2055.9 verify=OK (byte-for-byte)
+  decode threads=2 d_time=0.0246s d_MB/s=1659.4 verify=OK (byte-for-byte)
+
+=== whole-file single-stream stock lzav (for the blocking cost)
+file         codec            orig         comp    ratio   c_time_s    c_MB/s   d_time_s    d_MB/s verify
+silesia.tar.cat lzav        211938580     83418087   2.541x     0.6608    320.72     0.1195    1773.7 OK
+mixed_1mb.bin lzav         40806376     25299901   1.613x     0.0817    499.34     0.0165    2465.9 OK
+
+TOTAL (sum of per-file medians)
+TOTAL        lzav        252744956    108717988   2.325x     0.7425    340.38     0.1360    1857.9 (43.01% of original)
+
+=== Parameter grid (single run each, two jobs in parallel on 2 cores, so times are rough)
+-- m4_128_8_one.txt
+dickens mref=4 nice=128 depth=8 chunk=8192 full=24 one=1 -> 3506794  4.00s OK
+mozilla mref=4 nice=128 depth=8 chunk=8192 full=24 one=1 -> 19241900  15.48s OK
+mr mref=4 nice=128 depth=8 chunk=8192 full=24 one=1 -> 3830808  2.17s OK
+nci mref=4 nice=128 depth=8 chunk=8192 full=24 one=1 -> 2636449  5.46s OK
+ooffice mref=4 nice=128 depth=8 chunk=8192 full=24 one=1 -> 3268436  1.65s OK
+osdb mref=4 nice=128 depth=8 chunk=8192 full=24 one=1 -> 3746763  3.15s OK
+reymont mref=4 nice=128 depth=8 chunk=8192 full=24 one=1 -> 1753428  1.93s OK
+samba mref=4 nice=128 depth=8 chunk=8192 full=24 one=1 -> 4763139  4.39s OK
+sao mref=4 nice=128 depth=8 chunk=8192 full=24 one=1 -> 5546260  1.93s OK
+webster mref=4 nice=128 depth=8 chunk=8192 full=24 one=1 -> 10532468  16.73s OK
+x-ray mref=4 nice=128 depth=8 chunk=8192 full=24 one=1 -> 6448992  3.27s OK
+xml mref=4 nice=128 depth=8 chunk=8192 full=24 one=1 -> 607846  0.79s OK
+-- m4_512_48.txt
+dickens mref=4 nice=512 depth=48 chunk=16384 full=32 one=0 -> 3099717  10.56s OK
+mozilla mref=4 nice=512 depth=48 chunk=16384 full=32 one=0 -> 18573657  31.34s OK
+mr mref=4 nice=512 depth=48 chunk=16384 full=32 one=0 -> 3550421  7.51s OK
+nci mref=4 nice=512 depth=48 chunk=16384 full=32 one=0 -> 2129903  24.11s OK
+ooffice mref=4 nice=512 depth=48 chunk=16384 full=32 one=0 -> 3178226  2.97s OK
+osdb mref=4 nice=512 depth=48 chunk=16384 full=32 one=0 -> 3542883  6.86s OK
+reymont mref=4 nice=512 depth=48 chunk=16384 full=32 one=0 -> 1526418  5.76s OK
+samba mref=4 nice=512 depth=48 chunk=16384 full=32 one=0 -> 4567227  11.00s OK
+sao mref=4 nice=512 depth=48 chunk=16384 full=32 one=0 -> 5419980  3.60s OK
+webster mref=4 nice=512 depth=48 chunk=16384 full=32 one=0 -> 9220731  47.51s OK
+x-ray mref=4 nice=512 depth=48 chunk=16384 full=32 one=0 -> 6374626  5.45s OK
+xml mref=4 nice=512 depth=48 chunk=16384 full=32 one=0 -> 562420  2.26s OK
+-- m5_1024_128.txt
+dickens mref=5 nice=1024 depth=128 chunk=16384 full=0 one=0 -> 3109032  10.98s OK
+mozilla mref=5 nice=1024 depth=128 chunk=16384 full=0 one=0 -> 18846198  33.64s OK
+mr mref=5 nice=1024 depth=128 chunk=16384 full=0 one=0 -> 3569484  9.87s OK
+nci mref=5 nice=1024 depth=128 chunk=16384 full=0 one=0 -> 2109104  36.65s OK
+ooffice mref=5 nice=1024 depth=128 chunk=16384 full=0 one=0 -> 3259181  2.90s OK
+osdb mref=5 nice=1024 depth=128 chunk=16384 full=0 one=0 -> 3544706  6.62s OK
+reymont mref=5 nice=1024 depth=128 chunk=16384 full=0 one=0 -> 1520408  5.64s OK
+samba mref=5 nice=1024 depth=128 chunk=16384 full=0 one=0 -> 4582731  14.59s OK
+sao mref=5 nice=1024 depth=128 chunk=16384 full=0 one=0 -> 5463601  3.52s OK
+webster mref=5 nice=1024 depth=128 chunk=16384 full=0 one=0 -> 9222928  48.54s OK
+x-ray mref=5 nice=1024 depth=128 chunk=16384 full=0 one=0 -> 6525249  4.54s OK
+xml mref=5 nice=1024 depth=128 chunk=16384 full=0 one=0 -> 564936  3.98s OK
+-- m5_256_16_one.txt
+dickens mref=5 nice=256 depth=16 chunk=16384 full=32 one=1 -> 3207882  8.17s OK
+mozilla mref=5 nice=256 depth=16 chunk=16384 full=32 one=1 -> 19165740  21.17s OK
+mr mref=5 nice=256 depth=16 chunk=16384 full=32 one=1 -> 3652804  4.05s OK
+nci mref=5 nice=256 depth=16 chunk=16384 full=32 one=1 -> 2292368  10.50s OK
+ooffice mref=5 nice=256 depth=16 chunk=16384 full=32 one=1 -> 3301244  2.20s OK
+osdb mref=5 nice=256 depth=16 chunk=16384 full=32 one=1 -> 3591566  4.98s OK
+reymont mref=5 nice=256 depth=16 chunk=16384 full=32 one=1 -> 1580603  3.76s OK
+samba mref=5 nice=256 depth=16 chunk=16384 full=32 one=1 -> 4660808  6.93s OK
+sao mref=5 nice=256 depth=16 chunk=16384 full=32 one=1 -> 5516618  2.66s OK
+webster mref=5 nice=256 depth=16 chunk=16384 full=32 one=1 -> 9660303  34.27s OK
+x-ray mref=5 nice=256 depth=16 chunk=16384 full=32 one=1 -> 6567644  3.80s OK
+xml mref=5 nice=256 depth=16 chunk=16384 full=32 one=1 -> 580813  1.30s OK
+-- m5_512_48.txt
+dickens mref=5 nice=512 depth=48 chunk=16384 full=32 one=0 -> 3109103  10.62s OK
+mozilla mref=5 nice=512 depth=48 chunk=16384 full=32 one=0 -> 18864673  31.10s OK
+mr mref=5 nice=512 depth=48 chunk=16384 full=32 one=0 -> 3572475  7.59s OK
+nci mref=5 nice=512 depth=48 chunk=16384 full=32 one=0 -> 2138829  24.02s OK
+ooffice mref=5 nice=512 depth=48 chunk=16384 full=32 one=0 -> 3259820  3.01s OK
+osdb mref=5 nice=512 depth=48 chunk=16384 full=32 one=0 -> 3548342  6.75s OK
+reymont mref=5 nice=512 depth=48 chunk=16384 full=32 one=0 -> 1520680  7.36s OK
+samba mref=5 nice=512 depth=48 chunk=16384 full=32 one=0 -> 4594880  11.12s OK
+sao mref=5 nice=512 depth=48 chunk=16384 full=32 one=0 -> 5463601  3.37s OK
+webster mref=5 nice=512 depth=48 chunk=16384 full=32 one=0 -> 9238552  47.35s OK
+x-ray mref=5 nice=512 depth=48 chunk=16384 full=32 one=0 -> 6525249  4.86s OK
+xml mref=5 nice=512 depth=48 chunk=16384 full=32 one=0 -> 568155  2.18s OK
+
+=== Test data sha256
+1b39576418fa3ebb09cf0ceab59bf1cb9fa262c19d9dc6d3cda1e4fae7910a09 silesia.zip
+b24c37886142e11d0ee687db6ab06f936207aa7f2ea1fd1d9a36763c7a507e6a silesia/dickens
+657fc3764b0c75ac9de9623125705831ebbfbe08fed248df73bc2dc66e2a963b silesia/mozilla
+68637ed52e3e4860174ed2dc0840ac77d5f1a60abbcb13770d5754e3774d53e6 silesia/mr
+fc63a31770947b8c2062d3b19ca94c00485a232bb91b502021948fee983e1635 silesia/nci
+e7ee013880d34dd5208283d0d3d91b07f442e067454276095ded14f322a656eb silesia/ooffice
+60f027179302ca3ad87c58ac90b6be72ec23588aaa7a3b7fe8ecc0f11def3fa3 silesia/osdb
+0eac0114a3dfe6e2ee1f345a0f79d653cb26c3bc9f0ed79238af4933422b7578 silesia/reymont
+93ba07bc44d8267789c1d911992f40b089ffa2140b4a160fac11ccae9a40e7b2 silesia/samba
+c2d0ea2cc59d4c21b7fe43a71499342a00cbe530a1d5548770e91ecd6214adcc silesia/sao
+6a68f69b26daf09f9dd84f7470368553194a0b294fcfa80f1604efb11143a383 silesia/webster
+7de9fce1405dc44ae5e6813ed21cd5751e761bd4265655a005d39b9685d1c9ad silesia/x-ray
+0e82e54e695c1938e4193448022543845b33020c8be6bf3bf3ead2224903e08c silesia/xml
+mixed_1mb.bin (make_mixed.py) b5efaadd83ffb1354fa11c93a5bab40b660928a5de71c425d68003da93db0576

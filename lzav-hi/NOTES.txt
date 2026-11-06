@@ -1,0 +1,28 @@
+lzav-hi NOTES - Michael Hugh Harrington, 2026-11-06 (MIT)
+
+METHOD
+lzav-hi is an encoder-only change ("-hi" approach). The stream format, the block writer and the decoder are
+LZAV's own, untouched. Two things make the gain: (1) a deeper match search (binary tree over the whole input
+instead of HI's 8-entry hash buckets), and (2) optimal parsing. LZAV's offset-carry scheme makes the price of a
+reference depend on the previous reference block and on whether literals precede it, so the parser keeps one DP
+node per carry state (csh 0/2/3/5/6) per position; costs then match lzav_write_blk_4() exactly. Distances are
+filtered by the same legality rule the stock encoders use (d < 4 MB << csh << 2*(literals present)).
+
+OBSERVATIONS
+- Most of the gain is the parse and search, not window size: giving stock HI a 16x larger hash table gained only
+  0.5% on dickens and 0.8% on mozilla.
+- mref 4 beat mref 5 on 10 of 12 Silesia files (1.0% overall). mref 4 is legal in the format and accepted by the
+  stock C decoder, but stock compressors never emit it, so third-party ports (Rust, C#) may not have been tested
+  with it; -m5 avoids that question.
+- Decode speed: optimal parsing makes more, shorter blocks on binary data, so decoding is slower there
+  (x-ray about half of HI's speed; sao, osdb, mozilla 15-35% slower); text decodes at about HI speed.
+  A per-block price (blk_cost parameter) to trade a little ratio for decode speed was started but not measured
+  cleanly before the scope was cut; default blk_cost = 1 (tie-break only) is what all results use.
+- Compression speed is the big cost: 1.4 MB/s on this VM, dominated (about 75%) by cache misses in the
+  binary-tree match finder. A faster preset (lzavhi_fast_params: depth 8) ran 3.5 MB/s and still beat HI by 10%
+  (65.9 MB vs 73.2 MB on Silesia, single rough run).
+- hs_lzav: 2 threads gave only +10% decode speed on this 2-vCPU VM; Sets gave no size gain with LZAV (LZAV's
+  large window already reaches back across the 1 MB type changes). Not worth pitching without a real multi-core run.
+- Record-length / delta pre-filter: not tried (scope cut to save usage).
+- Silesia mirror: sun.aei.polsl.pl did not resolve from the cloud VM; the GitHub copy matches the official sizes,
+  and the stock LZAV ratios reproduced Vaneev's published 39.23% / 34.55% exactly, which confirms the data.

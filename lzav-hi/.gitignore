@@ -1,0 +1,4 @@
+bin/
+lz4/
+upstream-lzav/
+*.lzavhi
