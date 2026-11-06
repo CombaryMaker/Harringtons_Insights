@@ -1,0 +1,44 @@
+    <!-- HX RESULTS 2026-11-06 (top of page) -->
+    <section class="content-section" id="hx-results">
+      <div class="container">
+        <article class="content-card" style="max-width:none">
+          <h2 style="margin-top:0">HX: best in 120 of 290 compression categories</h2>
+          <p style="color:#5f6b76;margin-top:-6px">Michael Hugh Harrington &middot; 6 November 2026 &middot; HX is Patent Pending (U.S. Provisional App. 64/192,843)</p>
+
+          <figure style="margin:18px 0 26px;text-align:center">
+            <img src="images/hx/HX-speed-tiers-radar.gif" alt="Animated radar maps, one per speed tier, showing HX against the best other compressor on 29 data types" style="width:100%;max-width:900px;height:auto;border:1px solid #d8e0e7;border-radius:10px;background:#fff">
+            <figcaption style="color:#5f6b76;font-size:0.95rem;margin-top:8px">One frame for each of the 10 speed tiers. Blue is compression, green is decode speed, the red ring is a tie, and a gold H marks every data type where my software is the best in that tier.</figcaption>
+          </figure>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:26px">
+            <a href="images/hx/HX-radar-1-wins-per-type-2026-11-06.png"><img src="images/hx/HX-radar-1-wins-per-type-2026-11-06.png" alt="Share of speed tiers where HX is smallest, per data type" style="width:100%;height:auto;border:1px solid #d8e0e7;border-radius:8px;background:#fff"></a>
+            <a href="images/hx/HX-radar-2-size-per-type-2026-11-06.png"><img src="images/hx/HX-radar-2-size-per-type-2026-11-06.png" alt="HX compressed size compared with the best other tool, per data type" style="width:100%;height:auto;border:1px solid #d8e0e7;border-radius:8px;background:#fff"></a>
+            <a href="images/hx/HX-radar-3-decode-per-type-2026-11-06.png"><img src="images/hx/HX-radar-3-decode-per-type-2026-11-06.png" alt="HX decode time compared with the best other tool, per data type" style="width:100%;height:auto;border:1px solid #d8e0e7;border-radius:8px;background:#fff"></a>
+          </div>
+
+          <p>
+            Over the past weeks I built HX, a lossless compressor with a Fast mode and a Complete mode, along with a new set of underlying methods, the most important of which I call Harrington Cascades. I then measured it against the compression tools the world already relies on, across 29 kinds of data and 10 speed tiers, which makes 290 separate categories. My software came out best in 120 of those 290 categories and second best in 119, on the same machine and in the same session as every tool it was compared against, with every file decompressed and checked byte for byte.
+          </p>
+          <p>
+            The 29 data types run from the standard test sets (Silesia, Calgary, Canterbury and the Canterbury large corpus) through text and logs, programs, audio, photographs, medical images, raw and compressed video, PDF and Office files, packet captures, databases, archives and scientific data, down to random-looking and noise data. The speed tiers follow the 1, 2, 5 series that engineers use for ranges, measured against how fast LZ4 decodes the same data, so each tier asks a simple question: at this speed or faster, who makes the smallest file?
+          </p>
+          <p>
+            No other developer comes close in the number of first places. Google's Brotli is second with 42 of the 290, Frédéric Langlet's kanzi has 33, Igor Pavlov's 7-Zip (LZMA2 and PPMd) has 31, and Christian Schneider's precomp has 16, while every other tool together accounts for the remaining 48. The slowest tier, where speed does not matter at all, belongs in practice to research compressors such as cmix and paq8px, which I did not run because they take far too long, so I am happy to set that tier aside; without it my software is still best in 110 of 261 categories, or 42 percent.
+          </p>
+          <p>
+            Because the number of tiers is a choice, I also counted the same results with 5 tiers and with 20 tiers. My share of first places stays between 38 and 42 percent in every case (55 of 145 with 5 tiers, 120 of 290 with 10, and 240 of 580 with 20), and the runner-up never reaches half of my count. The ten-tier split was not chosen to flatter the results.
+          </p>
+          <p>
+            HX is free for individuals to use and free for research, peer review and scientific study, and commercial use needs a license. I invite anyone to test it, to send me files where it does poorly, and to point out tools I should add, and I will answer reasonable questions and testing requests.
+          </p>
+
+          <h3>Full results and source</h3>
+          <p>
+            <a style="color:#0f4c81;text-decoration:underline" href="https://github.com/CombaryMaker/harringtons_insights/blob/main/HX/results/Top_Performers.pdf">Top_Performers (PDF)</a>: the best and second best tool in every one of the 290 categories, with ratios and speeds.<br>
+            <a style="color:#0f4c81;text-decoration:underline" href="https://github.com/CombaryMaker/harringtons_insights/blob/main/HX/results/All-Software-Test-Results-2026-11-06.pdf">All software test results (PDF)</a>: every tool and setting tested, with compression and speed for each.<br>
+            <a style="color:#0f4c81;text-decoration:underline" href="https://github.com/CombaryMaker/harringtons_insights/tree/main/HX">HX source code and license on GitHub</a>
+          </p>
+        </article>
+      </div>
+    </section>
+    <!-- END HX RESULTS -->
