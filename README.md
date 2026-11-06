@@ -101,6 +101,7 @@ The only changed file is `compress.c`; see `compress.c.patch`.
 ## Licenses
 
 - HCM and the xz-hi / benchmark scripts: MIT, Copyright (c) 2026 Michael Harrington (see `LICENSE`).
+- `HX/`: NOT MIT. Copyright (c) 2026 Michael Hugh Harrington, all rights reserved, Patent Pending (U.S. Provisional App. 64/192,843). Source published for review and verification only; see `HX/LICENSE.txt`.
 - `bzip2-hi/source`: altered version of bzip2 by Julian Seward; bzip2's own license applies
   (`bzip2-hi/source/COPYING`). It is plainly marked as altered and is not the original bzip2.
 - xz-hi uses liblzma from XZ Utils through Python; no XZ Utils code is included.

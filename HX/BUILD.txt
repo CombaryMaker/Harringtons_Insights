@@ -1,0 +1,32 @@
+HX - how it is built (Linux, static, g++ with C++17 and OpenMP)
+Patent Pending (U.S. Provisional App. 64/192,843). All rights reserved - see LICENSE.txt.
+
+Public libraries (unchanged, fetch them separately):
+  FiniteStateEntropy  github.com/Cyan4973/FiniteStateEntropy   (lib/*.c: Huff0 and FSE)
+  ryg_rans            github.com/rygorous/ryg_rans             (rans_byte.h)
+  zstd 1.5.6          github.com/facebook/zstd                 (build libzstd.a)
+  libbsc              github.com/IlyaGrebnov/libbsc
+  bzip3               github.com/kspalaiologos/bzip3            (libbz3.c)
+  Brotli              github.com/google/brotli                  (c/enc, c/dec, c/common)
+  7-Zip / LZMA SDK    C folder: LzmaEnc, LzmaDec, Ppmd7, Ppmd7Enc, Ppmd7Dec, Ppmd8*, Bcj2, Bcj2Enc, Alloc, CpuArch
+
+1. zstd carries its own older copy of FSE/Huff0, so rename the symbols of the standalone FSE objects first:
+     gcc -O3 -c entropy_common.c fse_compress.c fse_decompress.c huf_compress.c huf_decompress.c hist.c debug.c
+     nm -g --defined-only *.o | awk 'NF==3{print $3}' | sort -u | awk '{print $1, "fx_"$1}' > redefs.txt
+     for o in *.o; do objcopy --redefine-syms=redefs.txt $o fx/$o; done
+2. Compile HX and apply the same renames:
+     g++ -O2 -std=c++17 -fopenmp -c hx.cpp -o hx.o -I<FSE lib> -I<ryg_rans> -I<libbsc>/libbsc -I<libbsc> \
+         -I<bzip3>/include -I<zstd>/lib -I<zstd>/lib/common -I<brotli>/c/include -I<7zip>/C
+     objcopy --redefine-syms=redefs.txt hx.o hx_r.o
+3. Link:
+     g++ -O2 -std=c++17 -fopenmp -static -o hx hx_r.o fx/*.o libbz3.o <7zip C objects> <brotli objects> \
+         <libbsc .cpp files> -DLIBBSC_OPENMP_SUPPORT -DLIBSAIS_OPENMP libzstd.a -lpthread
+
+Optional external routes (environment variables that point at the programs):
+  HX_HCM, HX_HCM37   HCM (Michael Harrington's MIT context-mixing compressor) for mode 16 / 17
+  HX_KZF             the executable pre-filter used with HCM 3.7 on x86 files
+  HX_CJXL, HX_DJXL   JPEG XL encoder/decoder for 16-bit raw images (mode 18)
+  HX_MZIP            research only (AGPL, separate program; modes 8/9)
+  HX_ROUTELOG        file the router appends what it learns to
+  HX_DEBUG=1         timings
+A file that used an external route needs the same program to decode.
