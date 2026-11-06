@@ -1,0 +1,63 @@
+HOW HARRINGTON'S SETS / hs_zstd SPEEDS UP DECOMPRESSION
+Michael Hugh Harrington - 6 November 2026 - MIT License
+
+THE PROBLEM
+A normal zstd file is one long stream. Each part depends on the part before it, so it can only be decoded
+from start to finish on one processor core, however many cores the machine has. The zstd command line
+decodes on one thread. Multi-threaded tools like pzstd decode in parallel, but they pass the data through
+extra in-between buffers before writing it out.
+
+WHAT hs_zstd DOES DIFFERENTLY
+1. It cuts the file into independent blocks (4 MB or 16 MB). Each block is a standard zstd frame that
+   needs nothing from any other block, so every core can decode its own block at the same time.
+2. Each core writes its decoded block straight into its final place in the output file (a memory-mapped
+   file). There is no in-between buffer and no reassembly step afterwards. This is the main source of
+   the extra speed over pzstd.
+3. Before cutting, Harrington's Sets reads the file in 64 KB windows, measures 7 simple byte statistics
+   for each window (control bytes, letters, digits, spaces, high bytes, zeros and entropy) and sorts
+   alike windows into up to 3 sets. Each set is compressed as its own stream, so text sits with text and
+   binary with binary. A small map (about 5 bytes per run) puts every byte back in its original place.
+   Sets help SIZE when the kind of data changes inside the file; they add no speed by themselves.
+4. A CRC-32 of the whole file is stored and checked, and every test round trip was verified exactly.
+
+THE RESULTS (6-core / 12-thread AMD Ryzen 5 7500X3D desktop, NVMe, every decode verified exact)
+4 GB public Silesia file (4,026,833,020 bytes), level 3, decode times are medians of 5 rounds:
+  zstd, one thread ............ ratio 3.184   decode 3.73 s
+  zstd -T12 ................... ratio 3.184   decode 4.25 s   (zstd's threads speed up compression only)
+  pzstd, 12 threads ........... ratio 3.174   decode 2.85 s
+  hs_zstd, 4 MB blocks, 12 .... ratio 3.171   decode 2.27 s   1.64x faster than zstd, 1.26x faster than pzstd
+  hs_zstd, 16 MB blocks, 12 ... ratio 3.182   decode 2.51 s
+  (hs_zstd's times include forcing the output to disk; the other tools' do not.)
+
+10 GB file, 12 threads, median decode:
+  zstd 11.95 s, pzstd 6.87 s, hs_zstd 4 MB blocks 4.00 s
+  = 2.99x faster than zstd and 1.72x faster than pzstd.
+
+2 GB file, 12 threads, median decode:
+  zstd 1.67 s, pzstd 0.94 s, hs_zstd 4 MB blocks 0.63 s
+  = 2.67x faster than zstd and 1.50x faster than pzstd.
+
+Core scaling on the 4 GB file (hs_zstd, 4 MB blocks, median decode):
+  1 core 7.52 s, 2 cores 4.87 s, 4 cores 3.24 s, 6 cores 2.71 s, 8 cores 2.55 s, 12 threads 2.43 s.
+  Speed keeps rising until the disk becomes the limit, around 6 to 8 cores on this machine.
+
+Where Sets help size:
+  3.2 GB public mixed tar: ratio 4.093 with Sets against 4.076 for plain blocks.
+  A synthetic file that switches data type every 1 MB: 9% smaller with Sets.
+  Silesia (similar data throughout): no difference.
+
+THE TRADE-OFFS (stated plainly)
+- Blocks cannot refer back into other blocks, so repeats more than one block apart are compressed again.
+  zstd --long reaches further and makes such files smaller (but decodes on one thread).
+- The decoder uses more memory: about 116 to 300 MB against about 10 MB for zstd.
+- The .hsz container needs hs_zstd to reassemble, although every block inside it is a standard zstd frame.
+
+FILES IN THIS FOLDER
+  hs_zstd.cpp (source), hs_zstd.exe (Windows build), ABOUT.txt (method, prior work, credits),
+  METHODOLOGY.txt (test rules), results-*.txt (raw logs of every run),
+  test-data-sources-and-hashes.txt (where the public test data came from).
+
+CREDITS
+zstd by Yann Collet and the zstd contributors (Meta). Byte-frequency grouping is prior work by McDaniel and
+Heydari (2003) and Li, Wang, Stolfo and Herzog (2005). Andrew Goodwin (University of Sydney) reviewed the
+method and suggested the fair-baseline tests.
