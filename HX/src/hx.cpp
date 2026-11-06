@@ -24,6 +24,7 @@
 #include "x86f.h"
 #include <functional>
 #include <unistd.h>
+#include "hx_win_compat.h"
 
 static const size_t SEG = (1u << 20) - (1u << 20) % 12, HBLK = 128 * 1024;
 struct Plan { bool sets = false; size_t sw = 65536; vector<int> lab; vector<size_t> worder, soff, slen; };
@@ -91,13 +92,13 @@ static void bz3_dec(const uint8_t *p, size_t m, uint8_t *out, size_t n) {
 }
 static B readf(const char *fn);
 static void writef(const char *fn, const uint8_t *d, size_t n);
-static string mz_tmp() { const char *t = getenv("TMPDIR"); string d = string(t ? t : "/tmp") + "/hxmzXXXXXX"; vector<char> b(d.begin(), d.end()); b.push_back(0);
+static string mz_tmp() { const char *t = getenv("TMPDIR"); string d = string(t ? t : hx_tmpdir()) + "/hxmzXXXXXX"; vector<char> b(d.begin(), d.end()); b.push_back(0);
     if (!mkdtemp(b.data())) { perror("hxf: mkdtemp"); exit(1); } return string(b.data()); }
 static B mz_run(const char *op, const uint8_t *d, size_t n) {   // research only: runs the external mzip program
     const char *mz = getenv("HX_MZIP"); if (!mz) { fprintf(stderr, "hxf: this file needs HX_MZIP (research build)\n"); exit(1); }
     string dir = mz_tmp(), a = dir + "/a", b = dir + "/b"; writef(a.c_str(), d, n);
-    string cmd = string("\"") + mz + "\" " + op + " \"" + a + "\" \"" + b + "\" > /dev/null 2>&1";
-    if (system(cmd.c_str()) != 0) { fprintf(stderr, "hxf: mzip failed\n"); exit(1); }
+    string cmd = string("\"") + mz + "\" " + op + " \"" + a + "\" \"" + b + "\" > " HX_NULL " 2>&1";
+    if (hx_system(cmd.c_str()) != 0) { fprintf(stderr, "hxf: mzip failed\n"); exit(1); }
     B o = readf(b.c_str()); remove(a.c_str()); remove(b.c_str()); rmdir(dir.c_str()); return o;
 }
 static B readf(const char *fn) { FILE *f = fopen(fn, "rb"); if (!f) { perror(fn); exit(1); } fseek(f, 0, SEEK_END); size_t n = ftell(f); fseek(f, 0, SEEK_SET); B d(n); if (n && fread(d.data(), 1, n, f) != n) exit(1); fclose(f); return d; }
@@ -114,7 +115,7 @@ static void writef(const char *fn, const uint8_t *d, size_t n) { FILE *f = fopen
 // Routes: 1 JXL raw image, 2 WebP raw image, 3 packJPG, 4 JXL JPEG repack, 5 FFV1 video, 6 x264 lossless video.
 static string tool(const char *env) { const char *v = getenv(env); return v ? v : ""; }
 static string q(const string &x) { return "'" + x + "'"; }
-static bool sh(const string &cmd) { return system((cmd + " > /dev/null 2>&1").c_str()) == 0; }
+static bool sh(const string &cmd) { return hx_system((cmd + " > " HX_NULL " 2>&1").c_str()) == 0; }
 static size_t pnm_header(const B &in, int &kind) {   // binary PGM (5) / PPM (6), maxval 255: returns header length, 0 = not one
     kind = 0; if (in.size() < 16 || in[0] != 'P' || (in[1] != '5' && in[1] != '6')) return 0;
     size_t i = 2; int vals[3], k = 0;
@@ -253,8 +254,8 @@ static bool brotli_unroute(const uint8_t *p, size_t m, uint8_t *out, size_t n) {
 static B hcm_run(const char *op, const uint8_t *d, size_t n) {
     const char *h = getenv("HX_HCM"); if (!h) return B();
     string dir = mz_tmp(), a = dir + "/a", b = dir + "/b"; writef(a.c_str(), d, n);
-    string cmd = string("\"") + h + "\" " + op + " \"" + a + "\" \"" + b + "\" > /dev/null 2>&1";
-    bool ok = system(cmd.c_str()) == 0; B o; if (ok) { FILE *f = fopen(b.c_str(), "rb"); if (f) { fclose(f); o = readf(b.c_str()); } }
+    string cmd = string("\"") + h + "\" " + op + " \"" + a + "\" \"" + b + "\" > " HX_NULL " 2>&1";
+    bool ok = hx_system(cmd.c_str()) == 0; B o; if (ok) { FILE *f = fopen(b.c_str(), "rb"); if (f) { fclose(f); o = readf(b.c_str()); } }
     remove(a.c_str()); remove(b.c_str()); rmdir(dir.c_str()); return o;
 }
 static B hcm_route(const B &in, size_t best_now, bool dbg) {
@@ -284,7 +285,7 @@ static B media_enc(int route, const B &in) {   // returns the mode-10 body (rout
         remove((a + ext).c_str());
     } else if (route == 3 || route == 4) { if (in.size() < 4 || in[0] != 0xFF || in[1] != 0xD8 || in[2] != 0xFF) { cleanup(); return B(); }
         writef((d + "/a.jpg").c_str(), in.data(), in.size());
-        if (route == 3) { ok = system(("cd " + q(d) + " && " + q(tool("HX_PACKJPG")) + " a -np -o a.jpg > /dev/null 2>&1").c_str()) == 0; if (ok) rename((d + "/a.pjg").c_str(), b.c_str()); }
+        if (route == 3) { ok = hx_system((HX_CD + q(d) + " && " + q(tool("HX_PACKJPG")) + " a -np -o a.jpg > " HX_NULL " 2>&1").c_str()) == 0; if (ok) rename((d + "/a.pjg").c_str(), b.c_str()); }
         else ok = sh(q(tool("HX_CJXL")) + " " + q(d + "/a.jpg") + " " + q(b) + " --lossless_jpeg=1 --quiet -e 9");
     } else if (route == 7) { if (in.size() < 44 || memcmp(in.data(), "RIFF", 4) || memcmp(in.data() + 8, "WAVE", 4)) { cleanup(); return B(); }
         writef((a + ".wav").c_str(), in.data(), in.size());
@@ -312,7 +313,7 @@ static B media_dec(int route, const uint8_t *p, size_t m, size_t n) {
         if (ok) { B r = readf((b + ext).c_str()); int k2; size_t h2 = pnm_header(r, k2); size_t px = n - keep;
             if (h2 && r.size() - h2 == px) { out.assign(hd, hd + keep); out.insert(out.end(), r.begin() + h2, r.end()); } } }
     else if (route == 3 || route == 4) {
-        if (route == 3) { rename(a.c_str(), (d + "/a.pjg").c_str()); ok = system(("cd " + q(d) + " && " + q(tool("HX_PACKJPG")) + " x -np -o a.pjg > /dev/null 2>&1").c_str()) == 0; if (ok) out = readf((d + "/a.jpg").c_str()); }
+        if (route == 3) { rename(a.c_str(), (d + "/a.pjg").c_str()); ok = hx_system((HX_CD + q(d) + " && " + q(tool("HX_PACKJPG")) + " x -np -o a.pjg > " HX_NULL " 2>&1").c_str()) == 0; if (ok) out = readf((d + "/a.jpg").c_str()); }
         else { ok = sh(q(tool("HX_DJXL")) + " " + q(a) + " " + q(b) + ".jpg --quiet"); if (ok) { out = readf((b + ".jpg").c_str()); remove((b + ".jpg").c_str()); } } }
     else if (route == 7) { rename(a.c_str(), (a + ".wv").c_str()); ok = sh(q(tool("HX_WVUNPACK")) + " -q -y " + q(a + ".wv") + " -o " + q(b + ".wav"));
         if (ok) { out = readf((b + ".wav").c_str()); remove((b + ".wav").c_str()); } remove((a + ".wv").c_str()); }
@@ -423,7 +424,7 @@ int main(int argc, char **argv) {
                     if (!kept.empty()) {
                         B rest; size_t pos = 0; for (auto &im : kept) { rest.insert(rest.end(), in.begin() + pos, in.begin() + im.first); pos = im.first + im.second; } rest.insert(rest.end(), in.begin() + pos, in.end());
                         string d = mz_tmp(), a = d + "/r", b = d + "/r.h"; writef(a.c_str(), rest.data(), rest.size());
-                        bool ok = rest.empty() || sh(string("HX_NOEMBED=1 ") + q(argv[0]) + " c " + q(a) + " " + q(b) + " " + to_string(T) + " --complete > /dev/null");
+                        bool ok = rest.empty() || sh(string(HX_NOEMBED_PREFIX) + q(argv[0]) + " c " + q(a) + " " + q(b) + " " + to_string(T) + " --complete > " HX_NULL "");
                         B rb = (ok && !rest.empty()) ? readf(b.c_str()) : B(); remove(a.c_str()); remove(b.c_str()); rmdir(d.c_str());
                         if (ok) { put32(c, (uint32_t)kept.size()); for (size_t k = 0; k < kept.size(); k++) { put32(c, (uint32_t)kept[k].first); put32(c, (uint32_t)kept[k].second); put32(c, (uint32_t)bodies[k].size()); c.insert(c.end(), bodies[k].begin(), bodies[k].end()); }
                             put32(c, (uint32_t)rb.size()); c.insert(c.end(), rb.begin(), rb.end());
@@ -482,7 +483,7 @@ int main(int argc, char **argv) {
                 img[k] = media_dec(p[0], p + 1, bl - 1, len[k]); if (img[k].size() != len[k]) { fprintf(stderr, "hxf: embedded image decode failed\n"); return 1; } p += bl; }
             size_t rl = get32(p); p += 4; B rest;
             if (rl) { string d = mz_tmp(), a = d + "/r.h", b = d + "/r"; writef(a.c_str(), p, rl);
-                bool ok = sh(q(argv[0]) + " d " + q(a) + " " + q(b) + " " + to_string(T) + " > /dev/null"); if (ok) rest = readf(b.c_str()); remove(a.c_str()); remove(b.c_str()); rmdir(d.c_str());
+                bool ok = sh(q(argv[0]) + " d " + q(a) + " " + q(b) + " " + to_string(T) + " > " HX_NULL); if (ok) rest = readf(b.c_str()); remove(a.c_str()); remove(b.c_str()); rmdir(d.c_str());
                 if (!ok) { fprintf(stderr, "hxf: rest decode failed\n"); return 1; } }
             size_t pos = 0, q2 = 0; for (size_t k = 0; k < cnt; k++) { size_t gap = off[k] - pos; memcpy(out.data() + pos, rest.data() + q2, gap); q2 += gap; memcpy(out.data() + off[k], img[k].data(), len[k]); pos = off[k] + len[k]; }
             memcpy(out.data() + pos, rest.data() + q2, n - pos); }

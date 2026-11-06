@@ -30,3 +30,9 @@ Optional external routes (environment variables that point at the programs):
   HX_ROUTELOG        file the router appends what it learns to
   HX_DEBUG=1         timings
 A file that used an external route needs the same program to decode.
+
+WINDOWS (6 Nov 2026)
+  hx.exe and the HX Compressor window app are built with llvm-mingw (github.com/mstorsjo/llvm-mingw):
+    HX/windows/build-hx-windows.sh   builds hx.exe (hx_win_compat.h supplies the few POSIX calls; Linux builds are unchanged)
+    HX/gui/build-gui.sh              builds HX-Compressor.exe
+  Ready-made: HX/windows/HX-Compressor-1.0 (see its README.txt and TOOLS.txt).

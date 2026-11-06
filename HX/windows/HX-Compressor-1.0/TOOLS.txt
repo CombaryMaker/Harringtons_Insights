@@ -1,0 +1,12 @@
+PROGRAMS FOR THE "tools" FOLDER (official Windows downloads; copy the named files into the tools folder)
+
+  hx.exe                    included
+  7z.exe + 7z.dll           7-Zip (Igor Pavlov, LGPL)          7-zip.org   (or just install 7-Zip normally)
+  zstd.exe                  zstd (Meta, BSD)                   github.com/facebook/zstd/releases   (zstd-v1.5.x-win64.zip)
+  brotli.exe                Brotli (Google, MIT)               github.com/google/brotli/releases
+  kanzi.exe                 kanzi (Frederic Langlet, Apache)   github.com/flanglet/kanzi-cpp/releases
+  flac.exe                  FLAC (Xiph.Org, BSD/GPL tools)     xiph.org/flac/download.html
+  wavpack.exe, wvunpack.exe WavPack (David Bryant, BSD)        wavpack.com/downloads.html
+  cwebp.exe, dwebp.exe      WebP (Google, BSD)                 developers.google.com/speed/webp/download
+  cjxl.exe, djxl.exe        JPEG XL (libjxl, BSD)              github.com/libjxl/libjxl/releases
+Each of these programs keeps its own license; they are run as separate programs, not built into HX.
