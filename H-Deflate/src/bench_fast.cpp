@@ -1,5 +1,5 @@
 // bench_fast.cpp - compares inflate_record_ref (v1) with inflate_record_fast (v1.01): same raw bytes, tokens and blocks;
-// tokens, same blocks; median of 5 timings each. PRIVATE. (c) 2026 Michael Hugh Harrington.
+// tokens, same blocks; median of 5 timings each. Patent Pending (U.S. Provisional App. 64/192,843). (c) 2026 Michael Hugh Harrington. See H-Deflate/LICENSE.txt.
 #include "hd_inflate_fast.h"
 #include <chrono>
 #include <cstdio>
