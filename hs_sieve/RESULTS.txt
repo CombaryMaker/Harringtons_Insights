@@ -1,0 +1,23 @@
+hs_sieve on Silesia "sao" (7,251,944 bytes, SHA-256 c2d0ea2cc59d4c21...), one run each, 6 Nov 2026
+Machine: Linux VM, Intel Xeon @ 2.10 GHz, 2 cores. Sieve 0.13.78 (Thor110/Potentia, shallow clone), CLI built
+Release with g++. Sieve default (size-optimised) packing. Times are wall clock; decode uses all 2 cores.
+Every decode was checked byte-identical by SHA-256.
+
+Run                                     Compressed bytes  Ratio   Compress  Decompress  Verified
+(a) stock sieve, whole file                    4,149,429  1.75x    32.26 s     9.14 s   yes
+(b) hs_sieve, record filter only (forced)      4,574,458  1.59x    39.97 s     0.25 s   yes
+(c) hs_sieve, blocks only (Sets on, 2 blk)     4,136,594  1.75x    37.10 s     6.88 s   yes
+(d) hs_sieve, both (Sets + filter auto)        4,136,594  1.75x    71.44 s     6.95 s   yes
+    extra: blocks without Sets (--sets 0)      4,298,348  1.69x    41.09 s     4.34 s   yes
+
+Command lines: (b) --blocks 1 --sets 0 --filter on; (c) --blocks 2 --sets 3 --filter off;
+(d) --blocks 2 --sets 3 --filter auto; extra --blocks 2 --sets 0 --filter off.
+
+Notes
+- The detector found a 28-byte record length (sao's star records). Forcing the column/delta filter made the file
+  10.2% larger: Sieve's own mixing models already use the record structure, and on the filtered data Sieve picked a
+  different (faster-decoding, weaker) way, which is why (b) decodes in 0.25 s. In (d) the auto rule rejected the
+  filter on every block, so (d) equals (c) in size and only costs the extra compression time.
+- Sets grouping formed 3 sets (3 blocks). It helps here: (c) is 12,835 bytes (0.31%) smaller than stock and decodes
+  1.33x faster (6.88 s vs 9.14 s). A plain 2-block split without Sets decodes fastest (4.34 s, 2.1x) but costs
+  148,919 bytes (3.6%). Sets grouping is therefore kept on by default.
