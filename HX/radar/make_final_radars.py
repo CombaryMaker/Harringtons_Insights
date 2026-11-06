@@ -44,13 +44,12 @@ for r in R:
         tiers.setdefault((int(r['tier']), r['M_upper']), []).append('W' if s < 99.5 else 'T' if s <= 100.5 else 'L')
 keys = sorted(tiers); m = len(keys); a2 = np.linspace(0, 2 * math.pi, m, endpoint=False).tolist(); a2 += a2[:1]
 fig, ax = plt.subplots(figsize=(11, 11), dpi=150, subplot_kw=dict(polar=True)); ax.set_theta_offset(math.pi / 2); ax.set_theta_direction(-1)
-for code, col, name in [('W', '#2ca02c', 'HX smaller'), ('L', '#d62728', 'other tool smaller')]:
-    v = [100 * tiers[k].count(code) / len(tiers[k]) for k in keys]; v += v[:1]
-    ax.plot(a2, v, color=col, lw=2.2, marker='o', ms=5, label=name); ax.fill(a2, v, color=col, alpha=0.12)
+v = [100 * tiers[k].count('W') / len(tiers[k]) for k in keys]; v += v[:1]
+ax.plot(a2, [50] * (m + 1), color='#777', lw=1.3, ls='--')
+ax.plot(a2, v, color='#2ca02c', lw=2.4, marker='o', ms=6); ax.fill(a2, v, color='#2ca02c', alpha=0.15)
 ax.set_xticks(a2[:-1]); ax.set_xticklabels([f'Tier {k[0]} (M up to {k[1]})\nHX {tiers[k].count("W")}  tie {tiers[k].count("T")}  other {tiers[k].count("L")}  of {len(tiers[k])}' for k in keys], fontsize=8)
 ax.set_ylim(0, 100); ax.set_yticks([25, 50, 75, 100]); ax.set_yticklabels(['25%', '50%', '75%', '100%'], fontsize=8); ax.set_rlabel_position(0)
-ax.legend(loc='upper right', bbox_to_anchor=(1.18, 1.08))
-ax.set_title('HX - final rankings by speed tier (1-2-5 series), 6 Nov 2026\nshare of data types where HX or the best other tool in that tier is smaller', fontsize=12, pad=34)
+ax.set_title('HX - final rankings by speed tier (1-2-5 series), 6 Nov 2026\nshare of data types where HX is smaller than the best other tool in that tier\n(outside the dashed circle = HX wins more than half)', fontsize=12, pad=34)
 filled = sum(len(v) for v in tiers.values())
 plt.figtext(0.02, 0.0, f'{filled} type x tier cells where both HX and a rival qualify (of {len(R)} cells; the rest are not tested or one side only). '
             'M = decode-speed multiple of the Compression Tier Standard v2.0.\nHX may qualify from a faster tier. Tie = within 0.5%. Patent Pending (U.S. App. 64/192,843).', fontsize=9)
