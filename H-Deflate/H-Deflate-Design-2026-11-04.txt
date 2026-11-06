@@ -1,0 +1,58 @@
+H-DEFLATE - DESIGN NOTE (v1)
+Michael Hugh Harrington, 4 November 2026.  Patent Pending (U.S. Provisional App. 64/192,843). See LICENSE.txt.
+
+WHAT IT IS
+A deflate stream unpacker and exact re-packer of our own, so that PDF, Office, archive and PNG results no longer
+depend on precomp. It finds every deflate stream inside a file (PNG IDAT, ZIP entries, gzip members, zlib streams in
+PDF and OLE files), replaces each with its uncompressed bytes plus a small "reconstruction record", and on unpack
+rebuilds the original deflate bytes bit for bit. HX Complete then compresses the unpacked file. The whole file is
+verified byte for byte at pack time; any stream that cannot be rebuilt exactly is left as it was.
+
+LEGAL POSITION (checked 4 Nov 2026)
+- Deflate itself (RFC 1951, 1996) is an open format with no live patents. Writing one's own deflate encoder and
+  decoder is unrestricted; zlib, libdeflate, 7-Zip, Go, .NET and many others each have their own.
+- The recompression idea (undo deflate, record how to redo it) has been public since precomp (2006) and is also in
+  reflate (2010s), grittibanzli (Google, 2018, Apache 2.0) and preflate (2018, Apache 2.0). Not aware of a patent on
+  it; worth one line to the patent attorney with the others.
+- Licence surprise: the precomp source on disk (v0.4.8 dev) and its preflate library are BOTH Apache 2.0 (LICENSE
+  file, README, every source header). The "Free for non-commercial use" line is only an old banner string left in
+  precomp.cpp. So the class C label on precomp is probably wrong for the deflate part. The LGPL parts precomp bundles
+  (packJPG, packMP3) are separate. This does not change the mission - our own is still better for licensing and for
+  fitting our pipeline - but it is a fallback to know about.
+- H-Deflate is written from the RFC and from the published description of the zlib algorithm (the "lazy matching
+  with hash chains" method in zlib's algorithm.txt and in the original gzip papers). No code is copied from zlib,
+  precomp, preflate or 7-Zip. Their sources were read only to understand behaviour and to steer clear of them.
+  Behaviour-equivalence to zlib is a design goal (so zlib-made streams rebuild with a few bytes of record), tested
+  against the system zlib as an oracle during development only; the shipped tool does not link zlib.
+
+HOW IT WORKS
+1. Scanner: PNG (IDAT chunks joined), ZIP local entries (method 8, with or without data descriptor), gzip members,
+   and any zlib header anywhere (validated by a full inflate to the end of stream). PDF FlateDecode streams and
+   OLE-embedded pictures are caught by the zlib scan.
+2. Recording inflater: our own inflater that keeps every token (literal / length+distance, with the exact symbol
+   used), every block boundary and type, and for dynamic blocks the exact header (HLIT, HDIST, HCLEN, the 19
+   code-length-code lengths, and the run-length symbol sequence with its extra bits). Padding bits must be zero.
+3. Predictor: our own deflate encoder, a lazy hash-chain matcher with the same decision rules as the zlib family
+   (good / lazy / nice / chain, fast mode for levels 1-3, TOO_FAR and filtered rules, hash bits from mem level,
+   window from window bits) but parametrised beyond the zlib table (chains to 16384, insert-all or insert-skip,
+   hash bits 8-16, window 9-15). It also builds Huffman trees the zlib way (heap with depth tie-break, length-limit
+   overflow fix) and encodes the code-length header the zlib way.
+4. Diff: the predictor runs over the actual token stream; where its prediction equals the actual token nothing is
+   stored; where it differs, a correction is stored (literal instead of match, match instead of literal, other
+   length, other distance) and the predictor is re-synchronised on the actual token. Block boundaries, block types
+   and tree headers are predicted the same way with explicit fallback. The record is small for zlib streams
+   (a handful of bytes) and grows for other encoders (7-Zip, Office, Adobe) in proportion to how differently they
+   chose matches.
+5. Parameter search (his "best of three" idea): each stream tries the likely settings first (learned per
+   container type from what won before), scores each on the first few thousand tokens by correction count, runs
+   the best few in full, keeps the smallest record. Settings he suggests are treated as lower bounds: sweeps go
+   wider (16 -> 64 and beyond) when the score keeps improving.
+6. Container (.hd): file order preserved; each stream becomes [record][raw bytes]. A grouped mode (Harrington
+   Sets idea) can instead put all raw payloads together and all records together so HX Complete sees like with
+   like; both modes are tested.
+7. Unpack: regenerate predictions, apply corrections, re-emit bits, re-split PNG chunks and recompute CRCs,
+   restore the file. Streams are independent, so they can be rebuilt on separate cores.
+
+WHAT IS MEASURED
+Bytes and ratio only. For every set: H-Deflate + HX Complete vs "precomp -cn + HX Complete" and vs the best
+other tool, with compress time, decode time and peak decode memory, every file restored byte for byte.

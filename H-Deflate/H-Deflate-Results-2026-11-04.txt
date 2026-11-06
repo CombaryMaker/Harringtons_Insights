@@ -1,0 +1,61 @@
+H-DEFLATE - RESULTS ON THE FOUR DEFLATE-HEAVY SETS
+Michael Hugh Harrington, 4 November 2026. Patent Pending (U.S. Provisional App. 64/192,843). All test data public; every result restored byte for byte.
+Ratio = original bytes / compressed bytes (higher is better). Times are wall-clock seconds for the whole set on a 2-core cloud machine.
+Licence class: A = ours plus permissive parts (H-Deflate, HX, BSC, libjxl); B = LGPL part involved (bzip3, packJPG); C = precomp route (class as labelled before).
+
+== PNG files (24, Kodak set)
+   tool                                                               bytes   ratio   comp s    dec s
+   OURS H-Deflate + HX Complete 13b                              10,439,045   1.536    282.7    10.00
+   OURS H-Deflate + HX Complete                                  11,887,002   1.295    102.4    10.70
+   precomp deflate-only -cn + HX Complete 13b (control)          12,549,818   1.227    151.7    11.61
+   OURS precomp -cn + HX Complete                                12,549,818   1.227     71.4    10.91
+   precomp (lzma)                                                14,243,824   1.081     25.0     7.91
+   HX Complete                                                   15,260,803   1.009     30.4     1.66
+   bzip3                                                         15,274,416   1.008      2.8     2.55
+   BSC                                                           15,299,515   1.006      2.7     2.26
+   xz -9e                                                        15,370,572   1.002      5.9     0.38
+   HX Fast 9                                                     15,388,229   1.000     22.0     0.10
+   zstd -19                                                      15,392,862   1.000      2.6     0.10
+
+== PDF files (40, pdf.js test set)
+   tool                                                               bytes   ratio   comp s    dec s
+   OURS H-Deflate + HX Complete 13b                              14,502,416   1.686    252.1     3.89
+   precomp deflate-only -cn + HX Complete 13b (control)          14,582,469   1.677    226.6     4.45
+   OURS precomp -cn + HX Complete                                14,700,932   1.663     77.2     3.81
+   precomp (lzma)                                                14,751,756   1.658     21.9     2.95
+   OURS H-Deflate + HX Complete                                  14,991,169   1.631     93.7     3.73
+   HX Complete                                                   18,071,735   1.353     46.9     1.20
+   bzip3                                                         18,205,173   1.343      4.2     4.04
+   BSC                                                           18,263,948   1.339      3.9     3.91
+   xz -9e                                                        18,290,684   1.337     10.8     0.83
+   HX Fast 9                                                     18,380,607   1.330     36.8     0.14
+   zstd -19                                                      18,381,696   1.330      5.5     0.19
+
+== Office files (177: doc/xls/ppt/docx/xlsx/pptx, Apache POI set)
+   tool                                                               bytes   ratio   comp s    dec s
+   OURS H-Deflate + HX Complete 13b                              11,405,352   2.058    335.2     5.22
+   OURS precomp -cn + HX Complete                                12,091,505   1.941    104.7     5.49
+   precomp (lzma)                                                12,217,429   1.921     30.2     3.66
+   precomp deflate-only -cn + HX Complete 13b (control)          12,237,507   1.918    277.0     5.73
+   OURS H-Deflate + HX Complete                                  12,670,121   1.853    165.7     6.34
+   HX Complete                                                   15,314,128   1.533     45.6     1.64
+   xz -9e                                                        15,366,712   1.528     13.6     1.22
+   HX Fast 9                                                     15,445,428   1.520     36.0     0.42
+   zstd -19                                                      15,511,705   1.513      5.5     0.63
+   bzip3                                                         15,522,734   1.512      3.9     3.92
+   BSC                                                           15,741,533   1.491      4.0     4.58
+
+== Archives (7: ZIP, TAR, TAR.GZ)
+   tool                                                               bytes   ratio   comp s    dec s
+   OURS precomp -cn + HX Complete                                21,937,054   1.645    148.9    21.88
+   precomp deflate-only -cn + HX Complete 13b (control)          21,939,313   1.645    217.7    21.76
+   OURS H-Deflate + HX Complete 13b                              21,947,789   1.645    357.6    15.30
+   OURS H-Deflate + HX Complete                                  21,985,656   1.642    197.7    15.59
+   precomp (lzma)                                                23,768,901   1.519     58.2    13.78
+   HX Complete                                                   28,100,846   1.285     49.5     3.47
+   BSC                                                           28,114,459   1.284      5.8     3.95
+   bzip3                                                         28,149,251   1.282      7.1     7.37
+   xz -9e                                                        28,167,808   1.281     15.2     0.36
+   HX Fast 9                                                     28,182,146   1.281     34.8     0.10
+   zstd -19                                                      28,182,262   1.281     10.9     0.11
+

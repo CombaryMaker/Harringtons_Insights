@@ -1,0 +1,14 @@
+H-Deflate v1.01 - 6 November 2026
+- Faster inflater (src/hd_inflate_fast.h), now the default: the 64-bit bit buffer is topped up with one 8-byte load
+  instead of a byte loop, output is written directly into a buffer with slack, and matches are copied 8 bytes at a
+  time when the distance is 8 or more. These are long-standing, widely used decoder techniques.
+- The v1 inflater is kept as inflate_record_ref (src/hd_inflate.h) for checks.
+- Output is unchanged: same raw bytes, same recorded tokens, blocks and headers, so packed files are identical.
+- Measured (raw deflate streams of public Silesia files, made by zlib levels 6 and 9; 1 thread; median of 5):
+    dickens L9 244 -> 389 MB/s (1.59x)   osdb L6 337 -> 483 (1.43x)   osdb L9 348 -> 471 (1.35x)
+    dickens L6 242 -> 296 (1.22x)        x-ray L6 211 -> 255 (1.21x)  x-ray L9 217 -> 255 (1.18x)
+    mozilla L6/L9 about 1.00x (its time goes to recording its ~19 million tokens)
+  All 8 streams identical to v1 (bytes, tokens, blocks, headers).
+- Round trips re-checked with v1.01: a PNG, a PDF (179 streams), a gzip file and a zip (10 entries) all rebuilt
+  byte for byte; zcheck: 0 of 678 zlib settings not bit-exact.
+Build: g++ -O2 -std=c++17 -pthread src/hdeflate.cpp -o hdeflate   (add -DHAVE_ZLIB -lz for the zcheck mode)

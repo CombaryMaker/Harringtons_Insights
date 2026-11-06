@@ -24,7 +24,7 @@ The built-in exp() and log() are ported from Arm Optimized Routines,
 Copyright (c) 1999-2022, Arm Limited, used under the MIT License with the
 same permission notice as above.
 
-NOTE: The MIT License above does not apply to the HX/ folder. HX is Patent Pending (U.S. Provisional
+NOTE: The MIT License above does not apply to the HX/ and H-Deflate/ folders. HX is Patent Pending (U.S. Provisional
 App. 64/192,843), free for personal use by individuals and for
 non-commercial research and peer review, and needs a license for commercial use.
 See HX/LICENSE.txt.

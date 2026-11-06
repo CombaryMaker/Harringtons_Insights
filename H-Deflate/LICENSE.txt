@@ -1,0 +1,23 @@
+H-Deflate - LICENSE (applies to everything in the H-Deflate/ folder)
+
+Copyright (c) 2026 Michael Hugh Harrington. All rights reserved.
+Patent Pending: U.S. Provisional Patent Application No. 64/192,843, filed 5 November 2026.
+
+The MIT License that covers the rest of this repository does NOT apply to the H-Deflate/ folder.
+
+Permitted without a separate license - personal use, research and peer review:
+Individuals may use H-Deflate free of charge for their own personal, non-commercial use.
+Individuals, universities and research groups may read, build, run, test, benchmark and modify the H-Deflate code
+for non-commercial research, peer review and scientific study, and may publish their findings and results.
+Please credit Michael Hugh Harrington and cite this repository. Modified versions may be shared for research
+only, must keep this license and notice, and must be clearly marked as modified.
+
+Requires a written license from the copyright holder:
+Any commercial use, including use in or with a product or service, internal business use, selling or
+distributing H-Deflate or its methods for commercial purposes, or offering it as a service. No patent license is
+granted for commercial use.
+
+H-Deflate is written from RFC 1951 and contains no code from zlib, precomp, preflate or 7-Zip. The optional
+zcheck test mode links the system zlib (zlib licence) only to compare results.
+
+Licensing inquiries: Michael Hugh Harrington, michaelhh@gmail.com, 971-533-3116.
