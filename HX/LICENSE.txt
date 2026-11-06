@@ -5,10 +5,16 @@ Patent Pending: U.S. Provisional Patent Application No. 64/192,843, filed 5 Nove
 
 The MIT License that covers the rest of this repository does NOT apply to the HX/ folder.
 
-The HX source code is published so that it can be read, reviewed and its results verified. No license
-is granted to use, copy, modify, compile for use, distribute, sell, or incorporate this code or the methods
-it embodies into any product or service, commercial or otherwise, without a written license from the
-copyright holder. Building and running it solely to verify the published results is permitted.
+Permitted without a separate license - research and peer review:
+Individuals, universities and research groups may read, build, run, test, benchmark and modify the HX code
+for non-commercial research, peer review and scientific study, and may publish their findings and results.
+Please credit Michael Hugh Harrington and cite this repository. Modified versions may be shared for research
+only, must keep this license and notice, and must be clearly marked as modified.
+
+Requires a written license from the copyright holder:
+Any commercial use, including use in or with a product or service, internal business use, selling or
+distributing HX or its methods for commercial purposes, or offering it as a service. No patent license is
+granted for commercial use.
 
 Third-party libraries used by HX remain under their own licenses and are not included in this folder:
 zstd (BSD), Huff0/FSE (BSD), ryg_rans (public domain), LZMA SDK / PPMd / BCJ2 by Igor Pavlov (public domain),

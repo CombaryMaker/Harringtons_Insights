@@ -2,7 +2,7 @@
 // predict the best three routes, run them, escalate when the result misses the prediction (3% -> next three,
 // 10% -> all), and log every file (features + every route tried + misses + surprises) so the router keeps learning.
 // Michael Hugh Harrington's design (best-of-three with escalation keyed to the gap between predicted and actual size).
-// Patent Pending (U.S. Provisional App. 64/192,843). Copyright (c) 2026 Michael Hugh Harrington. All rights reserved - NOT MIT. See HX/LICENSE.txt.
+// Patent Pending (U.S. Provisional App. 64/192,843). Copyright (c) 2026 Michael Hugh Harrington. Not MIT: free for non-commercial research and peer review; commercial use needs a license. See HX/LICENSE.txt.
 #pragma once
 #include <map>
 #include <sstream>

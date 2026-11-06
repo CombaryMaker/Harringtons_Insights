@@ -1,5 +1,5 @@
 // entbench.cpp - entropy-coder bench for the biased-random test, 3 Nov 2026.
-// Patent Pending (U.S. Provisional App. 64/192,843). Copyright (c) 2026 Michael Hugh Harrington. All rights reserved - NOT MIT. See HX/LICENSE.txt.
+// Patent Pending (U.S. Provisional App. 64/192,843). Copyright (c) 2026 Michael Hugh Harrington. Not MIT: free for non-commercial research and peer review; commercial use needs a license. See HX/LICENSE.txt.
 // The entropy coders themselves are the standard public ones, unchanged: Huff0 and FSE (Yann Collet, BSD licence,
 // github.com/Cyan4973/FiniteStateEntropy) and ryg_rans (Fabian Giesen, public domain, github.com/rygorous/ryg_rans;
 // its frequency normaliser is copied below). "ac0" is an order-0 adaptive binary arithmetic coder in the style of

@@ -1,5 +1,5 @@
 // hx_ppmd.h - PPMd route for HX Complete 14 (PPMd var.I / var.H via Igor Pavlov's public-domain C code).
-// Patent Pending (U.S. Provisional App. 64/192,843). Copyright (c) 2026 Michael Hugh Harrington. All rights reserved - NOT MIT. See HX/LICENSE.txt.
+// Patent Pending (U.S. Provisional App. 64/192,843). Copyright (c) 2026 Michael Hugh Harrington. Not MIT: free for non-commercial research and peer review; commercial use needs a license. See HX/LICENSE.txt.
 // Body layout: [variant 1 byte: 7 or 8][order 1][mem MB 2 (LE)][restore 1] + range-coded symbols. Length is known to the caller.
 #pragma once
 extern "C" {
