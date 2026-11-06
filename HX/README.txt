@@ -1,6 +1,6 @@
 HX - lossless compression by Michael Hugh Harrington
-Patent Pending (U.S. Provisional App. 64/192,843). Not MIT. Free for non-commercial research, peer review and
-scientific study; commercial use requires a license. See LICENSE.txt.
+Patent Pending (U.S. Provisional App. 64/192,843). Not MIT. Free for personal use by individuals and for
+non-commercial research, peer review and scientific study; commercial use requires a license. See LICENSE.txt.
 
 HX splits a file into independent segments of about 1 MB, which each decode on their own core. For
 every segment it tries a family of reversible transform lines from the Harrington Exchange, such as byte

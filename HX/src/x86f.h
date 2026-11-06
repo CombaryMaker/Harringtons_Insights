@@ -1,5 +1,5 @@
 // x86f.h - E8/E9 (x86 CALL/JMP) address filter, written for HX Complete, 3 Nov 2026.
-// Patent Pending (U.S. Provisional App. 64/192,843). Copyright (c) 2026 Michael Hugh Harrington. Not MIT: free for non-commercial research and peer review; commercial use needs a license. See HX/LICENSE.txt.
+// Patent Pending (U.S. Provisional App. 64/192,843). Copyright (c) 2026 Michael Hugh Harrington. Not MIT: free for personal use and non-commercial research/peer review; commercial use needs a license. See HX/LICENSE.txt.
 // The idea is the well-known BCJ filter (relative call targets made absolute so repeats line up); this version
 // is our own simple invertible form: an E8/E9 byte whose 32-bit offset has a top byte of 00 or FF has the offset
 // replaced by (offset + position) wrapped to 25 bits (top byte again 00 or FF). An E8/E9 that is left alone

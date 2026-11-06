@@ -1,5 +1,5 @@
 // hx.cpp - HX: HX Fast (default) and HX Complete (--complete), complete compressor/decompressor, Nov 2026.
-// Patent Pending (U.S. Provisional App. 64/192,843). Copyright (c) 2026 Michael Hugh Harrington. Not MIT: free for non-commercial research and peer review; commercial use needs a license. See HX/LICENSE.txt.
+// Patent Pending (U.S. Provisional App. 64/192,843). Copyright (c) 2026 Michael Hugh Harrington. Not MIT: free for personal use and non-commercial research/peer review; commercial use needs a license. See HX/LICENSE.txt.
 // Harrington's Sets (64 KB windows into up to 4 classes, kept only when smaller) + Harrington Exchange lines (byte
 // lanes, 12-bit samples, context lines) feeding the standard entropy coders Huff0 / FSE (Yann Collet, BSD) and rANS
 // (ryg_rans, Fabian Giesen, public domain); or, when the file is made of long repeats, the cascade's repeat line

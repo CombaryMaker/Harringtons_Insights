@@ -5,7 +5,8 @@ Patent Pending: U.S. Provisional Patent Application No. 64/192,843, filed 5 Nove
 
 The MIT License that covers the rest of this repository does NOT apply to the HX/ folder.
 
-Permitted without a separate license - research and peer review:
+Permitted without a separate license - personal use, research and peer review:
+Individuals may use HX free of charge for their own personal, non-commercial use.
 Individuals, universities and research groups may read, build, run, test, benchmark and modify the HX code
 for non-commercial research, peer review and scientific study, and may publish their findings and results.
 Please credit Michael Hugh Harrington and cite this repository. Modified versions may be shared for research

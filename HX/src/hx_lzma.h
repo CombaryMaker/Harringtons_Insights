@@ -1,6 +1,6 @@
 // hx_lzma.h - LZMA route for HX Complete 14 (Igor Pavlov's public-domain LZMA SDK C code), with the lzma-hi idea:
 // per-file choice of literal context / position bits and delta filtering, screened on samples first (sample screening).
-// Patent Pending (U.S. Provisional App. 64/192,843). Copyright (c) 2026 Michael Hugh Harrington. Not MIT: free for non-commercial research and peer review; commercial use needs a license. See HX/LICENSE.txt.
+// Patent Pending (U.S. Provisional App. 64/192,843). Copyright (c) 2026 Michael Hugh Harrington. Not MIT: free for personal use and non-commercial research/peer review; commercial use needs a license. See HX/LICENSE.txt.
 // Body: [lc][lp][pb][fb][dictlog][delta 2 LE] + 5 LZMA props + LZMA data (no end mark; size known to the caller).
 #pragma once
 extern "C" {
