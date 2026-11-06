@@ -25,4 +25,5 @@ Files in src/:
   hx_router.h   the learned router (features, nearest-neighbour route prediction, escalation)
   x86f.h        E8/E9 x86 address filter
   hx_lzma.h, hx_bcj2.h, hx_ppmd.h   LZMA, BCJ2 and PPMd routes (wrapping Igor Pavlov's public-domain C code)
-See BUILD.txt for how it is built, and All-Software-Test-Results-2026-11-06.txt for results.
+See BUILD.txt for how it is built, results/All-Software-Test-Results-2026-11-06.txt for results, and radar/ for the
+final-ranking radar maps.
