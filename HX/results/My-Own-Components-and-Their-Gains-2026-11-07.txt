@@ -1,0 +1,158 @@
+MY OWN COMPONENTS AND WHAT EACH ONE ADDS
+Michael Hugh Harrington - 7 November 2026
+Only components that are in my provisional patent (U.S. Provisional App. 64/192,843, Patent Pending) or already open
+source on my GitHub are listed. Every result was decompressed and checked byte for byte. "Smaller" means the
+compressed file is that much smaller than the comparison named on the same line, on the same data.
+
+The standard tools (zstd, LZMA, Brotli, BSC, bzip3, PPMd, JPEG XL and so on) are other people's work and are credited
+as such. What follows is the part that is mine: what I put around those tools, in front of them or in place of them,
+and what it measurably adds.
+
+
+PART A - HX (PATENT PENDING)
+
+1. Harrington Exchange lines
+   What it does: reshapes each piece of a file before coding (splitting numbers into byte lanes, predicting pixels,
+   sound and table columns, renaming common values) and trials many such views quickly to keep the best.
+   Gains:
+   - Biased data: within 0.06-0.31% of the theoretical entropy floor, where Huffman, FSE and rANS alone are 1.7-43%
+     above it.
+   - NIST SP 800-90B noise: the same size as lpaq1 -9, but decodes in 0.129 s against 19.4 s (150x faster).
+   - Medical DICOM: 3.15x at 0.035 s decode, against bzip3 3.10x at 0.33 s (smaller and 9x faster to open).
+   - Packed 12-bit biased data: 11.8% smaller than the best other method (324,507 vs 368,027 bytes).
+   - NIST biased bits: 9.4% smaller than xz (19,722 vs 21,772 bytes).
+
+2. Class-sorted layout (Harrington's Sets inside HX)
+   What it does: groups the parts of a file that look alike, so each group is coded with its own statistics, with
+   a tiny map to put everything back.
+   Gains:
+   - Data that changes type every 1 MB: 9.0% smaller than plain blocks (measured independently by Andrew Goodwin;
+     zstd --long gained only 0.5% on the same file).
+   - Mixed bank backup: 1.4% smaller than plain blocks (17,247,784 vs 17,497,009 bytes).
+   - Mixed 3.2 GB archive: 0.4% smaller than plain blocks, and 1.27x faster to decode than single-stream zstd.
+
+3. Similarity ordering within a group (the H Processor)
+   What it does: lines up the pieces inside each group so every piece sits next to the one most like it. It is
+   kept only when the file actually gets smaller, map included.
+   Gains on a 113 MB public packet capture:
+   - zstd -3: 9.6% smaller.
+   - Brotli 11: 9.4% smaller.
+   - HCM: 8.9% smaller, and 13% faster to decode.
+   - LZ4 HC: 8.1% smaller.
+   - BSC: 4.5% smaller.
+   - Silesia xml: 1.8% smaller with HCM.
+
+4. Harrington Cascades
+   What it does: passes leftovers down successive lines. Noise-looking pieces are pooled so copies find each other,
+   and only the final remainder is stored as random.
+   Gains (against my published Sets version):
+   - Hidden 16-bit pattern: 39.5% smaller.
+   - Repeated random chunks: 41.1% smaller with zstd, 46.0% smaller with context mixing.
+   - Content-switching file: 18.0% smaller with context mixing.
+   - True random data: recognised and stored at once (1 s instead of a full compression pass).
+   - Never worse than not using it, by design.
+
+5. HX Complete (several complete routes, the split route, specialist hand-off)
+   What it does: compresses several whole ways and keeps the smallest. The split route sends text and tables to a
+   general compressor in one piece, and pictures, sound and sensor data to the Exchange lines.
+   Gains, measured against the best other tool on the same data:
+   - SQLite database: 6.23x vs 7-Zip 4.64x (25.5% smaller).
+   - Screenshots: 50.0x vs PPMd 36.2x (27.6% smaller).
+   - Canterbury: 8.03x vs BSC 6.14x (23.5% smaller).
+   - Logs, JSON and CSV: 10.21x vs PPMd 8.69x (14.9% smaller).
+   - Calgary: 4.58x vs bzip3 4.05x (11.6% smaller).
+   - Silesia: 5.055x vs mzip 4.92x (2.7% smaller).
+   - Packet captures: 1.413x vs Brotli 1.398x (1.1% smaller).
+   - Programs: 3.53x vs 7-Zip 3.50x (0.8% smaller).
+   - Speech WAV: 1.985x vs WavPack 1.979x (0.3% smaller).
+
+6. HX Fast (decode-budgeted, with the H Sampler)
+   What it does: the same machinery limited to methods that open fast. A quick sample decides what is worth
+   running in full, and nothing is chosen from an estimate alone.
+   Gains:
+   - The H Sampler cut compression time about 8x, with no measurable size loss.
+   - HX Fast decodes at up to about 300 MB/s.
+
+7. H-Direct (the learned router)
+   What it does: remembers which methods won on files like this one, tries the best three first, and escalates
+   when a result misses its prediction.
+   Gains (graded on files it never trained on):
+   - 26% of the route-trial time saved, for only 0.074% larger output.
+   - Its first pick was the true best on 43 of 83 files.
+
+8. Image recovery in H-Deflate
+   What it does: unpacks pictures that were stored compressed inside PNG, PDF and Office files back to plain pixels,
+   so a real image codec can handle them, and rebuilds the original file exactly on the way back.
+   Gains (against rebuilding the deflate streams alone, same compressor behind):
+   - PNG: 16.8% smaller (10,439,045 vs 12,549,818 bytes).
+   - Office files: 5.7% smaller.
+   - PDF: 0.5% smaller (1.4% smaller than precomp).
+   - Archives: the same size as precomp, and 30% faster to decode.
+
+9. Harrington Ultimate (per-piece predictive routing with escalation)
+   What it does: predicts per piece what each tool will reach and gives misses a second look.
+   Gains: the per-piece build is in development. The file-level form is H-Direct, above.
+
+10. Router pre-training
+    What it does: trains the router on tens of thousands of public test-data pieces, graded only on files held
+    out of training.
+    Gains: about 19% of the data could be handed to fast-decoding tools at no size cost. The first trained model is
+    not yet better than the best single tool, and I state that openly.
+
+    Overall result of Part A: best in 120 of 290 categories (29 data types x 10 speed tiers), second in 119.
+
+
+PART B - OPEN SOURCE (MIT unless noted; on GitHub)
+
+Harrington's Sets / hs_zstd (parallel decode)
+  - Decodes 2.14x faster than zstd and 1.40x faster than pzstd on average over the 2-10 GB tests (best case
+    2.99x faster than zstd), at nearly the same ratio.
+
+HCM (my context-mixing compressor)
+  - Canterbury: smallest of all 14 tools tested (350,326 bytes), ahead of ZPAQ -m5.
+  - Synthetic set: smaller than ZPAQ -m5, and 3.5x faster to decode.
+  - Seismic data: 1.48x smaller than the standard Steim2 format.
+  - Synthetic bank data: smallest of every tool tested.
+  - HCM Sets mode on plant data: 1.7% smaller than single-stream HCM, and 1.94x faster to decode.
+
+Record-length detection + delta (front end for standard tools)
+  - X-ray with zstd -19: 12.1% smaller and 18% faster to decode.
+  - Canterbury kennedy.xls with zstd: 15.89x -> 39.01x.
+  - X-ray in ORC (zlib): 23.9% smaller and 1.8x faster to read.
+
+The -hi tools (my settings search for a standard encoder; the stock decoder opens the files)
+  - 7z-hi:
+    - Silesia: 2.9% smaller and 5% faster to decode.
+    - ooffice: 16.5% smaller and 1.25x faster.
+    - nci: 17.1% smaller and 1.20x faster.
+    - Canterbury: 6.2% smaller.
+  - lzma-hi: Silesia 1.3% smaller and faster to decode; nci 17.1% smaller.
+  - xz-hi: modern log/JSON/CSV set 0.3% smaller and 7.5% faster to decode; 16-bit audio 13.5% smaller.
+  - jxl-hi / JPEG-LS tuned: x-ray 2.3% smaller and 1.35x faster to decode; JPEG-LS 0.5% smaller and 1.18x faster.
+  - FLAC tuned: speech 2.1% smaller and 9.6% faster to decode.
+  - zstd-hi / Brotli-hi: 0.05-1.2% smaller (small but free); zstd-hi compressed 2x faster on one large export.
+
+lpaq1-h (GPL, built on Matt Mahoney's lpaq1)
+  - Canterbury: 8.2% smaller than lpaq1, at the same decode speed.
+  - Synthetic set: smallest of every tool tested.
+
+zpaq-hi (ZPAQ's own decoder opens it)
+  - Canterbury: 0.7% smaller (slower to decode, so a size-only gain).
+
+lzav-hi (encoder for Aleksey Vaneev's LZAV)
+  - Silesia: 3.432x vs 2.894x (15.7% smaller); about 14% slower to decode.
+
+H-Deflate v1.01 fast buffer
+  - Up to 1.59x faster inflate, with identical output (678 of 678 zlib settings checked bit-exact).
+
+hs_shark (parallel Wireshark processing)
+  - 2.9x faster than plain tshark, with identical output on all 964,896 packets.
+
+hs_sieve (AGPL, a modification of Sieve of Potentia)
+  - sao: 0.31% smaller and 1.33x faster to decode.
+
+PDF stream rewrite
+  - 0.6% smaller than qpdf's known optimisation, and renders faster.
+
+Where things did not help, that is recorded too: record delta on text and machine code, the activity map
+(smaller but slower), the gzip decode claim (rapidgzip is faster), and ZPAQ -m4 / BSC beating HCM in their tiers.
