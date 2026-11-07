@@ -52,7 +52,7 @@ static W g_lastdir; static int g_fill = 0;
 static W g_dir, g_tools;
 static vector<W> g_files;
 static bool g_busy = false;
-static int g_dpi = 96; static HFONT g_font;
+static int g_dpi = 96; static HFONT g_font, g_bold, g_ital;
 static int S(int v) { return MulDiv(v, g_dpi, 96); }   // sizes are written for 100% scaling and grown to the screen's setting
 
 static W lower(W s) { for (auto &c : s) c = towlower(c); return s; }
@@ -215,7 +215,7 @@ static void refresh_formats() {
 }
 static void update_controls() {
     int f = (int)SendMessageW(g_fmt, CB_GETCURSEL, 0, 0); bool hx = f == 0;
-    EnableWindow(g_fast, hx && !g_busy); EnableWindow(g_complete, hx && !g_busy);
+    EnableWindow(g_fast, hx && !g_busy); EnableWindow(g_complete, hx && !g_busy); EnableWindow(GetDlgItem(g_wnd, 205), hx && !g_busy);
     bool can = !g_busy && !g_files.empty() && f >= 0 && have(FMTS[f].tool) && (FMTS[f].multi || f == 0 || have(L"7z.exe") || (g_files.size() == 1 && !isdir(g_files[0])));
     if (f >= 0 && FMTS[f].kind == AUDIO) { can = can && any_of(g_files.begin(), g_files.end(), is_audio); }
     if (f >= 0 && FMTS[f].kind == IMAGE) { can = can && any_of(g_files.begin(), g_files.end(), is_image); }
@@ -278,10 +278,12 @@ static int place(int W_, int H_, int listH, bool apply) {
     int fx = m + lab, fl = fw - lab, brw = S(90);
     mv(it(201), m, y + S(4), lab, S(20)); mv(g_fmt, fx, y, fl, S(400)); y += S(34);
     mv(it(202), m, y + S(2), lab, S(20));
-    if (fl >= S(560)) { mv(g_fast, fx, y, S(270), S(22)); mv(g_complete, fx + S(280), y, fl - S(280), S(22)); y += S(30); }
-    else { mv(g_fast, fx, y, fl, S(22)); mv(g_complete, fx, y + S(24), fl, S(22)); y += S(52); }
-    mv(it(203), m, y + S(4), lab, S(20)); mv(g_outdir, fx, y + 1, fl - brw - g, S(26)); mv(it(ID_OUTDIR), W_ - m - brw, y, brw, bh); y += S(34);
-    mv(it(204), m, y + S(4), lab, S(20)); mv(g_extdir, fx, y + 1, fl - brw - g, S(26)); mv(it(ID_EXTBROWSE), W_ - m - brw, y, brw, bh); y += S(36);
+    int fwid = S(100), cwid = S(130), nwid = S(170);
+    if (fl >= fwid + S(20) + cwid + nwid) { mv(g_fast, fx, y, fwid, S(22)); mv(g_complete, fx + fwid + S(20), y, cwid, S(22)); mv(it(205), fx + fwid + S(20) + cwid, y + S(2), nwid, S(20)); y += S(30); }
+    else { mv(g_fast, fx, y, fwid, S(22)); mv(g_complete, fx, y + S(24), cwid, S(22)); mv(it(205), fx + cwid, y + S(26), max(S(40), fl - cwid), S(20)); y += S(52); }
+    int ew = min(S(380), fl - brw - g);   // a conventional path-box width, with Browse right beside it
+    mv(it(203), m, y + S(4), lab, S(20)); mv(g_outdir, fx, y + 1, ew, S(26)); mv(it(ID_OUTDIR), fx + ew + g, y, brw, bh); y += S(34);
+    mv(it(204), m, y + S(4), lab, S(20)); mv(g_extdir, fx, y + 1, ew, S(26)); mv(it(ID_EXTBROWSE), fx + ew + g, y, brw, bh); y += S(36);
     int b1 = S(140), b2 = S(210), b3 = S(130), ah = S(34);
     if (fw >= b1 + b2 + b3 + 2 * g) { mv(g_btnc, m, y, b1, ah); mv(g_btnx, m + b1 + g, y, b2, ah); mv(g_btno, m + b1 + b2 + 2 * g, y, b3, ah); y += ah + g; }
     else { int hw = (fw - g) / 2; mv(g_btnc, m, y, hw, ah); mv(g_btno, m + hw + g, y, fw - hw - g, ah); y += ah + g / 2; mv(g_btnx, m, y, fw, ah); y += ah + g; }
@@ -299,7 +301,7 @@ static LRESULT CALLBACK proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
     switch (msg) {
     case WM_CREATE: {
         g_wnd = h; { HMODULE u = GetModuleHandleW(L"user32.dll"); auto f = (UINT(WINAPI *)(HWND))GetProcAddress(u, "GetDpiForWindow"); if (f) g_dpi = f(h); else { HDC dc = GetDC(h); g_dpi = GetDeviceCaps(dc, LOGPIXELSY); ReleaseDC(h, dc); } }
-        { NONCLIENTMETRICSW nm = {}; nm.cbSize = sizeof(nm); SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(nm), &nm, 0); nm.lfMessageFont.lfHeight = -MulDiv(10, g_dpi, 72); g_font = CreateFontIndirectW(&nm.lfMessageFont); }
+        { NONCLIENTMETRICSW nm = {}; nm.cbSize = sizeof(nm); SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(nm), &nm, 0); nm.lfMessageFont.lfHeight = -MulDiv(10, g_dpi, 72); g_font = CreateFontIndirectW(&nm.lfMessageFont); LOGFONTW lf = nm.lfMessageFont; lf.lfWeight = FW_BOLD; g_bold = CreateFontIndirectW(&lf); lf = nm.lfMessageFont; lf.lfItalic = TRUE; g_ital = CreateFontIndirectW(&lf); }
         { HMODULE dw = LoadLibraryW(L"dwmapi.dll"); if (dw) { auto f = (HRESULT(WINAPI *)(HWND, DWORD, LPCVOID, DWORD))GetProcAddress(dw, "DwmSetWindowAttribute"); COLORREF c = RGB(40, 112, 60); if (f) f(h, 34 /* border colour, Windows 11 */, &c, sizeof(c)); } }
         SetWindowPos(h, nullptr, 0, 0, S(860), S(720), SWP_NOMOVE | SWP_NOZORDER);
         mk(L"STATIC", L"Files and folders to compress (or drag them here):", 0, 0, 0, 10, 10, 200);
@@ -308,8 +310,10 @@ static LRESULT CALLBACK proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
         mk(L"STATIC", L"Save as:", 0, 0, 0, 10, 10, 201);
         g_fmt = mk(L"COMBOBOX", L"", CBS_DROPDOWNLIST | WS_VSCROLL, 0, 0, 10, 10, ID_FMT);
         mk(L"STATIC", L"HX mode:", 0, 0, 0, 10, 10, 202);
-        g_fast = mk(L"BUTTON", L"HX Fast - quick, very fast to open", BS_AUTORADIOBUTTON | WS_GROUP, 0, 0, 10, 10, ID_FAST);
-        g_complete = mk(L"BUTTON", L"HX Complete - smallest, slower", BS_AUTORADIOBUTTON, 0, 0, 10, 10, ID_COMPLETE);
+        g_fast = mk(L"BUTTON", L"HX Fast", BS_AUTORADIOBUTTON | WS_GROUP, 0, 0, 10, 10, ID_FAST);
+        g_complete = mk(L"BUTTON", L"HX Complete", BS_AUTORADIOBUTTON, 0, 0, 10, 10, ID_COMPLETE);
+        SendMessageW(g_fast, WM_SETFONT, (WPARAM)g_bold, TRUE); SendMessageW(g_complete, WM_SETFONT, (WPARAM)g_bold, TRUE);
+        { HWND n = mk(L"STATIC", L"(smallest file, slower)", 0, 0, 0, 10, 10, 205); SendMessageW(n, WM_SETFONT, (WPARAM)g_ital, TRUE); }
         SendMessageW(g_fast, BM_SETCHECK, BST_CHECKED, 0);
         mk(L"STATIC", L"Save to:", 0, 0, 0, 10, 10, 203);
         g_outdir = mk(L"EDIT", L"", ES_AUTOHSCROLL, 0, 0, 10, 10, 0, WS_EX_CLIENTEDGE); mk(L"BUTTON", L"Browse...", BS_OWNERDRAW, 0, 0, 10, 10, ID_OUTDIR);
