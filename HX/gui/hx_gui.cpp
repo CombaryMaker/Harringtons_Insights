@@ -104,7 +104,13 @@ static bool same_tree(const W &a, const W &b) {
     } while (ok && FindNextFileW(h, &fd)); FindClose(h); return ok;
 }
 static W hx_threads() { SYSTEM_INFO s; GetSystemInfo(&s); return to_wstring(max<DWORD>(1, s.dwNumberOfProcessors)); }
-static W human(unsigned long long b) { wchar_t t[64]; if (b >= 1ull << 30) swprintf(t, 64, L"%.2f GB", b / 1073741824.0); else if (b >= 1 << 20) swprintf(t, 64, L"%.2f MB", b / 1048576.0); else swprintf(t, 64, L"%llu bytes", b); return t; }
+static W human(unsigned long long b) {   // rounded up, the way Windows shows sizes
+    wchar_t t[64];
+    if (b >= 1ull << 30) swprintf(t, 64, L"%.1f GB", ceil(b * 10.0 / 1073741824.0) / 10.0);
+    else if (b >= 1ull << 20) swprintf(t, 64, L"%.1f MB", ceil(b * 10.0 / 1048576.0) / 10.0);
+    else if (b >= 1024) swprintf(t, 64, L"%llu KB", (b + 1023) / 1024);
+    else swprintf(t, 64, L"%llu bytes", b);
+    return t; }
 
 // ---------- compress ----------
 struct Job { vector<W> files; int fmt; bool complete, verify; W outdir; };
@@ -124,6 +130,7 @@ static bool compress_one(const Job &J, const vector<W> &items, const W &name) {
     const Fmt &F = FMTS[J.fmt]; W out = unique_out(J.outdir + L"\\" + name + F.ext); W td = temp_dir(); bool ok = false; DWORD t0 = GetTickCount();
     unsigned long long in_bytes = 0; for (auto &x : items) in_bytes += tree_size(x);
     log(L"Compressing " + name + L" as " + F.ext + (J.fmt == 0 ? (J.complete ? W(L" (HX Complete)") : W(L" (HX Fast)")) : W(L"")) + L" ...");
+    log(L"  Starting size: " + human(in_bytes));
     bool single = items.size() == 1 && !isdir(items[0]);
     if (!single && !F.multi) out = unique_out(J.outdir + L"\\" + name + L".tar" + F.ext);   // bundled first, so the name says .tar
     W src = single ? items[0] : td + L"\\data.tar";
@@ -148,7 +155,8 @@ static bool compress_one(const Job &J, const vector<W> &items, const W &name) {
     double secs = (GetTickCount() - t0) / 1000.0;
     if (rc != 0 || !exists(out) || fsize(out) == 0) { log(L"  failed (program returned " + to_wstring(rc) + L")"); DeleteFileW(out.c_str()); rmtree(td); return false; }
     unsigned long long ob = fsize(out); wchar_t t[160];
-    swprintf(t, 160, L"  done: %ls -> %ls, ratio %.3f, %.1f s", human(in_bytes).c_str(), human(ob).c_str(), ob ? (double)in_bytes / ob : 0.0, secs); log(t);
+    swprintf(t, 160, L"  Compressed size: %ls  (%.1f%% smaller, ratio %.2f, %.1f s)", human(ob).c_str(), in_bytes ? 100.0 * (1.0 - (double)ob / in_bytes) : 0.0, ob ? (double)in_bytes / ob : 0.0, secs); log(t);
+    log(L"  Saved as: " + out);
     ok = true;
     if (J.verify) {   // open the new archive again and compare with the input
         W vd = td + L"\\verify"; CreateDirectoryW(vd.c_str(), nullptr); bool v = false;
@@ -181,6 +189,10 @@ static void compress_job(Job J) {
 static void extract_job(W arc, W dest) {
     W td = temp_dir(); bool ok = false; DWORD t0 = GetTickCount(); W name = base(arc);
     log(L"Extracting " + name + L" ...");
+    log(L"  Archive size: " + human(fsize(arc)));
+    auto listing = [&]() { vector<W> v; WIN32_FIND_DATAW fd; HANDLE fh = FindFirstFileW((dest + L"\\*").c_str(), &fd);
+        if (fh != INVALID_HANDLE_VALUE) { do { W n = fd.cFileName; if (n != L"." && n != L"..") v.push_back(n); } while (FindNextFileW(fh, &fd)); FindClose(fh); } return v; };
+    vector<W> before = listing();
     auto strip = [&](const W &e) { return name.substr(0, name.size() - e.size()); };
     auto untar_if = [&](const W &file) {   // a .tar inside is unpacked into the destination
         if (ends(file, L".tar")) { bool r = run(q(tool(L"7z.exe")) + L" x -y -o" + q(dest) + L" " + q(file)) == 0; DeleteFileW(file.c_str()); return r; } return true; };
@@ -198,7 +210,10 @@ static void extract_job(W arc, W dest) {
         WIN32_FIND_DATAW fd; HANDLE h = FindFirstFileW((td + L"\\*").c_str(), &fd); if (h != INVALID_HANDLE_VALUE) { do { if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) inner = td + L"\\" + fd.cFileName; } while (FindNextFileW(h, &fd)); FindClose(h); }
         ok = ok && !inner.empty() && run(q(tool(L"7z.exe")) + L" x -y -o" + q(dest) + L" " + q(inner)) == 0; }
     else ok = run(q(tool(L"7z.exe")) + L" x -y -o" + q(dest) + L" " + q(arc)) == 0;   // zip, 7z, tar, gz, xz, rar and the rest 7-Zip knows
-    wchar_t t[120]; swprintf(t, 120, L"  %ls in %.1f s -> %ls", ok ? L"done" : L"FAILED", (GetTickCount() - t0) / 1000.0, dest.c_str()); log(t);
+    unsigned long long outb = 0; for (auto &n : listing()) if (find(before.begin(), before.end(), n) == before.end()) outb += tree_size(dest + L"\\" + n);
+    wchar_t t[200];
+    if (ok) swprintf(t, 200, L"  Extracted size: %ls  (%.1f s)", human(outb).c_str(), (GetTickCount() - t0) / 1000.0); else swprintf(t, 200, L"  FAILED after %.1f s", (GetTickCount() - t0) / 1000.0);
+    log(t); log(L"  Extracted to: " + dest);
     rmtree(td); log(ok ? L"Finished." : L"Finished with problems - see above."); PostMessageW(g_wnd, WM_JOBDONE, ok, (LPARAM)new W(dest));
 }
 
@@ -289,11 +304,11 @@ static int place(int W_, int H_, int listH, bool apply) {
     else { int hw = (fw - g) / 2; mv(g_btnc, m, y, hw, ah); mv(g_btno, m + hw + g, y, fw - hw - g, ah); y += ah + g / 2; mv(g_btnx, m, y, fw, ah); y += ah + g; }
     mv(g_verify, m, y, fw, S(22)); y += S(28);
     mv(g_prog, m, y, fw, S(6)); y += S(6) + g;
-    mv(g_log, m, y, fw, H_ - y - m);
+    int fh = S(38); mv(g_log, m, y, fw, H_ - y - m - fh - S(4)); mv(it(206), m, H_ - m - fh + S(2), fw, fh);
     return y;
 }
 static void layout(int W_, int H_) {
-    int listH = S(150), need = place(W_, H_, listH, false) + S(70) + S(14);   // keep at least a few lines of the log
+    int listH = S(150), need = place(W_, H_, listH, false) + S(70) + S(14) + S(42);   // keep at least a few lines of the log
     if (need > H_) listH = max(S(56), listH - (need - H_));
     place(W_, H_, listH, true); InvalidateRect(g_wnd, nullptr, TRUE);
 }
@@ -328,8 +343,7 @@ static LRESULT CALLBACK proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
         g_prog = mk(PROGRESS_CLASSW, L"", PBS_SMOOTH, 0, 0, 10, 10, ID_PROG); SendMessageW(g_prog, PBM_SETRANGE32, 0, 1000);
         g_log = mk(L"EDIT", L"", ES_MULTILINE | ES_READONLY | WS_VSCROLL | ES_AUTOVSCROLL, 0, 0, 10, 10, ID_LOG, WS_EX_CLIENTEDGE);
         refresh_formats(); DragAcceptFiles(h, TRUE);
-        log(L"HX Compressor 1.1 - Michael Hugh Harrington. HX is Patent Pending (U.S. Provisional App. 64/192,843).");
-        log(L"Free for personal use and research; commercial use needs a license. Tools folder: " + g_tools);
+        mk(L"STATIC", L"HX Compressor 1.1 - Michael Hugh Harrington. HX is Patent Pending (U.S. Provisional App. 64/192,843).\r\nFree for personal use and research; commercial use needs a license.", SS_LEFT, 0, 0, 10, 10, 206);
         update_controls(); return 0; }
     case WM_SIZE: layout(LOWORD(lp), HIWORD(lp)); return 0;
     case WM_GETMINMAXINFO: ((MINMAXINFO *)lp)->ptMinTrackSize = {S(380), S(470)}; return 0;
@@ -354,6 +368,7 @@ static LRESULT CALLBACK proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
         }
         EndPaint(h, &ps); return 0; }
     case WM_DRAWITEM: draw_button((DRAWITEMSTRUCT *)lp); return TRUE;
+    case WM_CTLCOLORSTATIC: if (GetDlgCtrlID((HWND)lp) == 206) { HDC dc = (HDC)wp; SetTextColor(dc, RGB(95, 105, 115)); SetBkColor(dc, GetSysColor(COLOR_BTNFACE)); return (LRESULT)GetSysColorBrush(COLOR_BTNFACE); } break;
     case WM_TIMER: if (wp == 1) {   // the bar rushes to full when a job is done
         g_fill = min(1000, g_fill + 90); SendMessageW(g_prog, PBM_SETPOS, min(1000, g_fill + 1), 0); SendMessageW(g_prog, PBM_SETPOS, g_fill, 0);
         if (g_fill >= 1000) { SendMessageW(g_prog, PBM_SETRANGE32, 0, 999); SendMessageW(g_prog, PBM_SETPOS, 999, 0); KillTimer(h, 1); } } return 0;
