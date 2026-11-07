@@ -1,0 +1,201 @@
+{
+ "12bit_noise": {
+  "bytes": 524288,
+  "J": 12,
+  "S": 4,
+  "zstd19": 430664,
+  "xz9e": 403956,
+  "unpack_to_bytes": 394239,
+  "unpack_plus_shuffle": 368027,
+  "full": {
+   "size": 325568,
+   "layout": "tight",
+   "roundtrip_ok": true
+  },
+  "split": {
+   "size": 368065,
+   "layout": "byte-aligned",
+   "roundtrip_ok": true
+  },
+  "rename": {
+   "size": 399859,
+   "layout": "byte-aligned",
+   "roundtrip_ok": true
+  },
+  "norev": {
+   "size": 325558,
+   "layout": "tight",
+   "roundtrip_ok": true
+  }
+ },
+ "biased_bits": {
+  "bytes": 125000,
+  "J": 21,
+  "S": 13,
+  "zstd19": 22172,
+  "xz9e": 21772,
+  "unpack_to_bytes": 22967,
+  "unpack_plus_shuffle": 22558,
+  "full": {
+   "size": 19722,
+   "layout": "tight",
+   "roundtrip_ok": true
+  },
+  "split": {
+   "size": 22375,
+   "layout": "tight",
+   "roundtrip_ok": true
+  },
+  "rename": {
+   "size": 25909,
+   "layout": "byte-aligned",
+   "roundtrip_ok": true
+  },
+  "norev": {
+   "size": 19715,
+   "layout": "tight",
+   "roundtrip_ok": true
+  }
+ },
+ "5bit_skewed": {
+  "bytes": 524289,
+  "J": 5,
+  "S": 1,
+  "zstd19": 401571,
+  "xz9e": 398376,
+  "unpack_to_bytes": 345655,
+  "unpack_plus_shuffle": null,
+  "full": {
+   "size": 346370,
+   "layout": "tight",
+   "roundtrip_ok": true
+  },
+  "split": {
+   "size": 346363,
+   "layout": "tight",
+   "roundtrip_ok": true
+  },
+  "rename": {
+   "size": 345698,
+   "layout": "byte-aligned",
+   "roundtrip_ok": true
+  },
+  "norev": {
+   "size": 346354,
+   "layout": "tight",
+   "roundtrip_ok": true
+  }
+ },
+ "biased_bytes": {
+  "bytes": 1000000,
+  "J": 16,
+  "S": 8,
+  "zstd19": 327568,
+  "xz9e": 334836,
+  "byte_shuffle": 323054,
+  "full": {
+   "size": 321128,
+   "layout": "tight",
+   "roundtrip_ok": true
+  },
+  "split": {
+   "size": 321353,
+   "layout": "tight",
+   "roundtrip_ok": true
+  },
+  "rename": {
+   "size": 322942,
+   "layout": "tight",
+   "roundtrip_ok": true
+  },
+  "norev": {
+   "size": 322883,
+   "layout": "tight",
+   "roundtrip_ok": true
+  }
+ },
+ "x-ray_512KB": {
+  "bytes": 524288,
+  "J": 16,
+  "S": 8,
+  "zstd19": 318413,
+  "xz9e": 267052,
+  "byte_shuffle": 269649,
+  "full": {
+   "size": 295019,
+   "layout": "tight",
+   "roundtrip_ok": true
+  },
+  "split": {
+   "size": 269972,
+   "layout": "tight",
+   "roundtrip_ok": true
+  },
+  "rename": {
+   "size": 330150,
+   "layout": "tight",
+   "roundtrip_ok": true
+  },
+  "norev": {
+   "size": 295115,
+   "layout": "tight",
+   "roundtrip_ok": true
+  }
+ },
+ "mr_512KB": {
+  "bytes": 524288,
+  "J": 16,
+  "S": 8,
+  "zstd19": 151927,
+  "xz9e": 132496,
+  "byte_shuffle": 139643,
+  "full": {
+   "size": 143742,
+   "layout": "tight",
+   "roundtrip_ok": true
+  },
+  "split": {
+   "size": 139652,
+   "layout": "tight",
+   "roundtrip_ok": true
+  },
+  "rename": {
+   "size": 154725,
+   "layout": "tight",
+   "roundtrip_ok": true
+  },
+  "norev": {
+   "size": 144149,
+   "layout": "tight",
+   "roundtrip_ok": true
+  }
+ },
+ "eeg_bdf_1MB": {
+  "bytes": 1048576,
+  "J": 24,
+  "S": 16,
+  "zstd19": 526856,
+  "xz9e": 345184,
+  "byte_shuffle": 323516,
+  "full": {
+   "size": 335895,
+   "layout": "tight",
+   "roundtrip_ok": true
+  },
+  "split": {
+   "size": 334882,
+   "layout": "tight",
+   "roundtrip_ok": true
+  },
+  "rename": {
+   "size": 532373,
+   "layout": "tight",
+   "roundtrip_ok": true
+  },
+  "norev": {
+   "size": 335713,
+   "layout": "tight",
+   "roundtrip_ok": true
+  }
+ }
+}

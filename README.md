@@ -13,6 +13,19 @@ This repository has three tools:
 | **bzip2-hi** (`bzip2-hi/`) | bzip2 with a smarter encoder | standard `.bz2` (any bzip2 decodes it) |
 | **xz-hi** (`xz-hi/`) | xz with a per-file settings search | standard `.xz` (any xz decodes it) |
 
+## The Harrington Exchange
+
+**Code:** [`src/harrington-exchange/`](src/harrington-exchange/) · **Results:** [`src/harrington-exchange/results/`](src/harrington-exchange/results/) · Book Chapter 15
+
+The Harrington Exchange renames the K most common J-bit values to targets chosen by their prefix class (the swap, split at bit S), then splits the data into two streams, the high S bits and the reversed low bits, and compresses each with zstd -19. It works at any bit width up to 24. `he3.py` is the encoder and decoder; `he3dec.c` and `he3dec2.c` are compiled decoders.
+
+| File | Exchange | Split only | Rename only | Other |
+|---|---|---|---|---|
+| Synthetic 12-bit | **324,507 B** | 368,065 B | 399,859 B | unpack16 + shuffle 368,027 B |
+| NIST biased bits | **19,722 B** | 22,375 B | 25,909 B | xz 21,772 B; bitshuffle 22,558 B |
+
+Decode time on the 12-bit file is 5.1 ms (zstd alone 0.89 ms). Order-0 rANS beats the Exchange on all four test files (12-bit 323,335 B, bits 17,925 B), and the Exchange loses on x-ray, MR and EEG data. The Exchange → Blosc2 hybrid gives 324,765 B at 0.69 ms against Blosc2's best of 360,045 B at 0.76 ms.
+
 ## The book and the research code
 
 - **Book:** [`Harringtons-Insights.pdf`](Harringtons-Insights.pdf) — *Harrington's Insights: Improvements, Concepts, Strategies, Successes and Failures in Data Compression*.
