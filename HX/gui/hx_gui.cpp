@@ -13,6 +13,7 @@
 #include <commdlg.h>
 #include <shlobj.h>
 #include <shellapi.h>
+#include <shobjidl.h>
 #include <string>
 #include <vector>
 #include <thread>
@@ -220,10 +221,22 @@ static void update_controls() {
 static void add_files(const vector<W> &v) { for (auto &x : v) if (find(g_files.begin(), g_files.end(), x) == g_files.end()) g_files.push_back(x);
     if (!g_files.empty()) { wchar_t b[MAX_PATH]; GetWindowTextW(g_outdir, b, MAX_PATH); if (!b[0]) SetWindowTextW(g_outdir, parent(g_files[0]).c_str()); }
     refresh_list(); update_controls(); }
-static W pick_folder(HWND h, const wchar_t *title) {
-    BROWSEINFOW bi = {}; bi.hwndOwner = h; bi.lpszTitle = title; bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
-    LPITEMIDLIST id = SHBrowseForFolderW(&bi); if (!id) return L""; wchar_t p[MAX_PATH]; SHGetPathFromIDListW(id, p); CoTaskMemFree(id); return p;
+// Modern Explorer-style dialogs (address bar you can paste into, Quick Access, typing a path).
+static vector<W> pick_items(HWND h, const wchar_t *title, bool folders, bool multi, const W &start, const COMDLG_FILTERSPEC *flt = nullptr, UINT nflt = 0) {
+    vector<W> out; IFileOpenDialog *d = nullptr;
+    if (FAILED(CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&d)))) return out;
+    DWORD f = 0; d->GetOptions(&f); f |= FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST; if (folders) f |= FOS_PICKFOLDERS; else f |= FOS_FILEMUSTEXIST; if (multi) f |= FOS_ALLOWMULTISELECT;
+    d->SetOptions(f); d->SetTitle(title); if (flt && nflt) d->SetFileTypes(nflt, flt);
+    if (!start.empty() && isdir(start)) { IShellItem *si = nullptr; if (SUCCEEDED(SHCreateItemFromParsingName(start.c_str(), nullptr, IID_PPV_ARGS(&si)))) { d->SetFolder(si); si->Release(); } }
+    if (SUCCEEDED(d->Show(h))) { IShellItemArray *arr = nullptr;
+        if (SUCCEEDED(d->GetResults(&arr))) { DWORD n = 0; arr->GetCount(&n);
+            for (DWORD i = 0; i < n; i++) { IShellItem *it = nullptr; if (SUCCEEDED(arr->GetItemAt(i, &it))) { PWSTR ps = nullptr; if (SUCCEEDED(it->GetDisplayName(SIGDN_FILESYSPATH, &ps))) { out.push_back(ps); CoTaskMemFree(ps); } it->Release(); } }
+            arr->Release(); } }
+    d->Release(); return out;
 }
+static W out_box() { wchar_t b[32768]; GetWindowTextW(g_outdir, b, 32768); W s = b; while (!s.empty() && (s.back() == L' ' || s.back() == L'\\')) s.pop_back(); if (s.size() >= 2 && s.front() == L'"' && s.back() == L'"') s = s.substr(1, s.size() - 2); return s; }
+static W pick_folder(HWND h, const wchar_t *title) { auto v = pick_items(h, title, true, false, out_box()); return v.empty() ? L"" : v[0]; }
+
 static HWND mk(const wchar_t *cls, const wchar_t *txt, DWORD st, int x, int y, int w, int h, int id, DWORD ex = 0) {
     HWND c = CreateWindowExW(ex, cls, txt, WS_CHILD | WS_VISIBLE | st, S(x), S(y), S(w), S(h), g_wnd, (HMENU)(INT_PTR)id, GetModuleHandleW(nullptr), nullptr);
     SendMessageW(c, WM_SETFONT, (WPARAM)g_font, TRUE); return c;
@@ -255,7 +268,7 @@ static LRESULT CALLBACK proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
         g_fast = mk(L"BUTTON", L"HX Fast - quick, very fast to open", BS_AUTORADIOBUTTON | WS_GROUP, 90, 228, 250, 20, ID_FAST);
         g_complete = mk(L"BUTTON", L"HX Complete - smallest, slower", BS_AUTORADIOBUTTON, 350, 228, 250, 20, ID_COMPLETE);
         SendMessageW(g_fast, BM_SETCHECK, BST_CHECKED, 0);
-        mk(L"STATIC", L"Save to:", 0, 12, 261, 76, 18, 203);
+        mk(L"STATIC", L"Save to:", 0, 12, 261, 76, 18, 203);   // also where Extract unpacks; paste any path here
         g_outdir = mk(L"EDIT", L"", ES_AUTOHSCROLL, 0, 0, 10, 10, 0, WS_EX_CLIENTEDGE); mk(L"BUTTON", L"Browse...", BS_PUSHBUTTON, 0, 0, 10, 10, ID_OUTDIR);
         g_btnc = mk(L"BUTTON", L"Compress", BS_DEFPUSHBUTTON, 0, 0, 10, 10, ID_COMPRESS);
         g_btnx = mk(L"BUTTON", L"Open archive and extract...", BS_PUSHBUTTON, 0, 0, 10, 10, ID_EXTRACT);
@@ -274,22 +287,22 @@ static LRESULT CALLBACK proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
     case WM_LOGLINE: { W *s = (W *)lp; int len = GetWindowTextLengthW(g_log); SendMessageW(g_log, EM_SETSEL, len, len); SendMessageW(g_log, EM_REPLACESEL, 0, (LPARAM)(*s + L"\r\n").c_str()); delete s; return 0; }
     case WM_JOBDONE: g_busy = false; SendMessageW(g_prog, PBM_SETMARQUEE, FALSE, 0); update_controls(); return 0;
     case WM_COMMAND: switch (LOWORD(wp)) {
-        case ID_ADDF: { vector<wchar_t> buf(1 << 16, 0); OPENFILENAMEW o = {}; o.lStructSize = sizeof(o); o.hwndOwner = h; o.lpstrFile = buf.data(); o.nMaxFile = (DWORD)buf.size();
-            o.lpstrFilter = L"All files\0*.*\0"; o.Flags = OFN_ALLOWMULTISELECT | OFN_EXPLORER | OFN_FILEMUSTEXIST;
-            if (GetOpenFileNameW(&o)) { W dir = buf.data(); const wchar_t *p = buf.data() + dir.size() + 1; vector<W> v; if (!*p) v.push_back(dir); else for (; *p; p += wcslen(p) + 1) v.push_back(dir + L"\\" + p); add_files(v); } break; }
+        case ID_ADDF: { auto v = pick_items(h, L"Choose files to compress", false, true, g_files.empty() ? out_box() : parent(g_files.back())); if (!v.empty()) add_files(v); break; }
         case ID_ADDD: { W f = pick_folder(h, L"Choose a folder to compress"); if (!f.empty()) add_files({f}); break; }
         case ID_CLEAR: g_files.clear(); refresh_list(); update_controls(); break;
         case ID_OUTDIR: { W f = pick_folder(h, L"Save the archive to this folder"); if (!f.empty()) SetWindowTextW(g_outdir, f.c_str()); break; }
         case ID_FMT: if (HIWORD(wp) == CBN_SELCHANGE) update_controls(); break;
         case ID_COMPRESS: { if (g_busy || g_files.empty()) break; Job J; J.files = g_files; J.fmt = (int)SendMessageW(g_fmt, CB_GETCURSEL, 0, 0);
             J.complete = SendMessageW(g_complete, BM_GETCHECK, 0, 0) == BST_CHECKED; J.verify = SendMessageW(g_verify, BM_GETCHECK, 0, 0) == BST_CHECKED;
-            wchar_t b[MAX_PATH]; GetWindowTextW(g_outdir, b, MAX_PATH); J.outdir = b[0] ? b : parent(g_files[0]); CreateDirectoryW(J.outdir.c_str(), nullptr);
+            W ob = out_box(); J.outdir = ob.empty() ? parent(g_files[0]) : ob; CreateDirectoryW(J.outdir.c_str(), nullptr);
             if (!isdir(J.outdir)) { MessageBoxW(h, L"The Save to folder does not exist.", L"HX Compressor", MB_ICONWARNING); break; }
             g_busy = true; update_controls(); SendMessageW(g_prog, PBM_SETMARQUEE, TRUE, 30); thread(compress_job, J).detach(); break; }
-        case ID_EXTRACT: { if (g_busy) break; wchar_t f[32768] = {}; OPENFILENAMEW o = {}; o.lStructSize = sizeof(o); o.hwndOwner = h; o.lpstrFile = f; o.nMaxFile = 32768;
-            o.lpstrFilter = L"Archives\0*.hx;*.zip;*.7z;*.tar;*.gz;*.tgz;*.xz;*.txz;*.zst;*.br;*.knz;*.flac;*.wv;*.webp;*.jxl;*.rar;*.bz2\0All files\0*.*\0"; o.Flags = OFN_FILEMUSTEXIST | OFN_EXPLORER;
-            if (!GetOpenFileNameW(&o)) break; W dest = pick_folder(h, L"Extract into this folder"); if (dest.empty()) break;
-            g_busy = true; update_controls(); SendMessageW(g_prog, PBM_SETMARQUEE, TRUE, 30); thread(extract_job, W(f), dest).detach(); break; }
+        case ID_EXTRACT: { if (g_busy) break;
+            static const COMDLG_FILTERSPEC ft[] = {{L"Archives", L"*.hx;*.zip;*.7z;*.tar;*.gz;*.tgz;*.xz;*.txz;*.zst;*.br;*.knz;*.flac;*.wv;*.webp;*.jxl;*.rar;*.bz2"}, {L"All files", L"*.*"}};
+            auto v = pick_items(h, L"Open an archive to extract", false, false, out_box(), ft, 2); if (v.empty()) break;
+            W arc = v[0], dest = out_box(); if (dest.empty() || !isdir(dest)) dest = parent(arc);   // the Save to folder, or next to the archive
+            SetWindowTextW(g_outdir, dest.c_str());
+            g_busy = true; update_controls(); SendMessageW(g_prog, PBM_SETMARQUEE, TRUE, 30); thread(extract_job, arc, dest).detach(); break; }
         } return 0;
     case WM_DESTROY: PostQuitMessage(0); return 0;
     }

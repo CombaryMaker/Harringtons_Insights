@@ -8,7 +8,9 @@ HOW TO USE
 2. Drag files or folders into the window, or press "Add files..." or "Add folder...".
 3. Choose a format under "Save as" and, for HX, choose HX Fast or HX Complete.
 4. Press Compress. The archive is saved next to the first file unless you pick another folder.
-5. To unpack anything, press "Open archive and extract..." and choose where it should go.
+5. To unpack anything, press "Open archive and extract..." and pick the archive. It unpacks into the
+   "Save to" folder (you can paste any folder path into that box), or next to the archive if the box is empty.
+The file and folder windows are the normal Windows ones: you can paste a path into their address bar.
 Every archive is opened again and checked against your files before the app reports success
 (you can switch the check off).
 
