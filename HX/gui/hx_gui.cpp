@@ -304,7 +304,8 @@ static int place(int W_, int H_, int listH, bool apply) {
     else { int hw = (fw - g) / 2; mv(g_btnc, m, y, hw, ah); mv(g_btno, m + hw + g, y, fw - hw - g, ah); y += ah + g / 2; mv(g_btnx, m, y, fw, ah); y += ah + g; }
     mv(g_verify, m, y, fw, S(22)); y += S(28);
     mv(g_prog, m, y, fw, S(6)); y += S(6) + g;
-    int fh = S(38); mv(g_log, m, y, fw, H_ - y - m - fh - S(4)); mv(it(206), m, H_ - m - fh + S(2), fw, fh);
+    int fh = S(38), gs = S(18); mv(g_log, m, y, fw, H_ - y - m - fh - S(4)); mv(it(206), m, H_ - m - fh + S(2), fw - gs, fh);
+    mv(it(207), W_ - gs - S(3), H_ - gs - S(3), gs, gs);   // the corner grip for resizing
     return y;
 }
 static void layout(int W_, int H_) {
@@ -318,7 +319,6 @@ static LRESULT CALLBACK proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
         g_wnd = h; { HMODULE u = GetModuleHandleW(L"user32.dll"); auto f = (UINT(WINAPI *)(HWND))GetProcAddress(u, "GetDpiForWindow"); if (f) g_dpi = f(h); else { HDC dc = GetDC(h); g_dpi = GetDeviceCaps(dc, LOGPIXELSY); ReleaseDC(h, dc); } }
         { NONCLIENTMETRICSW nm = {}; nm.cbSize = sizeof(nm); SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(nm), &nm, 0); nm.lfMessageFont.lfHeight = -MulDiv(10, g_dpi, 72); g_font = CreateFontIndirectW(&nm.lfMessageFont); LOGFONTW lf = nm.lfMessageFont; lf.lfWeight = FW_BOLD; g_bold = CreateFontIndirectW(&lf); lf = nm.lfMessageFont; lf.lfItalic = TRUE; g_ital = CreateFontIndirectW(&lf); }
         { HMODULE dw = LoadLibraryW(L"dwmapi.dll"); if (dw) { auto f = (HRESULT(WINAPI *)(HWND, DWORD, LPCVOID, DWORD))GetProcAddress(dw, "DwmSetWindowAttribute"); COLORREF c = RGB(40, 112, 60); if (f) f(h, 34 /* border colour, Windows 11 */, &c, sizeof(c)); } }
-        SetWindowPos(h, nullptr, 0, 0, S(860), S(720), SWP_NOMOVE | SWP_NOZORDER);
         mk(L"STATIC", L"Files and folders to compress (or drag them here):", 0, 0, 0, 10, 10, 200);
         g_list = mk(L"LISTBOX", L"", WS_VSCROLL | WS_HSCROLL | LBS_NOINTEGRALHEIGHT | LBS_EXTENDEDSEL, 0, 0, 10, 10, ID_LIST, WS_EX_CLIENTEDGE);
         mk(L"BUTTON", L"Add files...", BS_OWNERDRAW, 0, 0, 10, 10, ID_ADDF); mk(L"BUTTON", L"Add folder...", BS_OWNERDRAW, 0, 0, 10, 10, ID_ADDD); mk(L"BUTTON", L"Clear list", BS_OWNERDRAW, 0, 0, 10, 10, ID_CLEAR);
@@ -342,7 +342,14 @@ static LRESULT CALLBACK proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
         g_verify = mk(L"BUTTON", L"Check every archive after making it", BS_AUTOCHECKBOX, 0, 0, 10, 10, ID_VERIFY); SendMessageW(g_verify, BM_SETCHECK, BST_CHECKED, 0);
         g_prog = mk(PROGRESS_CLASSW, L"", PBS_SMOOTH, 0, 0, 10, 10, ID_PROG); SendMessageW(g_prog, PBM_SETRANGE32, 0, 1000);
         g_log = mk(L"EDIT", L"", ES_MULTILINE | ES_READONLY | WS_VSCROLL | ES_AUTOVSCROLL, 0, 0, 10, 10, ID_LOG, WS_EX_CLIENTEDGE);
+        CreateWindowExW(0, L"SCROLLBAR", L"", WS_CHILD | WS_VISIBLE | SBS_SIZEGRIP | SBS_SIZEBOXBOTTOMRIGHTALIGN, 0, 0, S(18), S(18), h, (HMENU)207, GetModuleHandleW(nullptr), nullptr);
         refresh_formats(); DragAcceptFiles(h, TRUE);
+        {   // open at a size that fits: a short results box (about 5 lines) and never taller than the screen
+            int cw = S(860), top = place(cw, S(2000), S(130), false), ch = top + S(96) + S(4) + S(38) + S(14);
+            RECT r = {0, 0, cw, ch}; AdjustWindowRectEx(&r, WS_OVERLAPPEDWINDOW, FALSE, 0);
+            MONITORINFO mi = {sizeof(mi)}; GetMonitorInfoW(MonitorFromWindow(h, MONITOR_DEFAULTTONEAREST), &mi); RECT wa = mi.rcWork;
+            int ww = min<int>(r.right - r.left, wa.right - wa.left), wh = min<int>(r.bottom - r.top, wa.bottom - wa.top);
+            SetWindowPos(h, nullptr, wa.left + (wa.right - wa.left - ww) / 2, wa.top + (wa.bottom - wa.top - wh) / 2, ww, wh, SWP_NOZORDER); }
         mk(L"STATIC", L"HX Compressor 1.1 - Michael Hugh Harrington. HX is Patent Pending (U.S. Provisional App. 64/192,843).\r\nFree for personal use and research; commercial use needs a license.", SS_LEFT, 0, 0, 10, 10, 206);
         update_controls(); return 0; }
     case WM_SIZE: layout(LOWORD(lp), HIWORD(lp)); return 0;
