@@ -19,6 +19,7 @@
 #include <vector>
 #include <thread>
 #include <cstdio>
+#include <cmath>
 using namespace std;
 typedef wstring W;
 
@@ -299,7 +300,7 @@ static LRESULT CALLBACK proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
     case WM_CREATE: {
         g_wnd = h; { HMODULE u = GetModuleHandleW(L"user32.dll"); auto f = (UINT(WINAPI *)(HWND))GetProcAddress(u, "GetDpiForWindow"); if (f) g_dpi = f(h); else { HDC dc = GetDC(h); g_dpi = GetDeviceCaps(dc, LOGPIXELSY); ReleaseDC(h, dc); } }
         { NONCLIENTMETRICSW nm = {}; nm.cbSize = sizeof(nm); SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(nm), &nm, 0); nm.lfMessageFont.lfHeight = -MulDiv(10, g_dpi, 72); g_font = CreateFontIndirectW(&nm.lfMessageFont); }
-        { HMODULE dw = LoadLibraryW(L"dwmapi.dll"); if (dw) { auto f = (HRESULT(WINAPI *)(HWND, DWORD, LPCVOID, DWORD))GetProcAddress(dw, "DwmSetWindowAttribute"); COLORREF c = C_GREEN; if (f) f(h, 34 /* border colour, Windows 11 */, &c, sizeof(c)); } }
+        { HMODULE dw = LoadLibraryW(L"dwmapi.dll"); if (dw) { auto f = (HRESULT(WINAPI *)(HWND, DWORD, LPCVOID, DWORD))GetProcAddress(dw, "DwmSetWindowAttribute"); COLORREF c = RGB(40, 112, 60); if (f) f(h, 34 /* border colour, Windows 11 */, &c, sizeof(c)); } }
         SetWindowPos(h, nullptr, 0, 0, S(860), S(720), SWP_NOMOVE | SWP_NOZORDER);
         mk(L"STATIC", L"Files and folders to compress (or drag them here):", 0, 0, 0, 10, 10, 200);
         g_list = mk(L"LISTBOX", L"", WS_VSCROLL | WS_HSCROLL | LBS_NOINTEGRALHEIGHT | LBS_EXTENDEDSEL, 0, 0, 10, 10, ID_LIST, WS_EX_CLIENTEDGE);
@@ -329,10 +330,25 @@ static LRESULT CALLBACK proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
     case WM_SIZE: layout(LOWORD(lp), HIWORD(lp)); return 0;
     case WM_GETMINMAXINFO: ((MINMAXINFO *)lp)->ptMinTrackSize = {S(380), S(470)}; return 0;
     case WM_DPICHANGED: { g_dpi = HIWORD(wp); RECT *r = (RECT *)lp; SetWindowPos(h, nullptr, r->left, r->top, r->right - r->left, r->bottom - r->top, SWP_NOZORDER); return 0; }
-    case WM_PAINT: {   // the green frame around the whole window
-        PAINTSTRUCT ps; HDC dc = BeginPaint(h, &ps); RECT rc; GetClientRect(h, &rc); int t = max(2, S(3)); HBRUSH g = CreateSolidBrush(C_GREEN);
-        RECT a = {0, 0, rc.right, t}, b = {0, rc.bottom - t, rc.right, rc.bottom}, c = {0, 0, t, rc.bottom}, d = {rc.right - t, 0, rc.right, rc.bottom};
-        FillRect(dc, &a, g); FillRect(dc, &b, g); FillRect(dc, &c, g); FillRect(dc, &d, g); DeleteObject(g); EndPaint(h, &ps); return 0; }
+    case WM_PAINT: {   // the frame: muted green, lit from the top-left (bevel), shaded along each edge, fading into the window
+        PAINTSTRUCT ps; HDC dc = BeginPaint(h, &ps); RECT rc; GetClientRect(h, &rc);
+        COLORREF bg = GetSysColor(COLOR_BTNFACE); int t = max(4, S(6));
+        auto mix = [](COLORREF a, COLORREF b, double f) { return RGB((int)(GetRValue(a) + (GetRValue(b) - GetRValue(a)) * f), (int)(GetGValue(a) + (GetGValue(b) - GetGValue(a)) * f), (int)(GetBValue(a) + (GetBValue(b) - GetBValue(a)) * f)); };
+        auto vx = [](int x, int y, COLORREF c) { TRIVERTEX v; v.x = x; v.y = y; v.Red = GetRValue(c) << 8; v.Green = GetGValue(c) << 8; v.Blue = GetBValue(c) << 8; v.Alpha = 0; return v; };
+        auto grad = [&](int x0, int y0, int x1, int y1, COLORREF c0, COLORREF c1, bool vertical) {
+            TRIVERTEX v[2] = {vx(x0, y0, c0), vx(x1, y1, c1)}; GRADIENT_RECT g = {0, 1}; GradientFill(dc, v, 2, &g, 1, vertical ? GRADIENT_FILL_RECT_V : GRADIENT_FILL_RECT_H); };
+        const COLORREF lit = RGB(126, 196, 138), mid = RGB(58, 146, 78), shade = RGB(28, 92, 46);
+        for (int i = t - 1; i >= 0; i--) {   // outer ring strongest, inner rings melt into the background
+            double f = t > 1 ? pow((double)i / (t - 1), 1.4) * 0.92 : 0.0;
+            COLORREF L = mix(lit, bg, f), M = mix(mid, bg, f), D = mix(shade, bg, f);
+            if (i == 1) L = mix(RGB(200, 235, 205), bg, f * 0.6);   // thin inner highlight just inside the outer line
+            int x0 = rc.left + i, y0 = rc.top + i, x1 = rc.right - i, y1 = rc.bottom - i; if (x1 - x0 < 2 || y1 - y0 < 2) continue;
+            grad(x0, y0, x1, y0 + 1, L, M, false);   // top: lit, easing to mid on the right
+            grad(x0, y0, x0 + 1, y1, L, M, true);    // left: lit, easing to mid at the bottom
+            grad(x1 - 1, y0, x1, y1, M, D, true);    // right: mid, into shadow at the bottom
+            grad(x0, y1 - 1, x1, y1, M, D, false);   // bottom: mid, into shadow on the right
+        }
+        EndPaint(h, &ps); return 0; }
     case WM_DRAWITEM: draw_button((DRAWITEMSTRUCT *)lp); return TRUE;
     case WM_TIMER: if (wp == 1) {   // the bar rushes to full when a job is done
         g_fill = min(1000, g_fill + 90); SendMessageW(g_prog, PBM_SETPOS, min(1000, g_fill + 1), 0); SendMessageW(g_prog, PBM_SETPOS, g_fill, 0);
