@@ -1,4 +1,4 @@
-HX Compressor 1.0 for Windows
+HX Compressor 1.1 for Windows
 Michael Hugh Harrington, 6 November 2026
 HX is Patent Pending (U.S. Provisional App. 64/192,843). Free for personal use and for research and peer review;
 commercial use needs a license (see LICENSE.txt).
@@ -9,7 +9,9 @@ HOW TO USE
 3. Choose a format under "Save as" and, for HX, choose HX Fast or HX Complete.
 4. Press Compress. The archive is saved next to the first file unless you pick another folder.
 5. To unpack anything, press "Open archive and extract..." and pick the archive. It unpacks into the
-   "Save to" folder (you can paste any folder path into that box), or next to the archive if the box is empty.
+   "Extract to" folder (paste any folder path into that box, or press its Browse button), or next to the
+   archive if the box is empty.
+6. "Open folder" opens the folder the last archive was saved or extracted to.
 The file and folder windows are the normal Windows ones: you can paste a path into their address bar.
 Every archive is opened again and checked against your files before the app reports success
 (you can switch the check off).

@@ -14,6 +14,7 @@
 #include <shlobj.h>
 #include <shellapi.h>
 #include <shobjidl.h>
+#include <uxtheme.h>
 #include <string>
 #include <vector>
 #include <thread>
@@ -21,7 +22,7 @@
 using namespace std;
 typedef wstring W;
 
-enum { ID_ADDF = 101, ID_ADDD, ID_CLEAR, ID_FMT, ID_FAST, ID_COMPLETE, ID_OUTDIR, ID_COMPRESS, ID_OPEN, ID_EXTRACT, ID_LIST, ID_LOG, ID_PROG, ID_VERIFY };
+enum { ID_ADDF = 101, ID_ADDD, ID_CLEAR, ID_FMT, ID_FAST, ID_COMPLETE, ID_OUTDIR, ID_COMPRESS, ID_OPEN, ID_EXTRACT, ID_LIST, ID_LOG, ID_PROG, ID_VERIFY, ID_EXTDIR, ID_EXTBROWSE, ID_OPENDIR };
 #define WM_JOBDONE (WM_APP + 1)
 #define WM_LOGLINE (WM_APP + 2)
 
@@ -45,7 +46,8 @@ static const Fmt FMTS[] = {
 static const int NF = sizeof(FMTS) / sizeof(FMTS[0]);
 
 // ---------- globals ----------
-static HWND g_wnd, g_list, g_fmt, g_fast, g_complete, g_outdir, g_log, g_prog, g_btnc, g_btnx, g_verify;
+static HWND g_wnd, g_list, g_fmt, g_fast, g_complete, g_outdir, g_log, g_prog, g_btnc, g_btnx, g_verify, g_extdir, g_btno;
+static W g_lastdir; static int g_fill = 0;
 static W g_dir, g_tools;
 static vector<W> g_files;
 static bool g_busy = false;
@@ -171,7 +173,7 @@ static void compress_job(Job J) {
         good += compress_one(J, J.files, name);
     }
     log(good == total ? L"Finished." : L"Finished with problems - see above.");
-    PostMessageW(g_wnd, WM_JOBDONE, 0, 0);
+    PostMessageW(g_wnd, WM_JOBDONE, good == total, (LPARAM)new W(J.outdir));
 }
 
 // ---------- extract ----------
@@ -196,7 +198,7 @@ static void extract_job(W arc, W dest) {
         ok = ok && !inner.empty() && run(q(tool(L"7z.exe")) + L" x -y -o" + q(dest) + L" " + q(inner)) == 0; }
     else ok = run(q(tool(L"7z.exe")) + L" x -y -o" + q(dest) + L" " + q(arc)) == 0;   // zip, 7z, tar, gz, xz, rar and the rest 7-Zip knows
     wchar_t t[120]; swprintf(t, 120, L"  %ls in %.1f s -> %ls", ok ? L"done" : L"FAILED", (GetTickCount() - t0) / 1000.0, dest.c_str()); log(t);
-    rmtree(td); log(L"Finished."); PostMessageW(g_wnd, WM_JOBDONE, 0, 0);
+    rmtree(td); log(ok ? L"Finished." : L"Finished with problems - see above."); PostMessageW(g_wnd, WM_JOBDONE, ok, (LPARAM)new W(dest));
 }
 
 // ---------- UI ----------
@@ -216,7 +218,7 @@ static void update_controls() {
     bool can = !g_busy && !g_files.empty() && f >= 0 && have(FMTS[f].tool) && (FMTS[f].multi || f == 0 || have(L"7z.exe") || (g_files.size() == 1 && !isdir(g_files[0])));
     if (f >= 0 && FMTS[f].kind == AUDIO) { can = can && any_of(g_files.begin(), g_files.end(), is_audio); }
     if (f >= 0 && FMTS[f].kind == IMAGE) { can = can && any_of(g_files.begin(), g_files.end(), is_image); }
-    EnableWindow(g_btnc, can); EnableWindow(g_btnx, !g_busy);
+    EnableWindow(g_btnc, can); EnableWindow(g_btnx, !g_busy); EnableWindow(g_btno, !g_lastdir.empty() && isdir(g_lastdir));
 }
 static void add_files(const vector<W> &v) { for (auto &x : v) if (find(g_files.begin(), g_files.end(), x) == g_files.end()) g_files.push_back(x);
     if (!g_files.empty()) { wchar_t b[MAX_PATH]; GetWindowTextW(g_outdir, b, MAX_PATH); if (!b[0]) SetWindowTextW(g_outdir, parent(g_files[0]).c_str()); }
@@ -234,75 +236,133 @@ static vector<W> pick_items(HWND h, const wchar_t *title, bool folders, bool mul
             arr->Release(); } }
     d->Release(); return out;
 }
-static W out_box() { wchar_t b[32768]; GetWindowTextW(g_outdir, b, 32768); W s = b; while (!s.empty() && (s.back() == L' ' || s.back() == L'\\')) s.pop_back(); if (s.size() >= 2 && s.front() == L'"' && s.back() == L'"') s = s.substr(1, s.size() - 2); return s; }
-static W pick_folder(HWND h, const wchar_t *title) { auto v = pick_items(h, title, true, false, out_box()); return v.empty() ? L"" : v[0]; }
+static W box_text(HWND e) { wchar_t b[32768]; GetWindowTextW(e, b, 32768); W s = b; while (!s.empty() && (s.back() == L' ' || s.back() == L'\\')) s.pop_back(); if (s.size() >= 2 && s.front() == L'"' && s.back() == L'"') s = s.substr(1, s.size() - 2); return s; }
+static W out_box() { return box_text(g_outdir); }
+static W ext_box() { return box_text(g_extdir); }
+static W pick_folder(HWND h, const wchar_t *title, const W &start = L"") { auto v = pick_items(h, title, true, false, start.empty() ? out_box() : start); return v.empty() ? L"" : v[0]; }
 
 static HWND mk(const wchar_t *cls, const wchar_t *txt, DWORD st, int x, int y, int w, int h, int id, DWORD ex = 0) {
     HWND c = CreateWindowExW(ex, cls, txt, WS_CHILD | WS_VISIBLE | st, S(x), S(y), S(w), S(h), g_wnd, (HMENU)(INT_PTR)id, GetModuleHandleW(nullptr), nullptr);
     SendMessageW(c, WM_SETFONT, (WPARAM)g_font, TRUE); return c;
 }
-static void layout(int W_, int H_) {   // W_, H_ are real pixels; everything else is in 100% units through S()
-    auto mv = [](HWND c, int x, int y, int w, int h) { MoveWindow(c, x, y, w, h, TRUE); };
-    int m = S(12), bw = S(120), lh = S(150);
-    mv(g_list, m, S(34), W_ - 2 * m - bw - S(8), lh);
-    mv(GetDlgItem(g_wnd, ID_ADDF), W_ - m - bw, S(34), bw, S(28)); mv(GetDlgItem(g_wnd, ID_ADDD), W_ - m - bw, S(66), bw, S(28)); mv(GetDlgItem(g_wnd, ID_CLEAR), W_ - m - bw, S(98), bw, S(28));
-    mv(GetDlgItem(g_wnd, 201), m, S(200), S(80), S(20)); mv(g_fmt, S(96), S(196), W_ - S(96) - m, S(400));
-    mv(GetDlgItem(g_wnd, 202), m, S(234), S(80), S(20)); mv(g_fast, S(96), S(232), S(280), S(22)); mv(g_complete, S(386), S(232), S(280), S(22));
-    mv(GetDlgItem(g_wnd, 203), m, S(268), S(80), S(20)); mv(g_outdir, S(96), S(264), W_ - S(96) - m - S(98), S(26)); mv(GetDlgItem(g_wnd, ID_OUTDIR), W_ - m - S(90), S(263), S(90), S(28));
-    mv(g_btnc, m, S(304), S(150), S(36)); mv(g_btnx, m + S(160), S(304), S(220), S(36)); mv(g_verify, m + S(394), S(311), S(300), S(22));
-    mv(g_prog, m, S(350), W_ - 2 * m, S(14));
-    mv(g_log, m, S(372), W_ - 2 * m, max(S(60), H_ - S(372) - m));
+// ---------- look ----------
+static const COLORREF C_GREEN = RGB(46, 160, 67), C_GO = RGB(46, 125, 50), C_BLUE = RGB(21, 101, 192), C_SLATE = RGB(69, 90, 100), C_LIGHT = RGB(232, 238, 243), C_EDGE = RGB(150, 165, 178);
+static COLORREF darker(COLORREF c) { return RGB(GetRValue(c) * 82 / 100, GetGValue(c) * 82 / 100, GetBValue(c) * 82 / 100); }
+static void draw_button(DRAWITEMSTRUCT *d) {
+    int id = (int)d->CtlID; bool dis = d->itemState & ODS_DISABLED, down = d->itemState & ODS_SELECTED;
+    COLORREF bg = C_LIGHT, fg = RGB(30, 40, 48), edge = C_EDGE;
+    if (id == ID_COMPRESS) bg = C_GO, fg = RGB(255, 255, 255), edge = bg; else if (id == ID_EXTRACT) bg = C_BLUE, fg = RGB(255, 255, 255), edge = bg; else if (id == ID_OPENDIR) bg = C_SLATE, fg = RGB(255, 255, 255), edge = bg;
+    if (dis) bg = RGB(212, 216, 220), fg = RGB(135, 140, 145), edge = RGB(190, 195, 200); else if (down) bg = darker(bg), edge = darker(edge);
+    HDC dc = d->hDC; RECT r = d->rcItem; FillRect(dc, &r, GetSysColorBrush(COLOR_BTNFACE));
+    HBRUSH br = CreateSolidBrush(bg); HPEN pn = CreatePen(PS_SOLID, 1, edge); HGDIOBJ ob = SelectObject(dc, br), op = SelectObject(dc, pn);
+    RoundRect(dc, r.left, r.top, r.right, r.bottom, S(8), S(8)); SelectObject(dc, ob); SelectObject(dc, op); DeleteObject(br); DeleteObject(pn);
+    wchar_t t[128]; GetWindowTextW(d->hwndItem, t, 128); SetBkMode(dc, TRANSPARENT); SetTextColor(dc, fg); HGDIOBJ of = SelectObject(dc, g_font);
+    if (down) OffsetRect(&r, 1, 1); DrawTextW(dc, t, -1, &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS); SelectObject(dc, of);
+    if ((d->itemState & ODS_FOCUS) && !(d->itemState & ODS_NOFOCUSRECT)) { RECT f = d->rcItem; InflateRect(&f, -S(3), -S(3)); DrawFocusRect(dc, &f); }
+}
+static void set_running(bool on) {   // thin bar: moving while working
+    LONG_PTR st = GetWindowLongPtrW(g_prog, GWL_STYLE);
+    if (on) { KillTimer(g_wnd, 1); SendMessageW(g_prog, PBM_SETSTATE, PBST_NORMAL, 0); SendMessageW(g_prog, PBM_SETPOS, 0, 0); SetWindowLongPtrW(g_prog, GWL_STYLE, st | PBS_MARQUEE); SendMessageW(g_prog, PBM_SETMARQUEE, TRUE, 25); }
+    else { SendMessageW(g_prog, PBM_SETMARQUEE, FALSE, 0); SetWindowLongPtrW(g_prog, GWL_STYLE, st & ~PBS_MARQUEE); SendMessageW(g_prog, PBM_SETRANGE32, 0, 1000); SendMessageW(g_prog, PBM_SETPOS, 0, 0); }
+}
+// ---------- layout: rearranges itself so the window can be made small ----------
+static int place(int W_, int H_, int listH, bool apply) {
+    auto mv = [&](HWND c, int x, int y, int w, int h) { if (apply) MoveWindow(c, x, y, max(1, w), max(1, h), TRUE); };
+    auto it = [](int id) { return GetDlgItem(g_wnd, id); };
+    int m = S(14), g = S(8), lab = S(84), bh = S(28), fw = W_ - 2 * m, y = S(10);
+    mv(it(200), m, y, fw, S(20)); y += S(24);
+    bool col = fw >= S(430) && listH >= 3 * bh + 2 * g;               // file buttons beside the list, or in a row under it
+    if (col) { int bw = S(120); mv(g_list, m, y, fw - bw - g, listH); for (int i = 0; i < 3; i++) mv(it(ID_ADDF + i), W_ - m - bw, y + i * (bh + g / 2), bw, bh); y += listH + g; }
+    else { mv(g_list, m, y, fw, listH); y += listH + g / 2; int bw = (fw - 2 * g) / 3; for (int i = 0; i < 3; i++) mv(it(ID_ADDF + i), m + i * (bw + g), y, bw, bh); y += bh + g; }
+    int fx = m + lab, fl = fw - lab, brw = S(90);
+    mv(it(201), m, y + S(4), lab, S(20)); mv(g_fmt, fx, y, fl, S(400)); y += S(34);
+    mv(it(202), m, y + S(2), lab, S(20));
+    if (fl >= S(560)) { mv(g_fast, fx, y, S(270), S(22)); mv(g_complete, fx + S(280), y, fl - S(280), S(22)); y += S(30); }
+    else { mv(g_fast, fx, y, fl, S(22)); mv(g_complete, fx, y + S(24), fl, S(22)); y += S(52); }
+    mv(it(203), m, y + S(4), lab, S(20)); mv(g_outdir, fx, y + 1, fl - brw - g, S(26)); mv(it(ID_OUTDIR), W_ - m - brw, y, brw, bh); y += S(34);
+    mv(it(204), m, y + S(4), lab, S(20)); mv(g_extdir, fx, y + 1, fl - brw - g, S(26)); mv(it(ID_EXTBROWSE), W_ - m - brw, y, brw, bh); y += S(36);
+    int b1 = S(140), b2 = S(210), b3 = S(130), ah = S(34);
+    if (fw >= b1 + b2 + b3 + 2 * g) { mv(g_btnc, m, y, b1, ah); mv(g_btnx, m + b1 + g, y, b2, ah); mv(g_btno, m + b1 + b2 + 2 * g, y, b3, ah); y += ah + g; }
+    else { int hw = (fw - g) / 2; mv(g_btnc, m, y, hw, ah); mv(g_btno, m + hw + g, y, fw - hw - g, ah); y += ah + g / 2; mv(g_btnx, m, y, fw, ah); y += ah + g; }
+    mv(g_verify, m, y, fw, S(22)); y += S(28);
+    mv(g_prog, m, y, fw, S(6)); y += S(6) + g;
+    mv(g_log, m, y, fw, H_ - y - m);
+    return y;
+}
+static void layout(int W_, int H_) {
+    int listH = S(150), need = place(W_, H_, listH, false) + S(70) + S(14);   // keep at least a few lines of the log
+    if (need > H_) listH = max(S(56), listH - (need - H_));
+    place(W_, H_, listH, true); InvalidateRect(g_wnd, nullptr, TRUE);
 }
 static LRESULT CALLBACK proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
     switch (msg) {
     case WM_CREATE: {
         g_wnd = h; { HMODULE u = GetModuleHandleW(L"user32.dll"); auto f = (UINT(WINAPI *)(HWND))GetProcAddress(u, "GetDpiForWindow"); if (f) g_dpi = f(h); else { HDC dc = GetDC(h); g_dpi = GetDeviceCaps(dc, LOGPIXELSY); ReleaseDC(h, dc); } }
         { NONCLIENTMETRICSW nm = {}; nm.cbSize = sizeof(nm); SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(nm), &nm, 0); nm.lfMessageFont.lfHeight = -MulDiv(10, g_dpi, 72); g_font = CreateFontIndirectW(&nm.lfMessageFont); }
-        { RECT r; GetWindowRect(h, &r); SetWindowPos(h, nullptr, 0, 0, S(860), S(680), SWP_NOMOVE | SWP_NOZORDER); }
-        mk(L"STATIC", L"Files and folders to compress (or drag them here):", 0, 12, 10, 500, 20, 0);
+        { HMODULE dw = LoadLibraryW(L"dwmapi.dll"); if (dw) { auto f = (HRESULT(WINAPI *)(HWND, DWORD, LPCVOID, DWORD))GetProcAddress(dw, "DwmSetWindowAttribute"); COLORREF c = C_GREEN; if (f) f(h, 34 /* border colour, Windows 11 */, &c, sizeof(c)); } }
+        SetWindowPos(h, nullptr, 0, 0, S(860), S(720), SWP_NOMOVE | SWP_NOZORDER);
+        mk(L"STATIC", L"Files and folders to compress (or drag them here):", 0, 0, 0, 10, 10, 200);
         g_list = mk(L"LISTBOX", L"", WS_VSCROLL | WS_HSCROLL | LBS_NOINTEGRALHEIGHT | LBS_EXTENDEDSEL, 0, 0, 10, 10, ID_LIST, WS_EX_CLIENTEDGE);
-        mk(L"BUTTON", L"Add files...", BS_PUSHBUTTON, 0, 0, 10, 10, ID_ADDF); mk(L"BUTTON", L"Add folder...", BS_PUSHBUTTON, 0, 0, 10, 10, ID_ADDD); mk(L"BUTTON", L"Clear list", BS_PUSHBUTTON, 0, 0, 10, 10, ID_CLEAR);
-        mk(L"STATIC", L"Save as:", 0, 12, 199, 76, 18, 201);
+        mk(L"BUTTON", L"Add files...", BS_OWNERDRAW, 0, 0, 10, 10, ID_ADDF); mk(L"BUTTON", L"Add folder...", BS_OWNERDRAW, 0, 0, 10, 10, ID_ADDD); mk(L"BUTTON", L"Clear list", BS_OWNERDRAW, 0, 0, 10, 10, ID_CLEAR);
+        mk(L"STATIC", L"Save as:", 0, 0, 0, 10, 10, 201);
         g_fmt = mk(L"COMBOBOX", L"", CBS_DROPDOWNLIST | WS_VSCROLL, 0, 0, 10, 10, ID_FMT);
-        mk(L"STATIC", L"HX mode:", 0, 12, 230, 76, 18, 202);
-        g_fast = mk(L"BUTTON", L"HX Fast - quick, very fast to open", BS_AUTORADIOBUTTON | WS_GROUP, 90, 228, 250, 20, ID_FAST);
-        g_complete = mk(L"BUTTON", L"HX Complete - smallest, slower", BS_AUTORADIOBUTTON, 350, 228, 250, 20, ID_COMPLETE);
+        mk(L"STATIC", L"HX mode:", 0, 0, 0, 10, 10, 202);
+        g_fast = mk(L"BUTTON", L"HX Fast - quick, very fast to open", BS_AUTORADIOBUTTON | WS_GROUP, 0, 0, 10, 10, ID_FAST);
+        g_complete = mk(L"BUTTON", L"HX Complete - smallest, slower", BS_AUTORADIOBUTTON, 0, 0, 10, 10, ID_COMPLETE);
         SendMessageW(g_fast, BM_SETCHECK, BST_CHECKED, 0);
-        mk(L"STATIC", L"Save to:", 0, 12, 261, 76, 18, 203);   // also where Extract unpacks; paste any path here
-        g_outdir = mk(L"EDIT", L"", ES_AUTOHSCROLL, 0, 0, 10, 10, 0, WS_EX_CLIENTEDGE); mk(L"BUTTON", L"Browse...", BS_PUSHBUTTON, 0, 0, 10, 10, ID_OUTDIR);
-        g_btnc = mk(L"BUTTON", L"Compress", BS_DEFPUSHBUTTON, 0, 0, 10, 10, ID_COMPRESS);
-        g_btnx = mk(L"BUTTON", L"Open archive and extract...", BS_PUSHBUTTON, 0, 0, 10, 10, ID_EXTRACT);
+        mk(L"STATIC", L"Save to:", 0, 0, 0, 10, 10, 203);
+        g_outdir = mk(L"EDIT", L"", ES_AUTOHSCROLL, 0, 0, 10, 10, 0, WS_EX_CLIENTEDGE); mk(L"BUTTON", L"Browse...", BS_OWNERDRAW, 0, 0, 10, 10, ID_OUTDIR);
+        mk(L"STATIC", L"Extract to:", 0, 0, 0, 10, 10, 204);
+        g_extdir = mk(L"EDIT", L"", ES_AUTOHSCROLL, 0, 0, 10, 10, ID_EXTDIR, WS_EX_CLIENTEDGE); mk(L"BUTTON", L"Browse...", BS_OWNERDRAW, 0, 0, 10, 10, ID_EXTBROWSE);
+        SendMessageW(g_outdir, EM_SETCUEBANNER, TRUE, (LPARAM)L"Next to the first file - or paste a folder here");
+        SendMessageW(g_extdir, EM_SETCUEBANNER, TRUE, (LPARAM)L"Next to the archive - or paste a folder here");
+        g_btnc = mk(L"BUTTON", L"Compress", BS_OWNERDRAW, 0, 0, 10, 10, ID_COMPRESS);
+        g_btnx = mk(L"BUTTON", L"Open archive and extract...", BS_OWNERDRAW, 0, 0, 10, 10, ID_EXTRACT);
+        g_btno = mk(L"BUTTON", L"Open folder", BS_OWNERDRAW, 0, 0, 10, 10, ID_OPENDIR);
         g_verify = mk(L"BUTTON", L"Check every archive after making it", BS_AUTOCHECKBOX, 0, 0, 10, 10, ID_VERIFY); SendMessageW(g_verify, BM_SETCHECK, BST_CHECKED, 0);
-        g_prog = mk(PROGRESS_CLASSW, L"", PBS_MARQUEE, 0, 0, 10, 10, ID_PROG);
+        g_prog = mk(PROGRESS_CLASSW, L"", PBS_SMOOTH, 0, 0, 10, 10, ID_PROG); SendMessageW(g_prog, PBM_SETRANGE32, 0, 1000);
         g_log = mk(L"EDIT", L"", ES_MULTILINE | ES_READONLY | WS_VSCROLL | ES_AUTOVSCROLL, 0, 0, 10, 10, ID_LOG, WS_EX_CLIENTEDGE);
         refresh_formats(); DragAcceptFiles(h, TRUE);
-        log(L"HX Compressor 1.0 - Michael Hugh Harrington. HX is Patent Pending (U.S. Provisional App. 64/192,843).");
+        log(L"HX Compressor 1.1 - Michael Hugh Harrington. HX is Patent Pending (U.S. Provisional App. 64/192,843).");
         log(L"Free for personal use and research; commercial use needs a license. Tools folder: " + g_tools);
         update_controls(); return 0; }
     case WM_SIZE: layout(LOWORD(lp), HIWORD(lp)); return 0;
-    case WM_GETMINMAXINFO: ((MINMAXINFO *)lp)->ptMinTrackSize = {S(760), S(560)}; return 0;
+    case WM_GETMINMAXINFO: ((MINMAXINFO *)lp)->ptMinTrackSize = {S(380), S(470)}; return 0;
     case WM_DPICHANGED: { g_dpi = HIWORD(wp); RECT *r = (RECT *)lp; SetWindowPos(h, nullptr, r->left, r->top, r->right - r->left, r->bottom - r->top, SWP_NOZORDER); return 0; }
+    case WM_PAINT: {   // the green frame around the whole window
+        PAINTSTRUCT ps; HDC dc = BeginPaint(h, &ps); RECT rc; GetClientRect(h, &rc); int t = max(2, S(3)); HBRUSH g = CreateSolidBrush(C_GREEN);
+        RECT a = {0, 0, rc.right, t}, b = {0, rc.bottom - t, rc.right, rc.bottom}, c = {0, 0, t, rc.bottom}, d = {rc.right - t, 0, rc.right, rc.bottom};
+        FillRect(dc, &a, g); FillRect(dc, &b, g); FillRect(dc, &c, g); FillRect(dc, &d, g); DeleteObject(g); EndPaint(h, &ps); return 0; }
+    case WM_DRAWITEM: draw_button((DRAWITEMSTRUCT *)lp); return TRUE;
+    case WM_TIMER: if (wp == 1) {   // the bar rushes to full when a job is done
+        g_fill = min(1000, g_fill + 90); SendMessageW(g_prog, PBM_SETPOS, min(1000, g_fill + 1), 0); SendMessageW(g_prog, PBM_SETPOS, g_fill, 0);
+        if (g_fill >= 1000) { SendMessageW(g_prog, PBM_SETRANGE32, 0, 999); SendMessageW(g_prog, PBM_SETPOS, 999, 0); KillTimer(h, 1); } } return 0;
     case WM_DROPFILES: { HDROP d = (HDROP)wp; UINT n = DragQueryFileW(d, 0xFFFFFFFF, nullptr, 0); vector<W> v;
         for (UINT i = 0; i < n; i++) { wchar_t p[32768]; DragQueryFileW(d, i, p, 32768); v.push_back(p); } DragFinish(d); if (!g_busy) add_files(v); return 0; }
     case WM_LOGLINE: { W *s = (W *)lp; int len = GetWindowTextLengthW(g_log); SendMessageW(g_log, EM_SETSEL, len, len); SendMessageW(g_log, EM_REPLACESEL, 0, (LPARAM)(*s + L"\r\n").c_str()); delete s; return 0; }
-    case WM_JOBDONE: g_busy = false; SendMessageW(g_prog, PBM_SETMARQUEE, FALSE, 0); update_controls(); return 0;
+    case WM_JOBDONE: { W *dir = (W *)lp; if (dir) { g_lastdir = *dir; delete dir; } g_busy = false; set_running(false);
+        if (!wp) SendMessageW(g_prog, PBM_SETSTATE, PBST_ERROR, 0); g_fill = 0; SetTimer(h, 1, 15, nullptr); update_controls(); return 0; }
     case WM_COMMAND: switch (LOWORD(wp)) {
         case ID_ADDF: { auto v = pick_items(h, L"Choose files to compress", false, true, g_files.empty() ? out_box() : parent(g_files.back())); if (!v.empty()) add_files(v); break; }
         case ID_ADDD: { W f = pick_folder(h, L"Choose a folder to compress"); if (!f.empty()) add_files({f}); break; }
         case ID_CLEAR: g_files.clear(); refresh_list(); update_controls(); break;
         case ID_OUTDIR: { W f = pick_folder(h, L"Save the archive to this folder"); if (!f.empty()) SetWindowTextW(g_outdir, f.c_str()); break; }
+        case ID_EXTBROWSE: { W f = pick_folder(h, L"Extract into this folder", ext_box()); if (!f.empty()) SetWindowTextW(g_extdir, f.c_str()); break; }
+        case ID_OPENDIR: if (!g_lastdir.empty()) ShellExecuteW(h, L"open", g_lastdir.c_str(), nullptr, nullptr, SW_SHOWNORMAL); break;
         case ID_FMT: if (HIWORD(wp) == CBN_SELCHANGE) update_controls(); break;
         case ID_COMPRESS: { if (g_busy || g_files.empty()) break; Job J; J.files = g_files; J.fmt = (int)SendMessageW(g_fmt, CB_GETCURSEL, 0, 0);
             J.complete = SendMessageW(g_complete, BM_GETCHECK, 0, 0) == BST_CHECKED; J.verify = SendMessageW(g_verify, BM_GETCHECK, 0, 0) == BST_CHECKED;
             W ob = out_box(); J.outdir = ob.empty() ? parent(g_files[0]) : ob; CreateDirectoryW(J.outdir.c_str(), nullptr);
             if (!isdir(J.outdir)) { MessageBoxW(h, L"The Save to folder does not exist.", L"HX Compressor", MB_ICONWARNING); break; }
-            g_busy = true; update_controls(); SendMessageW(g_prog, PBM_SETMARQUEE, TRUE, 30); thread(compress_job, J).detach(); break; }
+            g_busy = true; update_controls(); set_running(true); thread(compress_job, J).detach(); break; }
         case ID_EXTRACT: { if (g_busy) break;
             static const COMDLG_FILTERSPEC ft[] = {{L"Archives", L"*.hx;*.zip;*.7z;*.tar;*.gz;*.tgz;*.xz;*.txz;*.zst;*.br;*.knz;*.flac;*.wv;*.webp;*.jxl;*.rar;*.bz2"}, {L"All files", L"*.*"}};
-            auto v = pick_items(h, L"Open an archive to extract", false, false, out_box(), ft, 2); if (v.empty()) break;
-            W arc = v[0], dest = out_box(); if (dest.empty() || !isdir(dest)) dest = parent(arc);   // the Save to folder, or next to the archive
-            SetWindowTextW(g_outdir, dest.c_str());
-            g_busy = true; update_controls(); SendMessageW(g_prog, PBM_SETMARQUEE, TRUE, 30); thread(extract_job, arc, dest).detach(); break; }
+            W start = ext_box(); if (start.empty() || !isdir(start)) start = out_box();
+            auto v = pick_items(h, L"Open an archive to extract", false, false, start, ft, 2); if (v.empty()) break;
+            W arc = v[0], dest = ext_box(); if (dest.empty()) dest = parent(arc);   // the Extract to folder, or next to the archive
+            SHCreateDirectoryExW(nullptr, dest.c_str(), nullptr);
+            if (!isdir(dest)) { MessageBoxW(h, L"The Extract to folder could not be made.", L"HX Compressor", MB_ICONWARNING); break; }
+            g_busy = true; update_controls(); set_running(true); thread(extract_job, arc, dest).detach(); break; }
         } return 0;
     case WM_DESTROY: PostQuitMessage(0); return 0;
     }
@@ -311,9 +371,9 @@ static LRESULT CALLBACK proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
 int WINAPI wWinMain(HINSTANCE hi, HINSTANCE, PWSTR cmd, int show) {
     INITCOMMONCONTROLSEX ic = {sizeof(ic), ICC_PROGRESS_CLASS | ICC_STANDARD_CLASSES}; InitCommonControlsEx(&ic); CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     wchar_t me[MAX_PATH]; GetModuleFileNameW(nullptr, me, MAX_PATH); g_dir = parent(me); g_tools = isdir(g_dir + L"\\tools") ? g_dir + L"\\tools" : g_dir;
-    WNDCLASSW wc = {}; wc.lpfnWndProc = proc; wc.hInstance = hi; wc.lpszClassName = L"HXCompressor"; wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    WNDCLASSW wc = {}; wc.lpfnWndProc = proc; wc.style = CS_HREDRAW | CS_VREDRAW; wc.hInstance = hi; wc.lpszClassName = L"HXCompressor"; wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1); wc.hIcon = LoadIconW(hi, L"APPICON"); RegisterClassW(&wc);
-    HWND h = CreateWindowExW(0, L"HXCompressor", L"HX Compressor - Patent Pending", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 820, 640, nullptr, nullptr, hi, nullptr);
+    HWND h = CreateWindowExW(0, L"HXCompressor", L"HX Compressor - Patent Pending", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, CW_USEDEFAULT, CW_USEDEFAULT, 820, 640, nullptr, nullptr, hi, nullptr);
     ShowWindow(h, show); UpdateWindow(h);
     int argc = 0; LPWSTR *argv = CommandLineToArgvW(GetCommandLineW(), &argc); vector<W> v; for (int i = 1; i < argc; i++) v.push_back(argv[i]); if (!v.empty()) add_files(v);
     MSG m; while (GetMessageW(&m, nullptr, 0, 0)) { if (!IsDialogMessageW(h, &m)) { TranslateMessage(&m); DispatchMessageW(&m); } }

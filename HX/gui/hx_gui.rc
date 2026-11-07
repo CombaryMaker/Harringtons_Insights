@@ -1,10 +1,10 @@
 1 24 "hx_gui.manifest"
-1 VERSIONINFO FILEVERSION 1,0,0,0 PRODUCTVERSION 1,0,0,0
+1 VERSIONINFO FILEVERSION 1,1,0,0 PRODUCTVERSION 1,1,0,0
 BEGIN BLOCK "StringFileInfo" BEGIN BLOCK "040904B0" BEGIN
  VALUE "CompanyName", "Michael Hugh Harrington"
  VALUE "FileDescription", "HX Compressor"
- VALUE "FileVersion", "1.0"
+ VALUE "FileVersion", "1.1"
  VALUE "LegalCopyright", "(c) 2026 Michael Hugh Harrington. Patent Pending, U.S. Provisional App. 64/192,843"
  VALUE "ProductName", "HX Compressor"
- VALUE "ProductVersion", "1.0"
+ VALUE "ProductVersion", "1.1"
 END END BLOCK "VarFileInfo" BEGIN VALUE "Translation", 0x409, 1200 END END
