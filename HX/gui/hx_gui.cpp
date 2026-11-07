@@ -52,6 +52,7 @@ static W g_lastdir; static int g_fill = 0;
 static W g_dir, g_tools;
 static vector<W> g_files;
 static bool g_busy = false;
+static int g_extra = 0;   // how much the results box has been stretched (taken from the file list)
 static int g_dpi = 96; static HFONT g_font, g_bold, g_ital;
 static int S(int v) { return MulDiv(v, g_dpi, 96); }   // sizes are written for 100% scaling and grown to the screen's setting
 
@@ -303,30 +304,33 @@ static int place(int W_, int H_, int listH, bool apply) {
     if (fw >= b1 + b2 + b3 + 2 * g) { mv(g_btnc, m, y, b1, ah); mv(g_btnx, m + b1 + g, y, b2, ah); mv(g_btno, m + b1 + b2 + 2 * g, y, b3, ah); y += ah + g; }
     else { int hw = (fw - g) / 2; mv(g_btnc, m, y, hw, ah); mv(g_btno, m + hw + g, y, fw - hw - g, ah); y += ah + g / 2; mv(g_btnx, m, y, fw, ah); y += ah + g; }
     mv(g_verify, m, y, fw, S(22)); y += S(28);
-    mv(g_prog, m, y, fw, S(6)); y += S(6) + g;
-    int fh = S(38), gs = S(16), lh = H_ - y - m - fh - S(4); mv(g_log, m, y, fw, lh); mv(it(206), m, H_ - m - fh + S(2), fw, fh);
-    if (apply) SetWindowPos(it(207), HWND_TOP, m + fw - gs - S(2), y + lh - gs - S(2), gs, gs, 0);   // grip on the results box corner
+    mv(g_prog, m, y, fw, S(6)); y += S(6) + S(2);
+    mv(it(207), m, y, fw, S(10)); y += S(10);   // drag bar on top of the results box: up = bigger results box
+    int fh = S(38), lh = H_ - y - m - fh - S(4); mv(g_log, m, y, fw, lh); mv(it(206), m, H_ - m - fh + S(2), fw, fh);
     return y;
 }
 static void layout(int W_, int H_) {
-    int listH = S(150), need = place(W_, H_, listH, false) + S(70) + S(14) + S(42);   // keep at least a few lines of the log
+    int listH = max(S(40), S(150) - g_extra), need = place(W_, H_, listH, false) + S(48) + S(14) + S(42);   // the results box takes room from the file list
     if (need > H_) listH = max(S(56), listH - (need - H_));
     place(W_, H_, listH, true); InvalidateRect(g_wnd, nullptr, TRUE);
 }
 // Grip on the results box: drag it to make the results box taller/shorter and wider/narrower.
+// Drag bar on top of the results box: drag up to see more results, down for a bigger file list. The window keeps its size.
+static void layout(int W_, int H_);
 static LRESULT CALLBACK grip_proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
-    static POINT p0; static RECT r0;
+    static POINT p0; static int e0;
     switch (msg) {
-    case WM_PAINT: { PAINTSTRUCT ps; HDC dc = BeginPaint(h, &ps); RECT rc; GetClientRect(h, &rc); FillRect(dc, &rc, GetSysColorBrush(COLOR_WINDOW));
-        DrawFrameControl(dc, &rc, DFC_SCROLL, DFCS_SCROLLSIZEGRIP); EndPaint(h, &ps); return 0; }
-    case WM_SETCURSOR: SetCursor(LoadCursor(nullptr, IDC_SIZENWSE)); return TRUE;
-    case WM_LBUTTONDOWN: SetCapture(h); GetCursorPos(&p0); GetWindowRect(g_wnd, &r0); return 0;
+    case WM_PAINT: { PAINTSTRUCT ps; HDC dc = BeginPaint(h, &ps); RECT rc; GetClientRect(h, &rc); FillRect(dc, &rc, GetSysColorBrush(COLOR_BTNFACE));
+        HBRUSH d = CreateSolidBrush(RGB(120, 135, 145)); int cx = (rc.right - rc.left) / 2, cy = (rc.bottom - rc.top) / 2, dot = max(2, S(2));
+        for (int i = -3; i <= 3; i++) { RECT r = {cx + i * S(7) - dot / 2, cy - S(2) - dot / 2, cx + i * S(7) + dot / 2 + 1, cy - S(2) + dot / 2 + 1}; FillRect(dc, &r, d); OffsetRect(&r, 0, S(4)); FillRect(dc, &r, d); }
+        DeleteObject(d); EndPaint(h, &ps); return 0; }
+    case WM_SETCURSOR: SetCursor(LoadCursor(nullptr, IDC_SIZENS)); return TRUE;
+    case WM_LBUTTONDOWN: SetCapture(h); GetCursorPos(&p0); e0 = g_extra; return 0;
     case WM_MOUSEMOVE: if (GetCapture() == h) { POINT p; GetCursorPos(&p);
-            MONITORINFO mi = {sizeof(mi)}; GetMonitorInfoW(MonitorFromWindow(g_wnd, MONITOR_DEFAULTTONEAREST), &mi);
-            int w = max(S(380), (int)(r0.right - r0.left + p.x - p0.x)), hh = max(S(470), (int)(r0.bottom - r0.top + p.y - p0.y));
-            hh = min<int>(hh, mi.rcWork.bottom - r0.top);   // the bottom line stays on the screen
-            SetWindowPos(g_wnd, nullptr, 0, 0, w, hh, SWP_NOMOVE | SWP_NOZORDER); } return 0;
+            g_extra = max(-S(300), min(S(150) - S(40), e0 + (int)(p0.y - p.y)));
+            RECT rc; GetClientRect(g_wnd, &rc); layout(rc.right, rc.bottom); UpdateWindow(g_wnd); } return 0;
     case WM_LBUTTONUP: ReleaseCapture(); return 0;
+    case WM_LBUTTONDBLCLK: g_extra = g_extra > 0 ? 0 : S(150) - S(40); { RECT rc; GetClientRect(g_wnd, &rc); layout(rc.right, rc.bottom); } return 0;   // double-click: results big / back
     }
     return DefWindowProcW(h, msg, wp, lp);
 }
@@ -359,7 +363,7 @@ static LRESULT CALLBACK proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
         g_verify = mk(L"BUTTON", L"Check every archive after making it", BS_AUTOCHECKBOX, 0, 0, 10, 10, ID_VERIFY); SendMessageW(g_verify, BM_SETCHECK, BST_CHECKED, 0);
         g_prog = mk(PROGRESS_CLASSW, L"", PBS_SMOOTH, 0, 0, 10, 10, ID_PROG); SendMessageW(g_prog, PBM_SETRANGE32, 0, 1000);
         g_log = mk(L"EDIT", L"", ES_MULTILINE | ES_READONLY | WS_VSCROLL | ES_AUTOVSCROLL | WS_CLIPSIBLINGS, 0, 0, 10, 10, ID_LOG, WS_EX_CLIENTEDGE);
-        CreateWindowExW(0, L"HXGrip", L"", WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS, 0, 0, S(16), S(16), h, (HMENU)207, GetModuleHandleW(nullptr), nullptr);
+        CreateWindowExW(0, L"HXGrip", L"", WS_CHILD | WS_VISIBLE, 0, 0, S(100), S(10), h, (HMENU)207, GetModuleHandleW(nullptr), nullptr);
         refresh_formats(); DragAcceptFiles(h, TRUE);
         {   // open at a size that fits: a short results box (about 5 lines) and never taller than the screen
             int cw = S(860), top = place(cw, S(2000), S(130), false), ch = top + S(96) + S(4) + S(38) + S(14);
@@ -432,7 +436,7 @@ int WINAPI wWinMain(HINSTANCE hi, HINSTANCE, PWSTR cmd, int show) {
     wchar_t me[MAX_PATH]; GetModuleFileNameW(nullptr, me, MAX_PATH); g_dir = parent(me); g_tools = isdir(g_dir + L"\\tools") ? g_dir + L"\\tools" : g_dir;
     WNDCLASSW wc = {}; wc.lpfnWndProc = proc; wc.style = CS_HREDRAW | CS_VREDRAW; wc.hInstance = hi; wc.lpszClassName = L"HXCompressor"; wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1); wc.hIcon = LoadIconW(hi, L"APPICON"); RegisterClassW(&wc);
-    { WNDCLASSW g = {}; g.lpfnWndProc = grip_proc; g.hInstance = hi; g.lpszClassName = L"HXGrip"; g.hCursor = LoadCursor(nullptr, IDC_SIZENWSE); RegisterClassW(&g); }
+    { WNDCLASSW g = {}; g.lpfnWndProc = grip_proc; g.hInstance = hi; g.lpszClassName = L"HXGrip"; g.style = CS_DBLCLKS; g.hCursor = LoadCursor(nullptr, IDC_SIZENS); RegisterClassW(&g); }
     HWND h = CreateWindowExW(0, L"HXCompressor", L"HX Compressor - Patent Pending", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, CW_USEDEFAULT, CW_USEDEFAULT, 820, 640, nullptr, nullptr, hi, nullptr);
     ShowWindow(h, show); UpdateWindow(h);
     int argc = 0; LPWSTR *argv = CommandLineToArgvW(GetCommandLineW(), &argc); vector<W> v; for (int i = 1; i < argc; i++) v.push_back(argv[i]); if (!v.empty()) add_files(v);
