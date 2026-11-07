@@ -1,0 +1,17 @@
+HX for Windows (native hx.exe) - round trips on Michael's PC, 6 Nov 2026
+AMD Ryzen 5 7500X3D (6 cores / 12 threads), Windows, 12 threads. Public Silesia files. Every file decompressed and
+compared by SHA-256 hash: all exact. Times in seconds (wall clock, including program start).
+
+file     mode       input_bytes  compressed_bytes  ratio    comp_s   decomp_s  exact
+dickens  fast         10192446          2849346    3.5771     6.285    0.029   OK
+dickens  complete     10192446          2233951    4.5625    36.278    0.625   OK
+mozilla  fast         51220480         15012485    3.4119    24.227    0.095   OK
+mozilla  complete     51220480         13161908    3.8916   172.253    0.609   OK
+ooffice  fast          6152192          2243429    2.7423     5.036    0.021   OK
+ooffice  complete      6152192          2030669    3.0296    28.689    0.095   OK
+xml      fast          5345280           454071   11.7719     3.606    0.015   OK
+xml      complete      5345280           358664   14.9033    19.506    0.281   OK
+
+The Windows build makes byte-identical .hx files to the Linux build (checked on ooffice and xml, Fast and Complete).
+HX Compressor app test: xml + dickens bundled with 7-Zip into a tar, HX Fast -> archive.tar.hx, 3,290,604 bytes
+from 15,537,726 (ratio 4.72), checked byte for byte by the app.

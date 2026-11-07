@@ -48,6 +48,8 @@ static HWND g_wnd, g_list, g_fmt, g_fast, g_complete, g_outdir, g_log, g_prog, g
 static W g_dir, g_tools;
 static vector<W> g_files;
 static bool g_busy = false;
+static int g_dpi = 96; static HFONT g_font;
+static int S(int v) { return MulDiv(v, g_dpi, 96); }   // sizes are written for 100% scaling and grown to the screen's setting
 
 static W lower(W s) { for (auto &c : s) c = towlower(c); return s; }
 static bool ends(const W &s, const W &e) { W a = lower(s), b = lower(e); return a.size() >= b.size() && a.compare(a.size() - b.size(), b.size(), b) == 0; }
@@ -223,32 +225,37 @@ static W pick_folder(HWND h, const wchar_t *title) {
     LPITEMIDLIST id = SHBrowseForFolderW(&bi); if (!id) return L""; wchar_t p[MAX_PATH]; SHGetPathFromIDListW(id, p); CoTaskMemFree(id); return p;
 }
 static HWND mk(const wchar_t *cls, const wchar_t *txt, DWORD st, int x, int y, int w, int h, int id, DWORD ex = 0) {
-    HWND c = CreateWindowExW(ex, cls, txt, WS_CHILD | WS_VISIBLE | st, x, y, w, h, g_wnd, (HMENU)(INT_PTR)id, GetModuleHandleW(nullptr), nullptr);
-    SendMessageW(c, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE); return c;
+    HWND c = CreateWindowExW(ex, cls, txt, WS_CHILD | WS_VISIBLE | st, S(x), S(y), S(w), S(h), g_wnd, (HMENU)(INT_PTR)id, GetModuleHandleW(nullptr), nullptr);
+    SendMessageW(c, WM_SETFONT, (WPARAM)g_font, TRUE); return c;
 }
-static void layout(int W_, int H_) {
-    int m = 12, bw = 110;
-    MoveWindow(g_list, m, 34, W_ - 2 * m - bw - 8, 150, TRUE);
-    MoveWindow(GetDlgItem(g_wnd, ID_ADDF), W_ - m - bw, 34, bw, 26, TRUE); MoveWindow(GetDlgItem(g_wnd, ID_ADDD), W_ - m - bw, 64, bw, 26, TRUE); MoveWindow(GetDlgItem(g_wnd, ID_CLEAR), W_ - m - bw, 94, bw, 26, TRUE);
-    MoveWindow(g_fmt, 90, 196, W_ - 90 - m, 400, TRUE);
-    MoveWindow(g_outdir, 90, 258, W_ - 90 - m - 90, 24, TRUE); MoveWindow(GetDlgItem(g_wnd, ID_OUTDIR), W_ - m - 82, 257, 82, 26, TRUE);
-    MoveWindow(g_btnc, m, 294, 160, 34, TRUE); MoveWindow(g_btnx, m + 172, 294, 200, 34, TRUE); MoveWindow(g_verify, m + 386, 300, 260, 22, TRUE);
-    MoveWindow(g_prog, m, 338, W_ - 2 * m, 16, TRUE);
-    MoveWindow(g_log, m, 362, W_ - 2 * m, H_ - 362 - 30, TRUE);
+static void layout(int W_, int H_) {   // W_, H_ are real pixels; everything else is in 100% units through S()
+    auto mv = [](HWND c, int x, int y, int w, int h) { MoveWindow(c, x, y, w, h, TRUE); };
+    int m = S(12), bw = S(120), lh = S(150);
+    mv(g_list, m, S(34), W_ - 2 * m - bw - S(8), lh);
+    mv(GetDlgItem(g_wnd, ID_ADDF), W_ - m - bw, S(34), bw, S(28)); mv(GetDlgItem(g_wnd, ID_ADDD), W_ - m - bw, S(66), bw, S(28)); mv(GetDlgItem(g_wnd, ID_CLEAR), W_ - m - bw, S(98), bw, S(28));
+    mv(GetDlgItem(g_wnd, 201), m, S(200), S(80), S(20)); mv(g_fmt, S(96), S(196), W_ - S(96) - m, S(400));
+    mv(GetDlgItem(g_wnd, 202), m, S(234), S(80), S(20)); mv(g_fast, S(96), S(232), S(280), S(22)); mv(g_complete, S(386), S(232), S(280), S(22));
+    mv(GetDlgItem(g_wnd, 203), m, S(268), S(80), S(20)); mv(g_outdir, S(96), S(264), W_ - S(96) - m - S(98), S(26)); mv(GetDlgItem(g_wnd, ID_OUTDIR), W_ - m - S(90), S(263), S(90), S(28));
+    mv(g_btnc, m, S(304), S(150), S(36)); mv(g_btnx, m + S(160), S(304), S(220), S(36)); mv(g_verify, m + S(394), S(311), S(300), S(22));
+    mv(g_prog, m, S(350), W_ - 2 * m, S(14));
+    mv(g_log, m, S(372), W_ - 2 * m, max(S(60), H_ - S(372) - m));
 }
 static LRESULT CALLBACK proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
     switch (msg) {
     case WM_CREATE: {
-        g_wnd = h; mk(L"STATIC", L"Files and folders to compress (or drag them here):", 0, 12, 12, 400, 18, 0);
+        g_wnd = h; { HMODULE u = GetModuleHandleW(L"user32.dll"); auto f = (UINT(WINAPI *)(HWND))GetProcAddress(u, "GetDpiForWindow"); if (f) g_dpi = f(h); else { HDC dc = GetDC(h); g_dpi = GetDeviceCaps(dc, LOGPIXELSY); ReleaseDC(h, dc); } }
+        { NONCLIENTMETRICSW nm = {}; nm.cbSize = sizeof(nm); SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(nm), &nm, 0); nm.lfMessageFont.lfHeight = -MulDiv(10, g_dpi, 72); g_font = CreateFontIndirectW(&nm.lfMessageFont); }
+        { RECT r; GetWindowRect(h, &r); SetWindowPos(h, nullptr, 0, 0, S(860), S(680), SWP_NOMOVE | SWP_NOZORDER); }
+        mk(L"STATIC", L"Files and folders to compress (or drag them here):", 0, 12, 10, 500, 20, 0);
         g_list = mk(L"LISTBOX", L"", WS_VSCROLL | WS_HSCROLL | LBS_NOINTEGRALHEIGHT | LBS_EXTENDEDSEL, 0, 0, 10, 10, ID_LIST, WS_EX_CLIENTEDGE);
         mk(L"BUTTON", L"Add files...", BS_PUSHBUTTON, 0, 0, 10, 10, ID_ADDF); mk(L"BUTTON", L"Add folder...", BS_PUSHBUTTON, 0, 0, 10, 10, ID_ADDD); mk(L"BUTTON", L"Clear list", BS_PUSHBUTTON, 0, 0, 10, 10, ID_CLEAR);
-        mk(L"STATIC", L"Save as:", 0, 12, 199, 76, 18, 0);
+        mk(L"STATIC", L"Save as:", 0, 12, 199, 76, 18, 201);
         g_fmt = mk(L"COMBOBOX", L"", CBS_DROPDOWNLIST | WS_VSCROLL, 0, 0, 10, 10, ID_FMT);
-        mk(L"STATIC", L"HX mode:", 0, 12, 230, 76, 18, 0);
+        mk(L"STATIC", L"HX mode:", 0, 12, 230, 76, 18, 202);
         g_fast = mk(L"BUTTON", L"HX Fast - quick, very fast to open", BS_AUTORADIOBUTTON | WS_GROUP, 90, 228, 250, 20, ID_FAST);
         g_complete = mk(L"BUTTON", L"HX Complete - smallest, slower", BS_AUTORADIOBUTTON, 350, 228, 250, 20, ID_COMPLETE);
         SendMessageW(g_fast, BM_SETCHECK, BST_CHECKED, 0);
-        mk(L"STATIC", L"Save to:", 0, 12, 261, 76, 18, 0);
+        mk(L"STATIC", L"Save to:", 0, 12, 261, 76, 18, 203);
         g_outdir = mk(L"EDIT", L"", ES_AUTOHSCROLL, 0, 0, 10, 10, 0, WS_EX_CLIENTEDGE); mk(L"BUTTON", L"Browse...", BS_PUSHBUTTON, 0, 0, 10, 10, ID_OUTDIR);
         g_btnc = mk(L"BUTTON", L"Compress", BS_DEFPUSHBUTTON, 0, 0, 10, 10, ID_COMPRESS);
         g_btnx = mk(L"BUTTON", L"Open archive and extract...", BS_PUSHBUTTON, 0, 0, 10, 10, ID_EXTRACT);
@@ -260,7 +267,8 @@ static LRESULT CALLBACK proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
         log(L"Free for personal use and research; commercial use needs a license. Tools folder: " + g_tools);
         update_controls(); return 0; }
     case WM_SIZE: layout(LOWORD(lp), HIWORD(lp)); return 0;
-    case WM_GETMINMAXINFO: ((MINMAXINFO *)lp)->ptMinTrackSize = {720, 560}; return 0;
+    case WM_GETMINMAXINFO: ((MINMAXINFO *)lp)->ptMinTrackSize = {S(760), S(560)}; return 0;
+    case WM_DPICHANGED: { g_dpi = HIWORD(wp); RECT *r = (RECT *)lp; SetWindowPos(h, nullptr, r->left, r->top, r->right - r->left, r->bottom - r->top, SWP_NOZORDER); return 0; }
     case WM_DROPFILES: { HDROP d = (HDROP)wp; UINT n = DragQueryFileW(d, 0xFFFFFFFF, nullptr, 0); vector<W> v;
         for (UINT i = 0; i < n; i++) { wchar_t p[32768]; DragQueryFileW(d, i, p, 32768); v.push_back(p); } DragFinish(d); if (!g_busy) add_files(v); return 0; }
     case WM_LOGLINE: { W *s = (W *)lp; int len = GetWindowTextLengthW(g_log); SendMessageW(g_log, EM_SETSEL, len, len); SendMessageW(g_log, EM_REPLACESEL, 0, (LPARAM)(*s + L"\r\n").c_str()); delete s; return 0; }
