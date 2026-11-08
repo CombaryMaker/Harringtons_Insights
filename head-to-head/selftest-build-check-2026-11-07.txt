@@ -1,0 +1,311 @@
+BUILD CHECK - Harrington Head-to-Head 1.0 self-test (7 November 2026)
+Not a benchmark: run under Wine on a 2-core cloud machine, only to prove every fixed pairing round-trips byte for byte.
+Files: rec.bin (synthetic 13-byte records, 260,000 B), prog.bin (the xz.exe program, 462,336 B). Memory shows n/a under Wine; on Windows it is measured.
+
+Harrington Head-to-Head 1.0 - hs_zstd 1.3 (zstd level 3, Harrington Sets) vs zstd 1.5.6 -3 -T2 (stock)
+File: rec.bin (260,000 bytes), SHA-256 a0d7e87b3146de58a6c41624c86a432ad137991da04a2ff5a7d03b863b6db0f8
+Round trip (byte for byte): exact | exact
+Original size (bytes): 260,000 | 260,000
+Compressed size (bytes): 56,976 | 56,926  [Opponent >>]
+Compression ratio: 4.563x | 4.567x  [Opponent >>]
+Size difference: 0.09% larger | 
+Compress time (median): 0.032 s | 0.040 s  [<< Harrington]
+Decompress time (median): 0.035 s | 0.036 s  [<< Harrington]
+Decompress speed (MB/s): 7.0 | 6.9  [<< Harrington]
+Peak memory, compress (MB committed): n/a | n/a
+Peak memory, decompress (MB committed): n/a | n/a
+Timed runs: 3 | 3
+Order: Alternate every repeat (fairest). Each compress and decompress timed separately (wall clock, including program start), median shown.
+Matchup note: Paired by speed tier: both zstd level 3, same thread count. hs_zstd decodes on every core; the stock zstd decoder is single-threaded by design, which is the difference hs_zstd was built for. It is meant for large files (64 MB and up); on small files the two are about the same.
+These test files are the data types each Harrington tool was designed for. Both compressors always run on the same file, one after the other, on this computer. Matchups, levels and thread counts are fixed in the program. Test files come from public corpora; their size and SHA-256 are shown so anyone can check them.
+
+Harrington Head-to-Head 1.0 - HCM v3.6.1 (fast mode) vs ZPAQ 7.15 -m5 (stock libzpaq)
+File: rec.bin (260,000 bytes), SHA-256 a0d7e87b3146de58a6c41624c86a432ad137991da04a2ff5a7d03b863b6db0f8
+Round trip (byte for byte): exact | exact
+Original size (bytes): 260,000 | 260,000
+Compressed size (bytes): 28,412 | 27,894  [Opponent >>]
+Compression ratio: 9.151x | 9.321x  [Opponent >>]
+Size difference: 1.86% larger | 
+Compress time (median): 0.648 s | 0.596 s  [Opponent >>]
+Decompress time (median): 0.232 s | 0.574 s  [<< Harrington]
+Decompress speed (MB/s): 1.1 | 0.4  [<< Harrington]
+Peak memory, compress (MB committed): n/a | n/a
+Peak memory, decompress (MB committed): n/a | n/a
+Timed runs: 3 | 3
+Order: Alternate every repeat (fairest). Each compress and decompress timed separately (wall clock, including program start), median shown.
+Matchup note: Context-mixing tier (slow and strong): ZPAQ -m5 and lpaq1 are HCM's speed neighbours. ZPAQ is also a full archiver (deduplication, versions, many files); here only its single-stream compression is compared. HCM runs single-threaded here.
+These test files are the data types each Harrington tool was designed for. Both compressors always run on the same file, one after the other, on this computer. Matchups, levels and thread counts are fixed in the program. Test files come from public corpora; their size and SHA-256 are shown so anyone can check them.
+
+Harrington Head-to-Head 1.0 - HCM v3.6.1 (fast mode) vs lpaq1 -6 (stock, Matt Mahoney)
+File: rec.bin (260,000 bytes), SHA-256 a0d7e87b3146de58a6c41624c86a432ad137991da04a2ff5a7d03b863b6db0f8
+Round trip (byte for byte): exact | exact
+Original size (bytes): 260,000 | 260,000
+Compressed size (bytes): 28,412 | 51,154  [<< Harrington]
+Compression ratio: 9.151x | 5.083x  [<< Harrington]
+Size difference: 44.46% smaller | 
+Compress time (median): 0.608 s | 0.319 s  [Opponent >>]
+Decompress time (median): 0.209 s | 0.321 s  [<< Harrington]
+Decompress speed (MB/s): 1.2 | 0.8  [<< Harrington]
+Peak memory, compress (MB committed): n/a | n/a
+Peak memory, decompress (MB committed): n/a | n/a
+Timed runs: 3 | 3
+Order: Alternate every repeat (fairest). Each compress and decompress timed separately (wall clock, including program start), median shown.
+Matchup note: Context-mixing tier (slow and strong): ZPAQ -m5 and lpaq1 are HCM's speed neighbours. ZPAQ is also a full archiver (deduplication, versions, many files); here only its single-stream compression is compared. HCM runs single-threaded here.
+These test files are the data types each Harrington tool was designed for. Both compressors always run on the same file, one after the other, on this computer. Matchups, levels and thread counts are fixed in the program. Test files come from public corpora; their size and SHA-256 are shown so anyone can check them.
+
+Harrington Head-to-Head 1.0 - zpaq-hi -m5 vs ZPAQ 7.15 -m5 (stock libzpaq)
+File: rec.bin (260,000 bytes), SHA-256 a0d7e87b3146de58a6c41624c86a432ad137991da04a2ff5a7d03b863b6db0f8
+Round trip (byte for byte): exact | exact
+Original size (bytes): 260,000 | 260,000
+Compressed size (bytes): 27,012 | 27,894  [<< Harrington]
+Compression ratio: 9.625x | 9.321x  [<< Harrington]
+Size difference: 3.16% smaller | 
+Compress time (median): 2.518 s | 0.649 s  [Opponent >>]
+Decompress time (median): 0.725 s | 0.685 s  [Opponent >>]
+Decompress speed (MB/s): 0.3 | 0.4  [Opponent >>]
+Peak memory, compress (MB committed): n/a | n/a
+Peak memory, decompress (MB committed): n/a | n/a
+Timed runs: 3 | 3
+Order: Alternate every repeat (fairest). Each compress and decompress timed separately (wall clock, including program start), median shown.
+Matchup note: Same program, same level (-m5). zpaq-hi tries up to four models per block and keeps the smallest, so it compresses about 1.8x slower; where an extra model wins, decoding is slower too. The stock ZPAQ decoder reads both outputs.
+These test files are the data types each Harrington tool was designed for. Both compressors always run on the same file, one after the other, on this computer. Matchups, levels and thread counts are fixed in the program. Test files come from public corpora; their size and SHA-256 are shown so anyone can check them.
+
+Harrington Head-to-Head 1.0 - lpaq1-h -6 (best of 6 settings) vs lpaq1 -6 (stock, Matt Mahoney)
+File: rec.bin (260,000 bytes), SHA-256 a0d7e87b3146de58a6c41624c86a432ad137991da04a2ff5a7d03b863b6db0f8
+Round trip (byte for byte): exact | exact
+Original size (bytes): 260,000 | 260,000
+Compressed size (bytes): 43,993 | 51,154  [<< Harrington]
+Compression ratio: 5.910x | 5.083x  [<< Harrington]
+Size difference: 14.00% smaller | 
+Compress time (median): 2.035 s | 0.322 s  [Opponent >>]
+Decompress time (median): 0.333 s | 0.353 s  [<< Harrington]
+Decompress speed (MB/s): 0.7 | 0.7  [<< Harrington]
+Peak memory, compress (MB committed): n/a | n/a
+Peak memory, decompress (MB committed): n/a | n/a
+Timed runs: 3 | 3
+Order: Alternate every repeat (fairest). Each compress and decompress timed separately (wall clock, including program start), median shown.
+Matchup note: Same engine and memory (option 6). lpaq1-h tries six settings per file, so it compresses about 6x slower. Files that use its record additions need the lpaq1-h decoder; on plain text it writes the same file as stock lpaq1.
+These test files are the data types each Harrington tool was designed for. Both compressors always run on the same file, one after the other, on this computer. Matchups, levels and thread counts are fixed in the program. Test files come from public corpora; their size and SHA-256 are shown so anyone can check them.
+
+Harrington Head-to-Head 1.0 - bzip2-hi vs bzip2 -9 (stock libbz2)
+File: rec.bin (260,000 bytes), SHA-256 a0d7e87b3146de58a6c41624c86a432ad137991da04a2ff5a7d03b863b6db0f8
+Round trip (byte for byte): exact | exact
+Original size (bytes): 260,000 | 260,000
+Compressed size (bytes): 62,200 | 66,597  [<< Harrington]
+Compression ratio: 4.180x | 3.904x  [<< Harrington]
+Size difference: 6.60% smaller | 
+Compress time (median): 5.407 s | 0.042 s  [Opponent >>]
+Decompress time (median): 0.028 s | 0.034 s  [<< Harrington]
+Decompress speed (MB/s): 8.8 | 7.3  [<< Harrington]
+Peak memory, compress (MB committed): n/a | n/a
+Peak memory, decompress (MB committed): n/a | n/a
+Timed runs: 3 | 3
+Order: Alternate every repeat (fairest). Each compress and decompress timed separately (wall clock, including program start), median shown.
+Matchup note: Both are standard .bz2 read by the stock libbz2 decoder. bzip2-hi also chooses the block size (1-9) and searches the Huffman tables, so it compresses several times slower; stock bzip2 runs at -9.
+These test files are the data types each Harrington tool was designed for. Both compressors always run on the same file, one after the other, on this computer. Matchups, levels and thread counts are fixed in the program. Test files come from public corpora; their size and SHA-256 are shown so anyone can check them.
+
+Harrington Head-to-Head 1.0 - lzav-hi (LZAV format 4) vs LZAV 7.1 HI (stock encoder)
+File: rec.bin (260,000 bytes), SHA-256 a0d7e87b3146de58a6c41624c86a432ad137991da04a2ff5a7d03b863b6db0f8
+Round trip (byte for byte): exact | exact
+Original size (bytes): 260,000 | 260,000
+Compressed size (bytes): 97,514 | 99,727  [<< Harrington]
+Compression ratio: 2.666x | 2.607x  [<< Harrington]
+Size difference: 2.22% smaller | 
+Compress time (median): 0.076 s | 0.030 s  [Opponent >>]
+Decompress time (median): 0.023 s | 0.019 s  [Opponent >>]
+Decompress speed (MB/s): 10.7 | 12.8  [Opponent >>]
+Peak memory, compress (MB committed): n/a | n/a
+Peak memory, decompress (MB committed): n/a | n/a
+Timed runs: 3 | 3
+Order: Alternate every repeat (fairest). Each compress and decompress timed separately (wall clock, including program start), median shown.
+Matchup note: Same LZAV format, both decoded by the stock LZAV 7.1 decoder. lzav-hi uses optimal parsing, so it compresses far slower; it is built for files written once and read many times.
+These test files are the data types each Harrington tool was designed for. Both compressors always run on the same file, one after the other, on this computer. Matchups, levels and thread counts are fixed in the program. Test files come from public corpora; their size and SHA-256 are shown so anyone can check them.
+
+Harrington Head-to-Head 1.0 - xz-hi (standard .xz) vs xz 5.6.3 -9e (stock)
+File: rec.bin (260,000 bytes), SHA-256 a0d7e87b3146de58a6c41624c86a432ad137991da04a2ff5a7d03b863b6db0f8
+Round trip (byte for byte): exact | exact
+Original size (bytes): 260,000 | 260,000
+Compressed size (bytes): 33,220 | 51,480  [<< Harrington]
+Compression ratio: 7.827x | 5.051x  [<< Harrington]
+Size difference: 35.47% smaller | 
+Compress time (median): 25.204 s | 0.177 s  [Opponent >>]
+Decompress time (median): 0.026 s | 0.030 s  [<< Harrington]
+Decompress speed (MB/s): 9.4 | 8.1  [<< Harrington]
+Peak memory, compress (MB committed): n/a | n/a
+Peak memory, decompress (MB committed): n/a | n/a
+Timed runs: 3 | 3
+Order: Alternate every repeat (fairest). Each compress and decompress timed separately (wall clock, including program start), median shown.
+Matchup note: Both are standard .xz decoded by stock xz. xz-hi searches xz's own settings and filters per file (up to about 400 tries on binary data), so it compresses far slower; stock xz runs at -9e.
+These test files are the data types each Harrington tool was designed for. Both compressors always run on the same file, one after the other, on this computer. Matchups, levels and thread counts are fixed in the program. Test files come from public corpora; their size and SHA-256 are shown so anyone can check them.
+
+Harrington Head-to-Head 1.0 - rd-zstd (record delta + zstd -19) vs zstd 1.5.6 -19 (stock)
+File: rec.bin (260,000 bytes), SHA-256 a0d7e87b3146de58a6c41624c86a432ad137991da04a2ff5a7d03b863b6db0f8
+Round trip (byte for byte): exact | exact
+Original size (bytes): 260,000 | 260,000
+Compressed size (bytes): 35,470 | 53,681  [<< Harrington]
+Compression ratio: 7.330x | 4.843x  [<< Harrington]
+Size difference: 33.92% smaller | 
+Compress time (median): 0.196 s | 0.121 s  [Opponent >>]
+Decompress time (median): 0.025 s | 0.028 s  [<< Harrington]
+Decompress speed (MB/s): 10.0 | 8.8  [<< Harrington]
+Peak memory, compress (MB committed): n/a | n/a
+Peak memory, decompress (MB committed): n/a | n/a
+Timed runs: 3 | 3
+Order: Alternate every repeat (fairest). Each compress and decompress timed separately (wall clock, including program start), median shown.
+Matchup note: Both zstd level 19. rd-zstd adds a record-length delta for fixed-record data (tables, images, sensor rows). On other data it keeps plain zstd and adds an 8-byte header, so it can be 8 bytes larger.
+These test files are the data types each Harrington tool was designed for. Both compressors always run on the same file, one after the other, on this computer. Matchups, levels and thread counts are fixed in the program. Test files come from public corpora; their size and SHA-256 are shown so anyone can check them.
+
+
+Harrington Head-to-Head 1.0 - hs_zstd 1.3 (zstd level 3, Harrington Sets) vs zstd 1.5.6 -3 -T2 (stock)
+File: prog.bin (462,336 bytes), SHA-256 e1d191ceffbf2f0679989fc8618d795bdad3f9f04cdd5d3477a9ab0c76735dff
+Round trip (byte for byte): exact | exact
+Original size (bytes): 462,336 | 462,336
+Compressed size (bytes): 218,977 | 218,927  [Opponent >>]
+Compression ratio: 2.111x | 2.112x  [Opponent >>]
+Size difference: 0.02% larger | 
+Compress time (median): 0.036 s | 0.031 s  [Opponent >>]
+Decompress time (median): 0.027 s | 0.023 s  [Opponent >>]
+Decompress speed (MB/s): 16.5 | 19.2  [Opponent >>]
+Peak memory, compress (MB committed): n/a | n/a
+Peak memory, decompress (MB committed): 4.9 | 4.5  [Opponent >>]
+Timed runs: 3 | 3
+Order: Alternate every repeat (fairest). Each compress and decompress timed separately (wall clock, including program start), median shown.
+Matchup note: Paired by speed tier: both zstd level 3, same thread count. hs_zstd decodes on every core; the stock zstd decoder is single-threaded by design, which is the difference hs_zstd was built for. It is meant for large files (64 MB and up); on small files the two are about the same.
+These test files are the data types each Harrington tool was designed for. Both compressors always run on the same file, one after the other, on this computer. Matchups, levels and thread counts are fixed in the program. Test files come from public corpora; their size and SHA-256 are shown so anyone can check them.
+
+Harrington Head-to-Head 1.0 - HCM v3.6.1 (fast mode) vs ZPAQ 7.15 -m5 (stock libzpaq)
+File: prog.bin (462,336 bytes), SHA-256 e1d191ceffbf2f0679989fc8618d795bdad3f9f04cdd5d3477a9ab0c76735dff
+Round trip (byte for byte): exact | exact
+Original size (bytes): 462,336 | 462,336
+Compressed size (bytes): 175,874 | 163,618  [Opponent >>]
+Compression ratio: 2.629x | 2.826x  [Opponent >>]
+Size difference: 7.49% larger | 
+Compress time (median): 1.390 s | 1.101 s  [Opponent >>]
+Decompress time (median): 0.510 s | 1.144 s  [<< Harrington]
+Decompress speed (MB/s): 0.9 | 0.4  [<< Harrington]
+Peak memory, compress (MB committed): n/a | n/a
+Peak memory, decompress (MB committed): n/a | n/a
+Timed runs: 3 | 3
+Order: Alternate every repeat (fairest). Each compress and decompress timed separately (wall clock, including program start), median shown.
+Matchup note: Context-mixing tier (slow and strong): ZPAQ -m5 and lpaq1 are HCM's speed neighbours. ZPAQ is also a full archiver (deduplication, versions, many files); here only its single-stream compression is compared. HCM runs single-threaded here.
+These test files are the data types each Harrington tool was designed for. Both compressors always run on the same file, one after the other, on this computer. Matchups, levels and thread counts are fixed in the program. Test files come from public corpora; their size and SHA-256 are shown so anyone can check them.
+
+Harrington Head-to-Head 1.0 - HCM v3.6.1 (fast mode) vs lpaq1 -6 (stock, Matt Mahoney)
+File: prog.bin (462,336 bytes), SHA-256 e1d191ceffbf2f0679989fc8618d795bdad3f9f04cdd5d3477a9ab0c76735dff
+Round trip (byte for byte): exact | exact
+Original size (bytes): 462,336 | 462,336
+Compressed size (bytes): 175,874 | 174,696  [Opponent >>]
+Compression ratio: 2.629x | 2.647x  [Opponent >>]
+Size difference: 0.67% larger | 
+Compress time (median): 1.254 s | 0.540 s  [Opponent >>]
+Decompress time (median): 0.393 s | 0.599 s  [<< Harrington]
+Decompress speed (MB/s): 1.1 | 0.7  [<< Harrington]
+Peak memory, compress (MB committed): n/a | n/a
+Peak memory, decompress (MB committed): n/a | n/a
+Timed runs: 3 | 3
+Order: Alternate every repeat (fairest). Each compress and decompress timed separately (wall clock, including program start), median shown.
+Matchup note: Context-mixing tier (slow and strong): ZPAQ -m5 and lpaq1 are HCM's speed neighbours. ZPAQ is also a full archiver (deduplication, versions, many files); here only its single-stream compression is compared. HCM runs single-threaded here.
+These test files are the data types each Harrington tool was designed for. Both compressors always run on the same file, one after the other, on this computer. Matchups, levels and thread counts are fixed in the program. Test files come from public corpora; their size and SHA-256 are shown so anyone can check them.
+
+Harrington Head-to-Head 1.0 - zpaq-hi -m5 vs ZPAQ 7.15 -m5 (stock libzpaq)
+File: prog.bin (462,336 bytes), SHA-256 e1d191ceffbf2f0679989fc8618d795bdad3f9f04cdd5d3477a9ab0c76735dff
+Round trip (byte for byte): exact | exact
+Original size (bytes): 462,336 | 462,336
+Compressed size (bytes): 163,345 | 163,618  [<< Harrington]
+Compression ratio: 2.830x | 2.826x  [<< Harrington]
+Size difference: 0.17% smaller | 
+Compress time (median): 1.973 s | 0.980 s  [Opponent >>]
+Decompress time (median): 1.076 s | 1.015 s  [Opponent >>]
+Decompress speed (MB/s): 0.4 | 0.4  [Opponent >>]
+Peak memory, compress (MB committed): n/a | n/a
+Peak memory, decompress (MB committed): n/a | n/a
+Timed runs: 3 | 3
+Order: Alternate every repeat (fairest). Each compress and decompress timed separately (wall clock, including program start), median shown.
+Matchup note: Same program, same level (-m5). zpaq-hi tries up to four models per block and keeps the smallest, so it compresses about 1.8x slower; where an extra model wins, decoding is slower too. The stock ZPAQ decoder reads both outputs.
+These test files are the data types each Harrington tool was designed for. Both compressors always run on the same file, one after the other, on this computer. Matchups, levels and thread counts are fixed in the program. Test files come from public corpora; their size and SHA-256 are shown so anyone can check them.
+
+Harrington Head-to-Head 1.0 - lpaq1-h -6 (best of 6 settings) vs lpaq1 -6 (stock, Matt Mahoney)
+File: prog.bin (462,336 bytes), SHA-256 e1d191ceffbf2f0679989fc8618d795bdad3f9f04cdd5d3477a9ab0c76735dff
+Round trip (byte for byte): exact | exact
+Original size (bytes): 462,336 | 462,336
+Compressed size (bytes): 172,648 | 174,696  [<< Harrington]
+Compression ratio: 2.678x | 2.647x  [<< Harrington]
+Size difference: 1.17% smaller | 
+Compress time (median): 3.639 s | 0.614 s  [Opponent >>]
+Decompress time (median): 0.625 s | 0.584 s  [Opponent >>]
+Decompress speed (MB/s): 0.7 | 0.8  [Opponent >>]
+Peak memory, compress (MB committed): n/a | n/a
+Peak memory, decompress (MB committed): n/a | n/a
+Timed runs: 3 | 3
+Order: Alternate every repeat (fairest). Each compress and decompress timed separately (wall clock, including program start), median shown.
+Matchup note: Same engine and memory (option 6). lpaq1-h tries six settings per file, so it compresses about 6x slower. Files that use its record additions need the lpaq1-h decoder; on plain text it writes the same file as stock lpaq1.
+These test files are the data types each Harrington tool was designed for. Both compressors always run on the same file, one after the other, on this computer. Matchups, levels and thread counts are fixed in the program. Test files come from public corpora; their size and SHA-256 are shown so anyone can check them.
+
+Harrington Head-to-Head 1.0 - bzip2-hi vs bzip2 -9 (stock libbz2)
+File: prog.bin (462,336 bytes), SHA-256 e1d191ceffbf2f0679989fc8618d795bdad3f9f04cdd5d3477a9ab0c76735dff
+Round trip (byte for byte): exact | exact
+Original size (bytes): 462,336 | 462,336
+Compressed size (bytes): 208,355 | 216,462  [<< Harrington]
+Compression ratio: 2.219x | 2.136x  [<< Harrington]
+Size difference: 3.75% smaller | 
+Compress time (median): 15.664 s | 0.052 s  [Opponent >>]
+Decompress time (median): 0.047 s | 0.040 s  [Opponent >>]
+Decompress speed (MB/s): 9.4 | 11.0  [Opponent >>]
+Peak memory, compress (MB committed): n/a | n/a
+Peak memory, decompress (MB committed): n/a | n/a
+Timed runs: 3 | 3
+Order: Alternate every repeat (fairest). Each compress and decompress timed separately (wall clock, including program start), median shown.
+Matchup note: Both are standard .bz2 read by the stock libbz2 decoder. bzip2-hi also chooses the block size (1-9) and searches the Huffman tables, so it compresses several times slower; stock bzip2 runs at -9.
+These test files are the data types each Harrington tool was designed for. Both compressors always run on the same file, one after the other, on this computer. Matchups, levels and thread counts are fixed in the program. Test files come from public corpora; their size and SHA-256 are shown so anyone can check them.
+
+Harrington Head-to-Head 1.0 - lzav-hi (LZAV format 4) vs LZAV 7.1 HI (stock encoder)
+File: prog.bin (462,336 bytes), SHA-256 e1d191ceffbf2f0679989fc8618d795bdad3f9f04cdd5d3477a9ab0c76735dff
+Round trip (byte for byte): exact | exact
+Original size (bytes): 462,336 | 462,336
+Compressed size (bytes): 237,159 | 257,576  [<< Harrington]
+Compression ratio: 1.949x | 1.795x  [<< Harrington]
+Size difference: 7.93% smaller | 
+Compress time (median): 0.120 s | 0.024 s  [Opponent >>]
+Decompress time (median): 0.025 s | 0.020 s  [Opponent >>]
+Decompress speed (MB/s): 18.0 | 21.5  [Opponent >>]
+Peak memory, compress (MB committed): n/a | n/a
+Peak memory, decompress (MB committed): n/a | n/a
+Timed runs: 3 | 3
+Order: Alternate every repeat (fairest). Each compress and decompress timed separately (wall clock, including program start), median shown.
+Matchup note: Same LZAV format, both decoded by the stock LZAV 7.1 decoder. lzav-hi uses optimal parsing, so it compresses far slower; it is built for files written once and read many times.
+These test files are the data types each Harrington tool was designed for. Both compressors always run on the same file, one after the other, on this computer. Matchups, levels and thread counts are fixed in the program. Test files come from public corpora; their size and SHA-256 are shown so anyone can check them.
+
+Harrington Head-to-Head 1.0 - xz-hi (standard .xz) vs xz 5.6.3 -9e (stock)
+File: prog.bin (462,336 bytes), SHA-256 e1d191ceffbf2f0679989fc8618d795bdad3f9f04cdd5d3477a9ab0c76735dff
+Round trip (byte for byte): exact | exact
+Original size (bytes): 462,336 | 462,336
+Compressed size (bytes): 175,208 | 178,576  [<< Harrington]
+Compression ratio: 2.639x | 2.589x  [<< Harrington]
+Size difference: 1.89% smaller | 
+Compress time (median): 42.928 s | 0.212 s  [Opponent >>]
+Decompress time (median): 0.037 s | 0.036 s  [Opponent >>]
+Decompress speed (MB/s): 12.1 | 12.1  [Opponent >>]
+Peak memory, compress (MB committed): n/a | n/a
+Peak memory, decompress (MB committed): n/a | n/a
+Timed runs: 3 | 3
+Order: Alternate every repeat (fairest). Each compress and decompress timed separately (wall clock, including program start), median shown.
+Matchup note: Both are standard .xz decoded by stock xz. xz-hi searches xz's own settings and filters per file (up to about 400 tries on binary data), so it compresses far slower; stock xz runs at -9e.
+These test files are the data types each Harrington tool was designed for. Both compressors always run on the same file, one after the other, on this computer. Matchups, levels and thread counts are fixed in the program. Test files come from public corpora; their size and SHA-256 are shown so anyone can check them.
+
+Harrington Head-to-Head 1.0 - rd-zstd (record delta + zstd -19) vs zstd 1.5.6 -19 (stock)
+File: prog.bin (462,336 bytes), SHA-256 e1d191ceffbf2f0679989fc8618d795bdad3f9f04cdd5d3477a9ab0c76735dff
+Round trip (byte for byte): exact | exact
+Original size (bytes): 462,336 | 462,336
+Compressed size (bytes): 189,328 | 189,324  [Opponent >>]
+Compression ratio: 2.442x | 2.442x  [Opponent >>]
+Size difference: 0.00% larger | 
+Compress time (median): 0.181 s | 0.148 s  [Opponent >>]
+Decompress time (median): 0.024 s | 0.030 s  [<< Harrington]
+Decompress speed (MB/s): 18.2 | 14.7  [<< Harrington]
+Peak memory, compress (MB committed): n/a | n/a
+Peak memory, decompress (MB committed): n/a | n/a
+Timed runs: 3 | 3
+Order: Alternate every repeat (fairest). Each compress and decompress timed separately (wall clock, including program start), median shown.
+Matchup note: Both zstd level 19. rd-zstd adds a record-length delta for fixed-record data (tables, images, sensor rows). On other data it keeps plain zstd and adds an 8-byte header, so it can be 8 bytes larger.
+These test files are the data types each Harrington tool was designed for. Both compressors always run on the same file, one after the other, on this computer. Matchups, levels and thread counts are fixed in the program. Test files come from public corpora; their size and SHA-256 are shown so anyone can check them.
+

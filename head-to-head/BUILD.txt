@@ -1,0 +1,19 @@
+HOW THESE PROGRAMS WERE BUILT (7 November 2026)
+Cross-compiled for 64-bit Windows with llvm-mingw 20240619 (clang 18, UCRT), static, -O2.
+Sources: zstd 1.5.6 and xz 5.6.3 release tarballs from GitHub; lpaq1.zip from mattmahoney.net; everything else from
+https://github.com/CombaryMaker/Harringtons_Insights (hs_zstd, hcm, bzip2-hi, lzav-hi, src/zpaq-hi, src/lpaq1-h).
+  zstd.exe        zstd-1.5.6: make -C programs zstd CC=x86_64-w64-mingw32-clang EXT=.exe LDFLAGS=-static
+  xz.exe          xz-5.6.3: cmake (CMAKE_SYSTEM_NAME=Windows, static), target xz
+  hs_zstd.exe     clang++ -std=c++17 hs_zstd.cpp libzstd.a (zstd 1.5.6)
+  HCM.exe         clang++ -std=c++17 hcm.cpp -lshell32
+  rd-zstd.exe     clang source\tools\rdzstd.c libzstd.a
+  xz-hi.exe       clang source\tools\xzhi.c liblzma.a (C port of xz-hi/xz_hi.py, same search)
+  bzip2-hi.exe    clang -DBZ_HI source\tools\bz2cli.c + bzip2-hi/source (tuned compress.c)
+  bzip2-stock.exe clang source\tools\bz2cli.c + the same libbz2 with compress.c.patch reversed (stock)
+  zpaq-hi.exe     clang++ source\tools\zpaqs.cpp + src/zpaq-hi/libzpaq.cpp
+  zpaq-stock.exe  clang++ source\tools\zpaqs.cpp + libzpaq.cpp with zpaq-hi.diff reversed (stock 7.15)
+  lpaq1-h.exe     clang++ source\lpaq1\lpaq1h.cpp ; lpaq1-h-best.exe: clang source\tools\lpaq1h_best.c
+  lpaq1.exe       clang++ source\lpaq1\lpaq1_win64.cpp (lpaq1.cpp with (long)t -> (size_t)t for 64-bit Windows)
+  lzav-hi.exe     clang lzav-hi/lzavhi_cli.c (LZAV 7.1 lzav.h unmodified)
+  Harrington-Head-to-Head.exe  windres h2h.rc ; clang++ -std=c++17 -municode -mwindows h2h.cpp -lcomctl32 -lcomdlg32 -lshell32 -lpsapi
+Every pairing was round-tripped byte for byte before release (self-test mode).
