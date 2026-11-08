@@ -3,7 +3,7 @@
 // (nearest first, strictly longer as they get farther), predicts a default token by a simple rule, and the actual
 // token is coded as "as predicted" / literal / candidate rank (+ shorter length) / explicit. The codes go into
 // dense per-field streams so the entropy coder behind us (HX Complete) can model them. Our own design.
-// Patent Pending (U.S. Provisional App. 64/192,843). Copyright (c) 2026 Michael Hugh Harrington. Not MIT: free for personal use and non-commercial research/peer review; commercial use needs a license. See H-Deflate/LICENSE.txt.
+// Copyright (c) 2026 Michael Hugh Harrington. MIT License, see H-Deflate/LICENSE.txt.
 #pragma once
 #include "hd_diff.h"
 #include <cmath>

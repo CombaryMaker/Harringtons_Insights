@@ -2,7 +2,7 @@
 // bytes plus a reconstruction record; unpack rebuilds the file byte for byte.
 // usage: hdeflate pack IN OUT [threads]     hdeflate unpack IN OUT [threads]     hdeflate test IN [threads] [stats.csv]
 //        hdeflate zcheck FILE               (development only; needs -DHAVE_ZLIB -lz: compares with the system zlib)
-// Patent Pending (U.S. Provisional App. 64/192,843). Copyright (c) 2026 Michael Hugh Harrington. Not MIT: free for personal use and non-commercial research/peer review; commercial use needs a license. See H-Deflate/LICENSE.txt.
+// Copyright (c) 2026 Michael Hugh Harrington. MIT License, see H-Deflate/LICENSE.txt.
 #include "hd_search.h"
 #include "hd_inflate_fast.h"
 #include <cstdio>

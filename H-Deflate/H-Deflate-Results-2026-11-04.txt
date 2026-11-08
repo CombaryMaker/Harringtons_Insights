@@ -1,5 +1,5 @@
 H-DEFLATE - RESULTS ON THE FOUR DEFLATE-HEAVY SETS
-Michael Hugh Harrington, 4 November 2026. Patent Pending (U.S. Provisional App. 64/192,843). All test data public; every result restored byte for byte.
+Michael Hugh Harrington, 4 November 2026. MIT License since 7 November 2026 (was Patent Pending). All test data public; every result restored byte for byte.
 Ratio = original bytes / compressed bytes (higher is better). Times are wall-clock seconds for the whole set on a 2-core cloud machine.
 Licence class: A = ours plus permissive parts (H-Deflate, HX, BSC, libjxl); B = LGPL part involved (bzip3, packJPG); C = precomp route (class as labelled before).
 

@@ -1,6 +1,6 @@
 // hd_trees.h - deflate symbol tables, Huffman code building (zlib-family tie rules), block header coding.
 // Part of H-Deflate. Written from RFC 1951 and the published description of the zlib/gzip tree builder.
-// Patent Pending (U.S. Provisional App. 64/192,843). Copyright (c) 2026 Michael Hugh Harrington. Not MIT: free for personal use and non-commercial research/peer review; commercial use needs a license. See H-Deflate/LICENSE.txt.
+// Copyright (c) 2026 Michael Hugh Harrington. MIT License, see H-Deflate/LICENSE.txt.
 #pragma once
 #include "hd_bits.h"
 #include <cstring>

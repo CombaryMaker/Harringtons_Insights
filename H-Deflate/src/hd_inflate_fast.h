@@ -1,6 +1,6 @@
 // hd_inflate_fast.h - H-Deflate v1.01 (6 Nov 2026):'s recording inflater with a wide bit buffer and wide match
 // copies (the zlib-turbo / libdeflate style refill). Same output and same recorded tokens as hd_inflate.h.
-// Patent Pending (U.S. Provisional App. 64/192,843). Copyright (c) 2026 Michael Hugh Harrington. Not MIT: free for personal use and non-commercial research/peer review; commercial use needs a license. See H-Deflate/LICENSE.txt.
+// Copyright (c) 2026 Michael Hugh Harrington. MIT License, see H-Deflate/LICENSE.txt.
 // Changes from hd_inflate.h:
 //   1. refill: one unaligned 8-byte load tops the 64-bit buffer up to 56+ bits (instead of a byte loop);
 //   2. output written through a raw pointer into a buffer with slack (no push_back per byte);

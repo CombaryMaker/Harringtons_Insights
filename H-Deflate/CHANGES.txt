@@ -1,3 +1,6 @@
+H-Deflate license change - 7 November 2026
+- Released under the MIT License; no patent claim is made on H-Deflate (prior art: precomp, preflate, precomp2, packPNG).
+
 H-Deflate v1.01 - 6 November 2026
 - Faster inflater (src/hd_inflate_fast.h), now the default: the 64-bit bit buffer is topped up with one 8-byte load
   instead of a byte loop, output is written directly into a buffer with slack, and matches are copied 8 bytes at a

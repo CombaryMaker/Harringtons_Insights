@@ -1,5 +1,5 @@
 H-DEFLATE - DESIGN NOTE (v1)
-Michael Hugh Harrington, 4 November 2026.  Patent Pending (U.S. Provisional App. 64/192,843). See LICENSE.txt.
+Michael Hugh Harrington, 4 November 2026.  MIT License since 7 November 2026 (was Patent Pending). See LICENSE.txt.
 
 WHAT IT IS
 A deflate stream unpacker and exact re-packer of our own, so that PDF, Office, archive and PNG results no longer

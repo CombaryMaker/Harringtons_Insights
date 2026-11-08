@@ -1,6 +1,6 @@
 // hd_inflate.h - recording inflater: decodes a raw deflate stream and keeps every token, block and header detail
 // needed to re-emit the stream bit for bit. Written from RFC 1951. Part of H-Deflate.
-// Patent Pending (U.S. Provisional App. 64/192,843). Copyright (c) 2026 Michael Hugh Harrington. Not MIT: free for personal use and non-commercial research/peer review; commercial use needs a license. See H-Deflate/LICENSE.txt.
+// Copyright (c) 2026 Michael Hugh Harrington. MIT License, see H-Deflate/LICENSE.txt.
 #pragma once
 #include "hd_trees.h"
 

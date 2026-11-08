@@ -1,6 +1,6 @@
 // hd_diff.h - H-Deflate reconstruction record: predict the token stream and block structure with the matcher,
 // store only the differences; rebuild the exact deflate bytes from raw data + record.
-// Patent Pending (U.S. Provisional App. 64/192,843). Copyright (c) 2026 Michael Hugh Harrington. Not MIT: free for personal use and non-commercial research/peer review; commercial use needs a license. See H-Deflate/LICENSE.txt.
+// Copyright (c) 2026 Michael Hugh Harrington. MIT License, see H-Deflate/LICENSE.txt.
 #pragma once
 #include "hd_match.h"
 #include "hd_inflate.h"

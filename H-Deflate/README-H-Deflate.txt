@@ -1,5 +1,5 @@
 H-DEFLATE v1.01 (6 November 2026; v1 was 4 November 2026) - our own deflate unpacker / exact re-packer
-Michael Hugh Harrington. Patent Pending (U.S. Provisional App. 64/192,843). Not MIT - see LICENSE.txt.
+Michael Hugh Harrington. MIT License (from 7 November 2026) - see LICENSE.txt.
 
 WHAT IT DOES
   hdeflate pack IN OUT [threads]    find every deflate stream in IN (PNG, ZIP entries, gzip members, zlib streams such as
@@ -26,7 +26,8 @@ HOW IT WORKS (short)
   6. Everything is verified at pack time; any stream that does not rebuild exactly stays verbatim.
 
 LICENCE POSITION
-  Written from RFC 1951 and the published description of the zlib method; no code from zlib, precomp, preflate or 7-Zip.
+  Written from RFC 1951 and the published description of the zlib method; no code from zlib, precomp, preflate,
+  precomp2, packPNG or 7-Zip.
   Deflate is an open format with no live patents; the recompression idea has been public since 2006 (precomp).
   Surprise found 4 Nov 2026: the precomp 0.4.8 source and its preflate library are Apache 2.0 (LICENSE, README,
   source headers); only an old banner string says "free for non-commercial use". Noted for the attorney; H-Deflate is
