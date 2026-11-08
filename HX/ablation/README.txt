@@ -26,7 +26,9 @@ THE STAGES IN THIS BUILD
   Transform: Exchange lines     Off -> None (plain entropy coding) | Byte shuffle* | Bitshuffle* | Delta* | x86 BCJ* | Dictionary*
   Leftovers: Cascade repeat line Off -> Off | Block deduplication (FastCDC)*
   Route: Split route            Off -> Whole-file best-of
-  * outside replacement programs (tools folder). Until a program is present, its option shows "(program not installed)".
+  * outside replacement programs, included in the tools folder (MIT, source in HX/ablation/replacements on GitHub).
+    Each follows REPLACEMENT-SPEC.txt and its published source; each was checked for exact round trips and identical
+    output on repeated runs.
   The standard coders inside HX (Huff0, FSE, rANS, zstd, and in HX Complete also BSC, bzip3, LZMA, PPMd, Brotli) are the
   same in every run.
 

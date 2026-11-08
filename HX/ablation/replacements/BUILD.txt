@@ -1,0 +1,7 @@
+Replacement programs for the HX Ablation Test (MIT, Michael Hugh Harrington, 8 Nov 2026). One program per .c file; common.inc
+and groupcommon.inc are small shared helpers included at compile time. bcj.c also compiles the LZMA SDK's Bra86.c unchanged
+(public domain, Igor Pavlov). Built for Windows with llvm-mingw 20240619: clang -O2 -static NAME.c -o NAME.exe
+(bcj: clang -O2 -static -I<LZMA SDK>/C bcj.c <LZMA SDK>/C/Bra86.c -o bcj.exe).
+Checks run before release: exact round trip and identical output on two runs for every program and setting, on empty, 1-byte,
+7-byte, 65,537-zero-byte, text, record, program, random and repeated-random files; grouping maps validated (size, count,
+classes). Specification: ../REPLACEMENT-SPEC.txt.
