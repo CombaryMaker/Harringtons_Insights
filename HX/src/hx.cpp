@@ -27,6 +27,16 @@
 #include "hx_win_compat.h"
 
 static const size_t SEG = (1u << 20) - (1u << 20) % 12, HBLK = 128 * 1024;
+// HX Ablation Test switches (8 Nov 2026, encoder only - every file still decodes with the normal "hx d"):
+//   --abl-pick1        H Sampler replaced by "sample picks the winner": the probe alone chooses one line, no full-run final
+//   --full             H Sampler replaced by "try every line in full"
+//   --abl-lines-off    Exchange lines replaced by plain order-0 entropy coding of the bytes (Huff0 / FSE / rANS)
+//   --abl-sets-off     Harrington's Sets replaced by plain fixed segments
+//   --abl-gmap FILE    Harrington's Sets classes replaced by an outside grouping map (GMP1 file, 64 KB windows, up to 4 classes)
+//   --abl-repeat-off   the cascade's repeat line replaced by nothing (leftovers stay with the segment coders / stored raw)
+//   --abl-split-off    the split route replaced by whole-file best-of only
+static bool abl_lines_off = false, abl_sets_off = false, abl_repeat_off = false, abl_split_off = false; static string abl_gmap;
+static const vector<int> abl_plain = {0, 32, 128};
 struct Plan { bool sets = false; size_t sw = 65536; vector<int> lab; vector<size_t> worder, soff, slen; };
 static void plan_segments(Plan &P, size_t n) {   // segments of the (possibly class-sorted) stream, from the class map
     P.worder.clear(); P.soff.clear(); P.slen.clear();
@@ -332,7 +342,11 @@ static B media_dec(int route, const uint8_t *p, size_t m, size_t n) {
 int main(int argc, char **argv) {
     if (argc < 4) { fprintf(stderr, "HX (Harrington Sets + Exchange lines + cascade + learned router)\nusage: hx c IN OUT [THREADS] [--complete] [--max] [--no-learn] | hx d IN OUT [THREADS]\n  --max       router off: try every route (smallest size, slowest compress)\n  --no-learn  do not add this file to the router's learning table\n"); return 2; }
     int T = (int)max(1u, thread::hardware_concurrency()); g_probe = 131072; bool complete = false; bsc_init(LIBBSC_FEATURE_NONE); if (getenv("HX_SLICES")) g_slices = max(1, atoi(getenv("HX_SLICES")));
-    for (int a = 4; a < argc; a++) { if (!strcmp(argv[a], "--full")) g_probe = 0; else if (!strcmp(argv[a], "--complete")) complete = true; else if (!strcmp(argv[a], "--max")) setenv("HX_ALLROUTES_MAX", "1", 1); else if (!strcmp(argv[a], "--no-learn")) unsetenv("HX_ROUTELOG"); else if (!strcmp(argv[a], "--probe") && a + 1 < argc) g_probe = (size_t)atoi(argv[++a]) * 1024; else T = max(1, atoi(argv[a])); }
+    for (int a = 4; a < argc; a++) { if (!strcmp(argv[a], "--full")) g_probe = 0; else if (!strcmp(argv[a], "--complete")) complete = true; else if (!strcmp(argv[a], "--max")) setenv("HX_ALLROUTES_MAX", "1", 1); else if (!strcmp(argv[a], "--no-learn")) unsetenv("HX_ROUTELOG"); else if (!strcmp(argv[a], "--probe") && a + 1 < argc) g_probe = (size_t)atoi(argv[++a]) * 1024;
+        else if (!strcmp(argv[a], "--abl-pick1")) g_keepmax = 1; else if (!strcmp(argv[a], "--abl-lines-off")) abl_lines_off = true;
+        else if (!strcmp(argv[a], "--abl-sets-off")) abl_sets_off = true; else if (!strcmp(argv[a], "--abl-repeat-off")) abl_repeat_off = true;
+        else if (!strcmp(argv[a], "--abl-split-off")) abl_split_off = true; else if (!strcmp(argv[a], "--abl-gmap") && a + 1 < argc) abl_gmap = argv[++a];
+        else T = max(1, atoi(argv[a])); }
     B in = readf(argv[2]); double t0 = now();
     if (argv[1][0] == 'c') {
         size_t n = in.size(); B best; int mode = 0;
@@ -340,13 +354,24 @@ int main(int argc, char **argv) {
         // candidate 1: Sets (64 KB or 65532-byte windows) or none, each followed by the Exchange lines
         g_w16 = detect_width(in.data(), n, 2); g_w8 = detect_width(in.data(), n, 1); g_rec = detect_record(in.data(), n);   // image lines: row width; record lanes: record length
         bool dbg = getenv("HX_DEBUG") != nullptr; auto lap = [&](const char *w) { if (dbg) fprintf(stderr, "  %-28s %7.2f s  best %zu\n", w, now() - t0, best.size()); };
-        Plan none; plan_segments(none, n); vector<int> won, keptall; vector<B> nparts; best = hx_encode(in, none, T, nullptr, &won, &nparts, &keptall); mode = 1;
+        const vector<int> *lines_allow = abl_lines_off ? &abl_plain : nullptr;
+        if (abl_lines_off || abl_sets_off || abl_repeat_off || abl_split_off || !abl_gmap.empty() || g_keepmax != 6 || !g_probe)
+            printf("hx ablation: sampler=%s lines=%s sets=%s repeat=%s split=%s\n", !g_probe ? "every line in full" : g_keepmax == 1 ? "sample picks the winner" : "Harrington",
+                abl_lines_off ? "plain entropy coding" : "Harrington", abl_sets_off ? "plain blocks" : !abl_gmap.empty() ? "outside map" : "Harrington",
+                abl_repeat_off ? "off" : "Harrington", abl_split_off ? "whole-file best-of" : "Harrington");
+        Plan none; plan_segments(none, n); vector<int> won, keptall; vector<B> nparts; best = hx_encode(in, none, T, lines_allow, &won, &nparts, &keptall); mode = 1;
         // the Sets passes: HX_ALLOW=all (default: each Sets segment gets its own probe), won (only the winners without Sets), kept (lines kept by the probes)
         const char *ae = getenv("HX_ALLOW"); string am = ae ? ae : "all";
         vector<int> allow = am == "won" ? won : keptall; sort(allow.begin(), allow.end()); allow.erase(unique(allow.begin(), allow.end()), allow.end());
         lap("lines (no Sets)");
-        for (size_t sw : {(size_t)65536, (size_t)65532}) { SW = sw; Plan P; P.sets = true; P.sw = sw; P.lab = sets_labels(in.data(), n);
-            if (*max_element(P.lab.begin(), P.lab.end()) == 0) continue; plan_segments(P, n); B c = hx_encode(in, P, T, (g_probe && am != "all") ? &allow : nullptr); if (c.size() < best.size()) best.swap(c); }
+        vector<int> gmap;
+        if (!abl_gmap.empty()) { B g = readf(abl_gmap.c_str()); size_t nw = (n + 65535) / 65536;
+            if (g.size() < 13 || memcmp(g.data(), "GMP1", 4) || get32(g.data() + 4) != 65536 || get32(g.data() + 8) != nw || g[12] > 4 || g.size() < 13 + nw) { fprintf(stderr, "hx: grouping map does not match this file\n"); return 1; }
+            for (size_t w = 0; w < nw; w++) { if (g[13 + w] > 3) { fprintf(stderr, "hx: grouping map class out of range\n"); return 1; } gmap.push_back(g[13 + w]); } }
+        if (!abl_sets_off) for (size_t sw : {(size_t)65536, (size_t)65532}) { if (!gmap.empty() && sw != 65536) continue;
+            SW = sw; Plan P; P.sets = true; P.sw = sw; P.lab = gmap.empty() ? sets_labels(in.data(), n) : gmap;
+            if (*max_element(P.lab.begin(), P.lab.end()) == 0) continue; plan_segments(P, n);
+            B c = hx_encode(in, P, T, abl_lines_off ? &abl_plain : (g_probe && am != "all") ? &allow : nullptr); if (c.size() < best.size()) best.swap(c); }
         // per-segment zstd -19 (the split mode needs it) and, for the estimate below, per-segment zstd -1
         Plan none2; plan_segments(none2, n); size_t ns = none2.soff.size(); vector<double> z19(ns, 0), z1(ns, 0); vector<char> mark(ns, 0);
         runpar(ns, T, [&](size_t k) { B zz(ZSTD_compressBound(none2.slen[k])); const uint8_t *sp = in.data() + none2.soff[k];
@@ -360,13 +385,13 @@ int main(int argc, char **argv) {
         if (est_on) { double s1 = 0; for (double v : z1) s1 += v; B l1 = zstd_long(in, T, 1); gain = min(1.0, l1.size() / max(1.0, s1)); }
         auto est = [&](bool unmarked_only) { double e = 0; for (size_t k = 0; k < ns; k++) if (!unmarked_only || !mark[k]) e += z19[k]; return e * gain; };
         // candidate 2: the cascade's repeat line (whole file, long-distance matching)
-        if (!est_on || est(false) < 1.05 * best.size()) { B z = zstd_long(in, T, 19); if (z.size() < best.size()) { best.swap(z); mode = 2; } }
+        if (!abl_repeat_off && (!est_on || est(false) < 1.05 * best.size())) { B z = zstd_long(in, T, 19); if (z.size() < best.size()) { best.swap(z); mode = 2; } }
         if (dbg) fprintf(stderr, "  estimate: repeat line %.0f (gain %.3f)\n", est(false), gain);
         lap("repeat line (zstd -19 long)");
         // candidate 3 (split, the cascade with HX lines): segments where the Exchange lines clearly beat zstd -19 on
         // that segment go to HX; everything else stays together in ONE repeat-line stream (so long matches survive)
         { size_t nm = 0, hxm = 0; for (size_t k = 0; k < ns; k++) if (mark[k]) { nm++; hxm += nparts[k].size(); }
-          if (nm > 0 && nm < ns && (!est_on || est(true) + hxm < 1.03 * best.size())) {
+          if (!abl_split_off && nm > 0 && nm < ns && (!est_on || est(true) + hxm < 1.03 * best.size())) {
               B rest; for (size_t k = 0; k < ns; k++) if (!mark[k]) rest.insert(rest.end(), in.data() + none2.soff[k], in.data() + none2.soff[k] + none2.slen[k]);
               B zr = zstd_long(rest, T, 19); B c; put32(c, (uint32_t)ns); for (size_t k = 0; k < ns; k++) c.push_back(mark[k]);
               put32(c, (uint32_t)zr.size()); c.insert(c.end(), zr.begin(), zr.end());
@@ -385,7 +410,7 @@ int main(int argc, char **argv) {
         string rlog; size_t hcm_force = getenv("HX_ALLROUTES") ? ((size_t)32 << 20) : 0;
         auto take = [&](B &c, int md) { if (!c.empty() && c.size() < best.size()) { best.swap(c); mode = md; } };
         auto applicable = [&](int id) -> bool { switch (id) {
-            case 5: return !classA; case 13: case 64: return x86cv * 1000 >= n; case 16: return getenv("HX_HCM") != nullptr;
+            case 5: return !classA; case 6: return !abl_split_off; case 13: case 64: return x86cv * 1000 >= n; case 16: return getenv("HX_HCM") != nullptr;
             case 17: return getenv("HX_HCM37") != nullptr; case 10: return media && (pnm || jpg || wav || (y4m && !classA));
             case 11: return media && !pnm && !jpg && !y4m && !getenv("HX_NOEMBED"); case 18: return g_w16 >= 16 && getenv("HX_CJXL") != nullptr && !pnm;
             default: return true; } };

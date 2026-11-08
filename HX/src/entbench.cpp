@@ -524,6 +524,7 @@ static int hx_rank(int i) { if ((i >= 16 && i <= 31) || (i >= 40 && i <= 63)) re
 // than cores); g_probe = probe size: every line is first tried on a probe slice from the middle of the segment, and only
 // the lines within 3% of the best probe (at most 6) are run on the whole segment. 0 = try every line in full (as before).
 static int g_ct = 1; static size_t g_probe = 0; static int g_slices = 1;
+static size_t g_keepmax = 6;   // ablation test: 1 = the probe alone picks the line ("sample picks the winner")
 static void hx_run(const vector<int> &which, const uint8_t *in, size_t n, size_t blk, vector<B> &cand) {
     auto one = [&](int c) { cand[c].clear(); hx_cand(HX_IDS[c], in, n, blk, cand[c]); };
     int T = min<int>(g_ct, (int)which.size());
@@ -544,7 +545,7 @@ static int hx_seg_enc(const uint8_t *in, size_t n, size_t blk, B &o, const vecto
             vector<B> pc(HX_NC); hx_run(all, in + st, L, blk, pc); for (int c = 0; c < HX_NC; c++) ps[c] += pc[c].size(); }
         size_t smin = *min_element(ps.begin(), ps.end());
         vector<int> ord = all; stable_sort(ord.begin(), ord.end(), [&](int x, int y) { return ps[x] < ps[y]; });
-        for (int c : ord) if (ps[c] <= smin + smin * 3 / 100 && which.size() < 6) which.push_back(c);
+        for (int c : ord) if (ps[c] <= smin + smin * 3 / 100 && which.size() < g_keepmax) which.push_back(c);
     }
     if (which.empty()) for (int c = 0; c < HX_NC; c++) which.push_back(c);
     hx_run(which, in, n, blk, cand);
