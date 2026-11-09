@@ -1,0 +1,53 @@
+HX COMPETITION TEST - RESULTS ON FOUR PUBLIC CORPORA (8-9 November 2026)
+Michael Hugh Harrington. HX Competition Test 1.0, 1 run per corpus, 37 programs, every result decoded and checked byte
+for byte. Same Windows PC for all runs (times on Silesia were taken while the PC was also used for gaming; sizes are
+unaffected). Full logs: the four Finishing-Results files beside this one.
+
+CORPORA
+  Silesia      12 files   211,938,580 bytes   sun.aei.polsl.pl/~sdeor/index.php?page=silesia
+  Canterbury   11 files     2,810,784 bytes   corpus.canterbury.ac.nz
+  Calgary      18 files     3,251,493 bytes   corpus.canterbury.ac.nz (calgary.tar.gz)
+  Kodak        24 photos   28,311,912 bytes   Kodak Lossless True Color Image Suite (kodim01-24), as raw PPM
+
+SUMMARY (HX Complete = ours, best size; kanzi 2.6.0 -l 9 = the strongest rival on every corpus)
+  Corpus       HX Complete           kanzi -l 9            Difference         Files smallest   HX Complete   HX Fast   Speed tiers
+                bytes      ratio      bytes      ratio                         (ours)           race          race      won
+  Silesia      41,531,539  5.103x    40,785,680  5.196x    kanzi 1.83% smaller   3 of 12         2 of 2        1 of 15   8 of 14 *
+  Canterbury      350,205  8.026x       412,514  6.814x    ours 15.10% smaller  11 of 11         1 of 1        7 of 27   9 of 13
+  Calgary         709,427  4.583x       731,676  4.444x    ours 3.04% smaller   13 of 18         1 of 2       10 of 28   9 of 13
+  Kodak         9,982,724  2.836x    11,831,936  2.393x    ours 15.63% smaller  24 of 24         1 of 1        - **      12 of 13
+  ALL FOUR     52,573,895  4.685x    53,761,806  4.582x    ours 2.21% smaller   51 of 65
+  (all four together: 246,312,769 bytes)
+  * Silesia was run with the first version of the app (10 tiers); 8 of 14 is the same data under the Tier 1 split.
+  ** HX Fast failed to decode 4 of the 24 Kodak photos (a thread bug, found and fixed on 9 Nov 2026, see
+     HX/FIX-2026-11-09-HX-Fast-decode-crash.txt), so it is not in the Kodak totals or race.
+  "Tiers won" counts only tiers where something qualified (Tier 1A had nothing that fast on the small corpora).
+
+DECODE AND COMPRESS TIME, HX Complete vs kanzi -l 9 (seconds, whole corpus)
+  Corpus       HX Complete decode   kanzi -l 9 decode   HX Complete compress   kanzi -l 9 compress
+  Silesia            11.713               57.131               1,796.4                 55.8
+  Canterbury          1.954                1.943                 176.9                  2.0
+  Calgary             2.734                2.973                  77.0                  2.9
+  Kodak               2.418               18.249                 882.8                 17.0
+
+WHAT THE FOUR RUNS SHOW
+  1. Size: HX Complete is the smallest overall on three of four corpora (Canterbury, Calgary, Kodak) and over all four
+     together (2.21% smaller than kanzi -l 9). It was smallest on 51 of the 65 files.
+  2. Images and structured data are its strongest ground: Kodak 15.63% smaller than kanzi -l 9 and smallest on all 24
+     photos; kennedy.xls 62.7% and the fax image (ptt5 / pic) 31.0% smaller than the best rival; Silesia mr 16.2%,
+     sao 11.5%, x-ray 3.0%.
+  3. Its one consistent weakness is machine code: Silesia ooffice (kanzi 15.0% smaller), samba (14.4%), mozilla (6.4%),
+     Calgary obj2 (9.8%) and obj1 (6.7%). These files decide Silesia, which kanzi -l 9 wins by 1.83%.
+  4. Decode: HX Complete decodes 4.9x faster than kanzi -l 9 on Silesia and 7.5x faster on Kodak, and about the same on
+     the two small corpora. Compression is far slower (26 to 88 times kanzi -l 9).
+  5. HX Fast: smallest in its race on Silesia; 7th and 10th on the two small corpora, where kanzi -l 7, BSC, xz and
+     7-Zip were smaller and times are mostly program start-up.
+  6. Speed tiers: on every corpus the slow tiers are won by HX Complete (except Silesia's tiers 6-10, kanzi -l 9);
+     the middle-fast tiers are the contested ground (BSC best, kanzi -l 7, bzip3).
+  7. On the two small corpora LZ4 decodes the whole set in about 0.3 s, so their speed tiers mostly measure program
+     start-up; their sizes are fully valid.
+
+RESULTS FILES (this folder)
+  Silesia-Finishing-Results-2026-11-08.txt     Canterbury-Finishing-Results-2026-11-09.txt
+  Calgary-Finishing-Results-2026-11-09.txt     Kodak-Finishing-Results-2026-11-09.txt
+  Speed tier rules: docs/Speed-Tier-Standard-Tier-1-Split.txt
