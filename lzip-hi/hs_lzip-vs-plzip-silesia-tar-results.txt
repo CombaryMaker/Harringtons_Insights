@@ -1,0 +1,6 @@
+lzip 1.26 -6 (1 thread) | 49789902 | comp 108.478327782 s | decomp(median of 3) 3.054963157 s | EXACT
+plzip 1.13 -6 (2 threads, default data size 16 MB) | 50192914 | comp 50.598023850 s | decomp(median of 3) 1.838807258 s | EXACT
+hs_lzip --sets 0 (plain 16 MB blocks, standard .lz), decoded by hs_lzip | 50353024 | comp 51.888613713 s | decomp(median of 3) 2.078452450 s | EXACT
+hs_lzip --sets 3 (Harrington's Sets, 16 MB blocks) | 50354571 | comp 54.335001801 s | decomp(median of 3) 2.200652543 s | EXACT
+hs_lzip --sets 3 (Harrington's Sets, 4 MB blocks) | 51499804 | comp 40.071102259 s | decomp(median of 3) 2.011713994 s | EXACT
+plzip 1.13 -6 -B 4MiB (2 threads) | 51467360 | comp 38.133008898 s | decomp(median of 3) 1.652020197 s | EXACT
