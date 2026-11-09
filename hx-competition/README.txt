@@ -12,7 +12,7 @@ close to HX Complete's compression or better), and wins and losses in 10 speed t
 HOW TO USE
 1. Unzip and double-click HX-Competition-Test.exe.
 2. Load a file, or tick "Run all files in a folder" and choose a folder.
-3. Untick any program you want left out (the log lists what was left out). The ? button explains the races and tiers.
+3. Untick any program you want left out (the log lists what was left out). The ? button explains the races; the Speed tiers button explains the speed tiers.
 4. Runs: 1 to 10. Log: Basic, or Advanced (adds every command line and the SHA-256 of every program).
 5. Run test. Cancel stops at once. Save log... writes the log (.txt) and a results table (.csv) beside it.
 The log can be edited, notes added, and each new test is added below the last one.

@@ -85,7 +85,11 @@ static const Entry E[] = {
 };
 static const int NE = (int)(sizeof E / sizeof E[0]);
 static const int LZ4_REF = 8;   // index of "LZ4 1.11.0 -1", the speed reference
-static const double TIER_UP[10] = {2, 5, 10, 20, 50, 100, 200, 500, 2000, 1e300};   // decode time up to x times LZ4's
+// Tier 1 is split into 1A-1E on the Renard R5 preferred numbers (ISO 3): 0.4, 0.63, 1.0, 1.6, 2.0 (additional standard, 9 Nov 2026)
+static const int NT = 14;
+static const double TIER_UP[NT] = {0.4, 0.63, 1.0, 1.6, 2, 5, 10, 20, 50, 100, 200, 500, 2000, 1e300};   // decode time up to x times LZ4's
+static const wchar_t *TIER_NAME[NT] = {L"1A", L"1B", L"1C", L"1D", L"1E", L"2", L"3", L"4", L"5", L"6", L"7", L"8", L"9", L"10"};
+static const double GUARD = 0.026;   // border band for sub-tiers 1A-1D: ISO 14253-1 guard band, GUM Type B (widest gap of the three LZ4 levels on Silesia)
 static W exe_of(const Entry &e) { W c = e.comp; size_t a = c.find(L"{t}"), b = c.find(L".exe"); return a == W::npos || b == W::npos ? W() : c.substr(a + 3, b + 4 - a - 3); }
 static W fill(const wchar_t *t, const W &i, const W &o) {
     W s = t; auto rep = [&](const W &k, const W &v) { size_t p; while ((p = s.find(k)) != W::npos) s.replace(p, k.size(), v); };
@@ -93,10 +97,10 @@ static W fill(const wchar_t *t, const W &i, const W &o) {
 }
 
 // ------------------------------------------------------------------ window state
-enum { ID_LOAD = 101, ID_FOLDER, ID_FOLDERCHK, ID_RUNS, ID_BASIC, ID_ADV, ID_RUN, ID_CANCEL, ID_SAVE, ID_LOG, ID_STATUS, ID_FILE, ID_LIST, ID_ALL, ID_NONE, ID_HELP };
+enum { ID_LOAD = 101, ID_FOLDER, ID_FOLDERCHK, ID_RUNS, ID_BASIC, ID_ADV, ID_RUN, ID_CANCEL, ID_SAVE, ID_LOG, ID_STATUS, ID_FILE, ID_LIST, ID_ALL, ID_NONE, ID_HELP, ID_TIERS };
 #define WM_STATUS (WM_APP + 1)
 #define WM_DONE (WM_APP + 2)
-static HWND g_wnd, g_load, g_folder, g_folderchk, g_file, g_runs, g_basic, g_adv, g_run, g_cancelb, g_save, g_log, g_status, g_list, g_all, g_none, g_help, g_lbl[4];
+static HWND g_wnd, g_load, g_folder, g_folderchk, g_file, g_runs, g_basic, g_adv, g_run, g_cancelb, g_save, g_log, g_status, g_list, g_all, g_none, g_help, g_tiers, g_lbl[4];
 static W g_path, g_folderPath, g_logText, g_prevLog, g_csv; static bool g_busy = false, g_useFolder = false;
 static void set_status(const W &s) { SetWindowTextW(g_status, s.c_str()); }
 static void post_status(const W &s) { PostMessageW(g_wnd, WM_STATUS, 0, (LPARAM)new W(s)); }
@@ -130,8 +134,10 @@ static Res run_entry(const Entry &e, const W &in, long long orig, const W &shaIn
 
 // ------------------------------------------------------------------ the test run (worker thread)
 static W pad(W s, size_t n, bool right = false) { if (s.size() >= n) return s; return right ? W(n - s.size(), L' ') + s : s + W(n - s.size(), L' '); }
-static int tier_of(double m) { for (int k = 0; k < 10; k++) if (m <= TIER_UP[k]) return k + 1; return 10; }
-static W tier_rule(int k) { return k < 10 ? L"decode within " + fmtd(TIER_UP[k - 1], 0) + L"x LZ4's time" : L"any speed"; }
+static int tier_of(double m) { for (int k = 0; k < NT; k++) if (m <= TIER_UP[k]) return k + 1; return NT; }
+static W lim_str(double v) { wchar_t b[32]; swprintf(b, 32, L"%g", v); return b; }
+static double tier_lim(int k) { return k <= 4 ? TIER_UP[k - 1] * (1 + GUARD) : TIER_UP[k - 1]; }   // band applies to the sub-tier limits below 2
+static W tier_rule(int k) { return k < NT ? L"decode within " + lim_str(TIER_UP[k - 1]) + L"x LZ4's time" : L"any speed"; }
 static void worker(vector<W> files, vector<int> sel, int runs, bool adv) {
     W log; SYSTEMTIME st; GetLocalTime(&st); wchar_t when[64]; swprintf(when, 64, L"%04d-%02d-%02d %02d:%02d", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute);
     log += W(TITLE) + L"\r\n" + VERSION + L"   " + when + L"\r\nComputer: " + machine_info() + L"\r\n";
@@ -189,7 +195,7 @@ static void worker(vector<W> files, vector<int> sel, int runs, bool adv) {
         log += L"  " + pad(L"Program", 52) + pad(L"Group", 7) + pad(L"Bytes", 14, true) + pad(L"Ratio", 9, true) + pad(L"Comp s", 10, true) + pad(L"Decomp s", 10, true) + pad(L"x LZ4", 9, true) + L"  Tier\r\n";
         for (int i : full) { double m = lz4T > 0 ? tot_dt[i] / lz4T : 0;
             log += L"  " + pad(E[i].name, 52) + pad(E[i].ours ? L"ours" : L"rival", 7) + pad(fmtn(tot_c[i]), 14, true) + pad(fmtd(ratio(i), 3) + L"x", 9, true) + pad(fmtd(tot_ct[i], 3), 10, true)
-                 + pad(fmtd(tot_dt[i], 3), 10, true) + pad(lz4T > 0 ? fmtd(m, 2) : W(L"-"), 9, true) + L"  " + (lz4T > 0 ? to_wstring(tier_of(m)) : W(L"-")) + L"\r\n"; }
+                 + pad(fmtd(tot_dt[i], 3), 10, true) + pad(lz4T > 0 ? fmtd(m, 2) : W(L"-"), 9, true) + L"  " + (lz4T > 0 ? W(TIER_NAME[tier_of(m) - 1]) : W(L"-")) + L"\r\n"; }
         for (int i : sel) if (ok_files[i] != nfiles) log += L"  " + pad(E[i].name, 52) + L"not in the totals (failed or was cancelled on " + to_wstring(nfiles - ok_files[i]) + L" file(s))\r\n";
         auto race = [&](const wchar_t *title, int hxi, bool fast) {
             if (find(full.begin(), full.end(), hxi) == full.end()) return;
@@ -204,19 +210,21 @@ static void worker(vector<W> files, vector<int> sel, int runs, bool adv) {
         race(L"HX FAST RACE - every program decoding the files in no more than 2x HX Fast's decode time, smallest first", 0, true);
         race(L"HX COMPLETE RACE - every program within 10% of HX Complete's ratio or better, smallest first", 1, false);
         if (lz4T > 0) {
-            log += L"\r\nSPEED TIERS (same rule as the 6 Nov 2026 chart; a program counts in a tier if it decodes within that tier's limit)\r\n";
+            log += L"\r\nSPEED TIERS (6 Nov 2026 rule; tier 1 split into 1A-1E at 0.4, 0.63, 1.0, 1.6 and 2x LZ4, ISO 3 R5; a program counts in a tier if it decodes within its limit;\r\n  border items, within 2.6% above a 1A-1D limit, also count there and are marked - ISO 14253-1 guard band. The Speed tiers button explains it)\r\n";
             log += L"  LZ4 -1 total decode time on this computer: " + fmtd(lz4T, 3) + L" s\r\n";
             if (lz4T < 0.5) log += L"  NOTE: LZ4 decoded these files in under 0.5 s, so the times are mostly program start-up and the tiers below say little about speed. Use larger files for speed tiers.\r\n";
             int wins = 0, cells = 0;
-            for (int k = 1; k <= 10; k++) { int bo = -1, br = -1;
-                for (int i : full) { double m = tot_dt[i] / lz4T; if (m > TIER_UP[k - 1]) continue;
+            for (int k = 1; k <= NT; k++) { int bo = -1, br = -1; W border;
+                for (int i : full) { double m = tot_dt[i] / lz4T; if (m > tier_lim(k)) continue;
+                    if (m > TIER_UP[k - 1]) border += (border.empty() ? W() : W(L", ")) + E[i].name + L" (" + fmtd(m, 3) + L"x)";
                     if (E[i].ours) { if (bo < 0 || tot_c[i] < tot_c[bo]) bo = i; } else { if (br < 0 || tot_c[i] < tot_c[br]) br = i; } }
                 W res; if (bo >= 0 && br >= 0) { cells++; bool w = tot_c[bo] <= tot_c[br]; if (w) wins++;
                     res = (w ? L"WIN   " : L"LOSS  ") + W(E[bo].name) + L" " + fmtd(ratio(bo), 3) + L"x vs " + E[br].name + L" " + fmtd(ratio(br), 3) + L"x"; }
                 else if (bo >= 0) { cells++; wins++; res = L"WIN   " + W(E[bo].name) + L" " + fmtd(ratio(bo), 3) + L"x (no rival this fast)"; }
                 else if (br >= 0) { cells++; res = L"LOSS  none of ours this fast; best rival " + W(E[br].name) + L" " + fmtd(ratio(br), 3) + L"x"; }
                 else res = L"-     nothing this fast";
-                log += L"  Tier " + pad(to_wstring(k), 3) + pad(L"(" + tier_rule(k) + L")", 34) + res + L"\r\n"; }
+                log += L"  Tier " + pad(TIER_NAME[k - 1], 4) + pad(L"(" + tier_rule(k) + L")", 35) + res + L"\r\n";
+                if (!border.empty()) log += L"            border items in this tier: " + border + L"\r\n"; }
             log += L"  Harrington's compression concepts won " + to_wstring(wins) + L" of " + to_wstring(cells) + L" tiers for " + (g_useFolder ? L"the folder \"" + basename(g_folderPath) + L"\"" : L"the file \"" + basename(files[0]) + L"\"") + L".\r\n";
         } else log += L"\r\n(LZ4 -1 was left out or failed, so speed tiers cannot be measured.)\r\n";
     }
@@ -238,7 +246,7 @@ static void layout() {
     MoveWindow(g_file, x + S(576), y + S(6), iw - S(576), S(20), TRUE); y += S(38);
     MoveWindow(g_lbl[0], x, y + S(5), S(44), S(20), TRUE); MoveWindow(g_runs, x + S(46), y, S(60), S(300), TRUE);
     MoveWindow(g_lbl[1], x + S(126), y + S(5), S(40), S(20), TRUE); MoveWindow(g_basic, x + S(168), y + S(3), S(100), S(22), TRUE); MoveWindow(g_adv, x + S(272), y + S(3), S(120), S(22), TRUE);
-    MoveWindow(g_help, x + S(400), y + S(1), S(24), S(26), TRUE);
+    MoveWindow(g_help, x + S(400), y + S(1), S(24), S(26), TRUE); MoveWindow(g_tiers, x + S(432), y + S(1), S(110), S(26), TRUE);
     MoveWindow(g_run, x + iw - S(380), y, S(120), S(30), TRUE); MoveWindow(g_cancelb, x + iw - S(254), y, S(120), S(30), TRUE); MoveWindow(g_save, x + iw - S(128), y, S(128), S(30), TRUE); y += S(40);
     g_panels[0] = {m, p1, w - m, y}; y += S(14);
     int listH = max(S(120), (h - y) * 2 / 5); int p2 = y; y += S(8);
@@ -280,6 +288,28 @@ static void start_run() {
     g_cancel = false; g_csv.clear(); set_busy(true); CreateDirectoryW(g_tmp.c_str(), NULL);
     thread(worker, files, sel, runs, adv).detach();
 }
+static const wchar_t *TIERS_NOTE =
+    L"HOW THE SPEED TIERS WORK (open to suggestions for alternative means)\r\n\r\n"
+    L"IN EASY LANGUAGE\r\n"
+    L"LZ4 -1 is the speed yardstick. Every program gets a score: how many times longer it takes to unpack the files than LZ4 does. "
+    L"Tier 1 is split into five sub-tiers for the fastest programs (1A to 1E), then tiers 2 to 10 go from \"5 times LZ4\" up to any speed. "
+    L"A fast program also counts in every slower tier. In each tier, our smallest result is compared with the rivals' smallest result: "
+    L"if ours is the same size or smaller, that tier is a WIN.\r\n\r\n"
+    L"IN MATH\r\n"
+    L"m = T_decode(program) / T_decode(LZ4 -1), total decode times on the same files, this computer.\r\n"
+    L"Tier limits U: 1A 0.4, 1B 0.63, 1C 1.0, 1D 1.6, 1E 2.0, then 5, 10, 20, 50, 100, 200, 500, 2000, and tier 10 = any speed.\r\n"
+    L"A program is in tier k whenever m <= U_k (tiers are cumulative).\r\n"
+    L"Tier k is a WIN when  min{size(ours) : m <= U_k}  <=  min{size(rival) : m <= U_k}.\r\n\r\n"
+    L"WHERE THE NUMBERS COME FROM\r\n"
+    L"Tiers 2-10 follow the 1-2-5 engineering series. The Tier 1 sub-limits are the Renard R5 preferred numbers of ISO 3 "
+    L"(steps of about 1.6x), a standard series fixed before any result was seen.\r\n"
+    L"Border items: a program up to 2.6% above a 1A-1D limit also counts in that sub-tier and is marked in the log "
+    L"(ISO 14253-1 guard band). The 2.6% is a GUM Type B uncertainty (JCGM 100:2008) taken from existing data: the widest gap "
+    L"between the three LZ4 levels, which all use the same decoder, on the Silesia corpus.\r\n\r\n"
+    L"LIMITS\r\n"
+    L"Times are wall clock, including program start-up and writing the output to disk. On small files LZ4's time is mostly "
+    L"start-up, and the tiers then say little about speed. HX decodes on all cores; most rivals decode on one.\r\n"
+    L"Full standard: docs/Speed-Tier-Standard-Tier-1-Split.txt in the Harringtons_Insights repository on GitHub (CombaryMaker).";
 static const wchar_t *HELP =
     L"HX COMPETITION TEST\r\n\r\n"
     L"Every ticked program compresses and decompresses each file; every result is checked byte for byte and shown, the poor ones too.\r\n\r\n"
@@ -289,8 +319,8 @@ static const wchar_t *HELP =
     L"levels listed. paq8px, cmix and ZPAQ are not included: they are far slower than everything else here.\r\n\r\n"
     L"HX FAST RACE: every program that decodes the files in no more than twice HX Fast's decode time, ranked by size.\r\n"
     L"HX COMPLETE RACE: every program within 10% of HX Complete's ratio or better, ranked by size.\r\n"
-    L"SPEED TIERS: a program's decode time divided by LZ4 -1's decode time on the same files, on this computer. Tier 1 = within 2x, then 5x, 10x, "
-    L"20x, 50x, 100x, 200x, 500x, 2000x, and tier 10 = any speed. In each tier the smallest of ours is compared with the smallest rival.\r\n\r\n"
+    L"SPEED TIERS: a program's decode time divided by LZ4 -1's decode time on the same files, on this computer. Tier 1 is split into 1A-1E "
+    L"(within 0.4x, 0.63x, 1x, 1.6x, 2x), then tiers 2-9 = within 5x, 10x, 20x, 50x, 100x, 200x, 500x, 2000x, and tier 10 = any speed. The Speed tiers button explains it. In each tier the smallest of ours is compared with the smallest rival.\r\n\r\n"
     L"Times are wall clock including program start-up, so very small files mostly measure start-up. Untick any program to leave it out; the log lists "
     L"what was left out. Save log... also writes every number to a .csv file next to the log.";
 static LRESULT CALLBACK wnd(HWND hw, UINT msg, WPARAM wp, LPARAM lp) {
@@ -308,7 +338,7 @@ static LRESULT CALLBACK wnd(HWND hw, UINT msg, WPARAM wp, LPARAM lp) {
         for (int i = 1; i <= 10; i++) SendMessageW(g_runs, CB_ADDSTRING, 0, (LPARAM)to_wstring(i).c_str()); SendMessageW(g_runs, CB_SETCURSEL, 0, 0);
         g_lbl[1] = mk(L"STATIC", L"Log:", 0, 0, g_bold);
         g_basic = mk(L"BUTTON", L"Basic log", BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP, ID_BASIC); g_adv = mk(L"BUTTON", L"Advanced log", BS_AUTORADIOBUTTON, ID_ADV); SendMessageW(g_basic, BM_SETCHECK, BST_CHECKED, 0);
-        g_help = mk(L"BUTTON", L"?", BS_PUSHBUTTON | WS_TABSTOP, ID_HELP);
+        g_help = mk(L"BUTTON", L"?", BS_PUSHBUTTON | WS_TABSTOP, ID_HELP); g_tiers = mk(L"BUTTON", L"Speed tiers", BS_PUSHBUTTON | WS_TABSTOP, ID_TIERS);
         g_run = mk(L"BUTTON", L"Run test", BS_DEFPUSHBUTTON | WS_TABSTOP, ID_RUN); g_cancelb = mk(L"BUTTON", L"Cancel", BS_PUSHBUTTON | WS_TABSTOP, ID_CANCEL);
         g_save = mk(L"BUTTON", L"Save log...", BS_PUSHBUTTON | WS_TABSTOP, ID_SAVE); EnableWindow(g_cancelb, FALSE);
         g_lbl[2] = mk(L"STATIC", L"Programs in the test (untick any to leave it out):", 0, 0, g_bold);
@@ -340,6 +370,7 @@ static LRESULT CALLBACK wnd(HWND hw, UINT msg, WPARAM wp, LPARAM lp) {
     case WM_COMMAND: {
         switch (LOWORD(wp)) {
         case ID_HELP: MessageBoxW(hw, HELP, L"HX Competition Test - how it works", MB_OK | MB_ICONINFORMATION); break;
+        case ID_TIERS: MessageBoxW(hw, TIERS_NOTE, L"HX Competition Test - how the speed tiers work", MB_OK | MB_ICONINFORMATION); break;
         case ID_ALL: case ID_NONE: for (int i = 0; i < NE; i++) ListView_SetCheckState(g_list, i, LOWORD(wp) == ID_ALL); break;
         case ID_LOAD: { wchar_t fn[4096] = L""; OPENFILENAMEW of = {sizeof of}; of.hwndOwner = hw; of.lpstrFile = fn; of.nMaxFile = 4096; of.Flags = OFN_FILEMUSTEXIST | OFN_EXPLORER;
             if (GetOpenFileNameW(&of)) { g_path = fn; g_useFolder = false; SendMessageW(g_folderchk, BM_SETCHECK, BST_UNCHECKED, 0); update_file_label(); } break; }
