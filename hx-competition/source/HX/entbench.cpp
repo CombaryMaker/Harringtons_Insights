@@ -405,9 +405,10 @@ static size_t rgb_width(const uint8_t *in, size_t n) {   // row length in bytes,
     for (size_t W = 24; W <= 3 * 8192 && W < n / 4; W += 3) { double c = 0; for (size_t i = W + 8; i < n; i += step) c += abs((int)in[i] - (int)in[i - W]); sum += c; cnt++; if (c < bc) { bc = c; best = W; } }
     return cnt && bc < 0.7 * (sum / cnt) ? best : 0;
 }
-static int g_gap = 0;
 static inline int actq(int g) { if (g < 2) return g; int L = 31 - __builtin_clz(g); int q = 2 * L + ((g >> (L - 1)) & 1); return q > 15 ? 15 : q; }
-static void rgb_core(const uint8_t *in, size_t n, size_t ph, size_t Wp, vector<B> &lines, bool enc, uint8_t *out, const vector<B> *lin, size_t *pos) {
+// gap is passed in (9 Nov 2026 fix): it was a global, shared by every thread, so parallel segments/candidates could switch
+// each other's predictor mid-image - wrong contexts, reads past the end of a line, intermittent crashes on decode
+static void rgb_core(const uint8_t *in, size_t n, size_t ph, size_t Wp, vector<B> &lines, bool enc, uint8_t *out, const vector<B> *lin, size_t *pos, int gap) {
     size_t np = (n - ph) / 3; const uint8_t *src = enc ? in : out;
     auto V = [&](size_t pix, int pl) -> int {   // plane value: G, or R-G / B-G as signed differences (-255..255)
         const uint8_t *q = src + ph + 3 * pix; return pl == 1 ? (int)q[1] : (int)q[pl] - (int)q[1]; };
@@ -418,7 +419,7 @@ static void rgb_core(const uint8_t *in, size_t n, size_t ph, size_t Wp, vector<B
             int c = (pix >= Wp && x) ? V(pix - Wp - 1, pl) : b;
             int d = (pix >= Wp && x + 1 < Wp) ? V(pix - Wp + 1, pl) : b;
             int pr;
-            if (g_gap && pix >= 2 * Wp && x >= 2 && x + 1 < Wp) {   // CALIC's gradient-adjusted predictor (GAP)
+            if (gap && pix >= 2 * Wp && x >= 2 && x + 1 < Wp) {   // CALIC's gradient-adjusted predictor (GAP)
                 int ww = V(pix - 2, pl), nn = V(pix - 2 * Wp, pl), nne = V(pix - 2 * Wp + 1, pl);
                 int dh = abs(a - ww) + abs(b - c) + abs(b - d), dv = abs(a - c) + abs(b - nn) + abs(d - nne);
                 if (dv - dh > 80) pr = a; else if (dh - dv > 80) pr = b;
@@ -434,7 +435,7 @@ static void rgb_core(const uint8_t *in, size_t n, size_t ph, size_t Wp, vector<B
 static void rgb_enc(const uint8_t *in, size_t n, size_t blk, const char *cd2, B &t) {
     size_t W = rgb_width(in, n); if (!W) { t.clear(); t.resize(n + 64, 0); return; }
     size_t Wp = W / 3; B best; 
-    for (int gap = 0; gap < 2; gap++) for (size_t ph = 0; ph < 3; ph++) { g_gap = gap; vector<B> L(48); rgb_core(in, n, ph, Wp, L, true, nullptr, nullptr, nullptr);
+    for (int gap = 0; gap < 2; gap++) for (size_t ph = 0; ph < 3; ph++) { vector<B> L(48); rgb_core(in, n, ph, Wp, L, true, nullptr, nullptr, nullptr, gap);
         B c; c.push_back((uint8_t)(ph | (gap << 7))); put32(c, (uint32_t)Wp);
         for (int q = 0; q < 48; q++) { put32(c, (uint32_t)L[q].size()); size_t bl = strcmp(cd2, "rans") == 0 ? max<size_t>(1, L[q].size()) : blk;
             for (size_t k = 0; k < L[q].size(); k += bl) enc_bytes(cd2, L[q].data() + k, min(bl, L[q].size() - k), c); }
@@ -446,7 +447,7 @@ static size_t rgb_dec(const uint8_t *p, uint8_t *out, size_t n, bool rn, size_t 
     const uint8_t *p0 = p; int gap = *p >> 7; size_t ph = *p++ & 127; size_t Wp = get32(p); p += 4; vector<B> L(48);
     for (int q = 0; q < 48; q++) { size_t cnt = get32(p); p += 4; L[q].resize(cnt); size_t bl = rn ? max<size_t>(1, cnt) : blk;
         for (size_t k = 0; k < cnt; k += bl) p += dec_bytes(p, L[q].data() + k, min(bl, cnt - k)); }
-    size_t pos[48] = {0}; vector<B> dummy; g_gap = gap; rgb_core(nullptr, n, ph, Wp, dummy, false, out, &L, pos);
+    size_t pos[48] = {0}; vector<B> dummy; rgb_core(nullptr, n, ph, Wp, dummy, false, out, &L, pos, gap);
     size_t np = (n - ph) / 3; memcpy(out, p, ph); p += ph; memcpy(out + ph + 3 * np, p, n - ph - 3 * np); p += n - ph - 3 * np; return p - p0;
 }
 static void lanes_enc(const uint8_t *in, size_t n, int L, size_t blk, B &o, const char *coder) {

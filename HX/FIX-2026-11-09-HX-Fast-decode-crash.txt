@@ -1,0 +1,28 @@
+HX FAST DECODE CRASH - FOUND AND FIXED (9 Nov 2026)
+
+SYMPTOM
+  HX Fast decode sometimes crashed (Windows exit 3221225477 = access violation) on Kodak photos (kodim05 in the
+  Competition Test). The same compressed file decoded fine on some tries and crashed on others.
+
+CAUSE
+  src/entbench.cpp, the RGB image line (line ids 62/63, used for colour photos): the choice of predictor
+  ("gap" = CALIC's gradient-adjusted predictor on/off) was kept in ONE global variable, g_gap, shared by all threads.
+  HX decodes every 1 MB segment on its own core, so one thread could switch the predictor while another thread was in
+  the middle of an image. The wrong predictor gives wrong pixel values, then wrong contexts, and the decoder reads
+  past the end of a context line -> crash (or, without a crash, a wrong result that the round-trip check catches).
+  The encoder had the same shared variable (candidates run in parallel), so it could also, rarely, write a stream
+  that does not match its own header.
+
+FIX
+  g_gap removed; the predictor choice is passed to rgb_core() as a parameter, so every thread has its own.
+  No change to the file format: files made before the fix decode with the fixed hx.exe.
+
+TEST (cloud, the same hx.exe build settings, kodim01 compressed once, decoded 16 times with 4 threads)
+  old hx.exe:   7 correct, 9 failed
+  fixed hx.exe: 16 correct, 0 failed
+  kodim05 compressed and decoded 3 times with the fixed hx.exe at 12 threads: all exact, same size as before
+  (543,085 bytes).
+
+FILES
+  entbench.cpp   HX/src/entbench.cpp and hx-competition/source/HX/entbench.cpp
+  hx.exe         rebuilt with the fix: HX/windows/HX-Compressor-1.0/tools/hx.exe and tools/hx.exe inside hx-competition/HX-Competition-Test-1.0.zip
