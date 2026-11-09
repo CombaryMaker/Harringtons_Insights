@@ -41,7 +41,7 @@ splits Tier 1 into five sub-tiers. Tiers 2 to 10 do not change.
    Border items: Snappy 1.3.1 (M 0.408) in 1A; zstd --ultra -22 --long=31 (M 1.008), zstd -19 --long=27 (M 1.019) and
    LZ4 -9 (M 1.014) in 1C. Without the guard band, Tier 1A has no rival, and Tier 1C's best rival is zstd -19
    (52,924,903 bytes); every result above stays the same.
-   With tiers 2 to 10 as before, Harrington's compression concepts won 9 of 14 tiers on Silesia (1A-1E, 4 and 5).
+   With tiers 2 to 10 as before, Harrington's compression concepts won 8 of 14 tiers on Silesia (1A-1E, 2, 4 and 5).
 
 5. LIMITS A REVIEWER SHOULD KNOW
    - Times are wall clock including program start-up and writing the output to disk, so the fastest decoders sit closer
