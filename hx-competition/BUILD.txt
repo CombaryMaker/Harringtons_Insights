@@ -1,0 +1,28 @@
+HX COMPETITION TEST 1.0 - HOW EVERY PROGRAM WAS BUILT
+All Windows programs except 7za.exe and the JPEG XL / WebP / packJPG / WavPack tools were cross-compiled on Linux with
+llvm-mingw 20240619 (UCRT, x86_64), -O2, statically linked, from the public sources named here, unmodified.
+
+  HX-Competition-Test.exe  source\app\hxcomp.cpp + common.inc (+ hxcomp.rc, hxcomp.manifest)
+                           clang++ -O2 -std=c++17 -municode -mwindows -static ... -lcomctl32 -lcomdlg32 -lshell32 -lole32
+                           -lgdi32 -luser32 -lpsapi -lbcrypt -ladvapi32
+  hx.exe                   source\HX (hx.cpp and headers) with zstd 1.5.6, libbsc 3.4.0, bzip3 1.5.1, Brotli 1.2.0, the
+                           7-Zip 26.06 C SDK, FiniteStateEntropy and ryg_rans; script source\HX\build-hx-windows.sh
+  hdeflate.exe             source\H-Deflate\hdeflate.cpp:  clang++ -O2 -std=c++17 -static hdeflate.cpp -lpthread
+  lz4.exe                  github.com/lz4/lz4 tag v1.11.0: lib\*.c + programs\*.c
+  zstd.exe                 zstd 1.5.6 command-line program (same build as Harrington Head-to-Head 1.0)
+  brotli.exe               github.com/google/brotli 1.2.0: c\common, c\enc, c\dec + c\tools\brotli.c
+  bsc.exe                  libbsc 3.4.0: libbsc\**\*.cpp + libsais.c + bsc.cpp (no OpenMP)
+  bzip3.exe                bzip3 1.5.1: src\libbz3.c + src\main.c
+  kanzi.exe                github.com/flanglet/kanzi-cpp tag 2.6.0: src\**\*.cpp except test\ and api\
+  rivals.exe               source\rivals\rivals.cpp + Snappy 1.3.1 (snappy.cc, snappy-sinksource.cc, snappy-stubs-internal.cc)
+                           + libdeflate 1.26 (lib\*.c, lib\x86\*.c)
+  xz.exe                   XZ Utils 5.6.3 (same build as Harrington Head-to-Head 1.0)
+  bzip2-stock.exe          libbz2 1.1 front end (Harrington Head-to-Head 1.0)
+  lzav-hi.exe              lzav-hi with LZAV 7.1 inside unmodified ("s" = the stock LZAV HI encoder, "d" = stock decoder)
+  7za.exe                  official 7-Zip 26.06, x64\7za.exe from 7z2606-extra.7z (github.com/ip7z/7zip/releases/tag/26.06)
+  cjxl/djxl.exe            libjxl 0.12.0 official jxl-x64-windows-static.zip
+  cwebp/dwebp.exe          libwebp 1.6.0 official libwebp-1.6.0-windows-x64.zip
+  packJPG.exe              packJPG 2.5k official packJPGx64.exe
+  wavpack/wvunpack.exe     WavPack 5.9.0 official wavpack-5.9.0-x64.zip
+  HCM.exe, hs_zstd.exe, rd-zstd.exe, xz-hi.exe, bzip2-hi.exe   Michael Harrington's tools, MIT (Harringtons_Insights on GitHub)
+Every program's size and SHA-256 is written in the Advanced log, so a rebuilt copy can be compared.

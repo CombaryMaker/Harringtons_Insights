@@ -1,0 +1,26 @@
+HX - LICENSE (applies to everything in the HX/ folder)
+
+Copyright (c) 2026 Michael Hugh Harrington. All rights reserved.
+Patent Pending: U.S. Provisional Patent Application No. 64/192,843, filed 5 November 2026.
+
+The MIT License that covers the rest of this repository does NOT apply to the HX/ folder.
+
+Permitted without a separate license - personal use, research and peer review:
+Individuals may use HX free of charge for their own personal, non-commercial use.
+Individuals, universities and research groups may read, build, run, test, benchmark and modify the HX code
+for non-commercial research, peer review and scientific study, and may publish their findings and results.
+Please credit Michael Hugh Harrington and cite this repository. Modified versions may be shared for research
+only, must keep this license and notice, and must be clearly marked as modified.
+
+Requires a written license from the copyright holder:
+Any commercial use, including use in or with a product or service, internal business use, selling or
+distributing HX or its methods for commercial purposes, or offering it as a service. No patent license is
+granted for commercial use.
+
+Third-party libraries used by HX remain under their own licenses and are not included in this folder:
+zstd (BSD), Huff0/FSE (BSD), ryg_rans (public domain), LZMA SDK / PPMd / BCJ2 by Igor Pavlov (public domain),
+libbsc (Apache 2.0), bzip3 (LGPL 3), Brotli (MIT). HCM is Michael Harrington's own MIT-licensed compressor
+and is called as a separate program. mzip (AGPL) is a research-only option run as a separate program and is
+never linked in.
+
+Licensing inquiries: Michael Hugh Harrington, michaelhh@gmail.com, 971-533-3116.

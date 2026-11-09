@@ -1,0 +1,75 @@
+HX COMPETITION TEST 1.0 - METHOD
+Michael Hugh Harrington, 8 November 2026. Written so a person or an AI can check every step.
+
+1. WHAT IS COMPARED
+   Ours (Michael Harrington's software): HX Fast; HX Complete; hs_zstd 1.3 (level 3 and 19); rd-zstd; xz-hi; bzip2-hi;
+   lzav-hi. These are never scored against each other.
+   Rivals (stock builds of published compressors, settings below). paq8px, cmix and ZPAQ are left out on purpose: they are
+   far slower than everything here (decode in the order of 1 MB/s or less).
+   A tester can untick any program; the log lists every program left out.
+
+2. HOW EACH PROGRAM IS RUN
+   Each program runs as its own Windows process with the exact command line below ({t} = tools folder, {i} = input,
+   {o} = output, {n} = number of logical cores). ">" means the program writes to standard output, saved to a file.
+   The compressed file is decoded with the command in the second column and compared with the original byte for byte
+   (size and SHA-256). A program that fails or does not give back the exact original is shown as failed and left out of
+   the totals. Times are wall clock from process start to exit (program start-up included), median of the chosen runs.
+   CPU time and peak committed memory come from a Windows job object around the process.
+   Threads: every program runs with its own default thread setting; HX runs on all logical cores (that is its design).
+
+   HX Fast               hx.exe c {i} {o} {n}                       | hx.exe d {i} {o} {n}
+   HX Complete           hx.exe c {i} {o} {n} --complete --no-learn | hx.exe d {i} {o} {n}
+                         For PNG, ZIP/Office, PDF, gzip and OLE (DOC/XLS/PPT) files, H-Deflate runs first
+                         (hdeflate.exe pack IN OUT {n}) and after decoding (hdeflate.exe unpack IN OUT {n}); its time is
+                         included in HX Complete's compress and decompress times. HX Complete also uses HCM v3.6.1 max and
+                         the format specialists listed in the log (JPEG XL 0.12.0, WebP 1.6.0, packJPG 2.5k, WavPack 5.9.0),
+                         and keeps the smallest verified result.
+   hs_zstd level 3/19    hs_zstd.exe c {i} {o} --level 3|19 --jobs {n}  | hs_zstd.exe d {i} {o} --jobs {n}
+   rd-zstd               rd-zstd.exe c {i} {o}                      | rd-zstd.exe d {i} {o}
+   xz-hi                 xz-hi.exe {i} {o}                          | xz.exe -d -c {i} >      (stock xz decodes it)
+   bzip2-hi              bzip2-hi.exe c {i} {o}                     | bzip2-stock.exe d {i} {o} (stock libbz2)
+   lzav-hi               lzav-hi.exe c {i} {o}                      | lzav-hi.exe d {i} {o}  (stock LZAV decoder)
+   LZ4 -1 / -9 / -12     lz4.exe -1|-9|-12 -q -f {i} {o}            | lz4.exe -d -q -f {i} {o}
+   Snappy                rivals.exe snappy c {i} {o}                | rivals.exe snappy d {i} {o}
+   LZAV 7.1 HI           lzav-hi.exe s {i} {o}                      | lzav-hi.exe d {i} {o}
+   gzip -6 / -12         rivals.exe gzip 6|12 c {i} {o}             | rivals.exe gzip d {i} {o}
+   zstd -1/-3/-9/-19     zstd.exe -q -f -N {i} -o {o}               | zstd.exe -q -f -d {i} -o {o}
+   zstd -19 --long=27    zstd.exe -q -f -19 --long=27 {i} -o {o}    | zstd.exe -q -f -d --long=27 {i} -o {o}
+   zstd -22 --long=31    zstd.exe -q -f --ultra -22 --long=31 ...   | zstd.exe -q -f -d --long=31 {i} -o {o}
+   Brotli -q 1/5/9/11    brotli.exe -q N -w 24 -f -o {o} {i}        | brotli.exe -d -f -o {o} {i}
+   bzip2 -9              bzip2-stock.exe c {i} {o}                  | bzip2-stock.exe d {i} {o}
+   xz -9e                xz.exe -9e -k -c {i} >                     | xz.exe -d -c {i} >
+   7-Zip LZMA2 / PPMd    7za.exe a -t7z -mx9 -m0=LZMA2|PPMd -bso0 -bsp0 -bse0 {o} {i}  | 7za.exe e -so {i} >
+   BSC default / best    bsc.exe e {i} {o} [-b64e2]                 | bsc.exe d {i} {o}
+   bzip3                 bzip3.exe -e -f -c {i} >                   | bzip3.exe -d -f -c {i} >
+   kanzi -l 1/3/5/7/9    kanzi.exe -c -i {i} -o {o} -l N -f -v 0    | kanzi.exe -d -i {i} -o {o} -f -v 0
+
+3. WHERE THE PROGRAMS COME FROM (all built from the named public release, unmodified; see BUILD.txt)
+   LZ4 1.11.0 (tag v1.11.0)   Snappy 1.3.1 (tag 1.3.1)   libdeflate 1.26 (tag v1.26)   zstd 1.5.6   Brotli 1.2.0
+   libbsc 3.4.0   bzip3 1.5.1   kanzi-cpp 2.6.0 (tag 2.6.0)   LZAV 7.1   libbz2 1.1   XZ Utils 5.6.3
+   7-Zip 26.06: 7za.exe from the official 7z2606-extra.7z (github.com/ip7z/7zip/releases/tag/26.06), not rebuilt.
+   rivals.exe is a 60-line front end (source\rivals\rivals.cpp) for Snappy and libdeflate, which have no Windows
+   command-line tool of their own; it adds nothing to their output (raw Snappy format; standard gzip format).
+   The log (Advanced) lists every program's size and SHA-256.
+
+4. WHAT IS REPORTED
+   Per file: every program, sorted by decode time: bytes, ratio (original / compressed), compress time, decompress time,
+   decode time as a multiple of LZ4 -1's on the same file, and the round-trip check. The smallest overall, the smallest
+   of ours and the smallest rival are named, with the difference in percent. Poor results are shown like any other.
+   Totals (folder runs): the same columns summed over all files, for the programs that finished every file exactly.
+   HX FAST RACE: every program whose total decode time is no more than 2x HX Fast's, ranked by total size.
+   HX COMPLETE RACE: every program whose total ratio is at least 90% of HX Complete's, ranked by total size.
+   SPEED TIERS: a program's total decode time divided by LZ4 -1's. Tier limits: 2, 5, 10, 20, 50, 100, 200, 500,
+   2000 times, and tier 10 = any speed. A program counts in every tier whose limit it is within. In each tier the
+   smallest of ours is compared with the smallest rival: WIN when ours is the same size or smaller. This is the same rule
+   as Michael Harrington's 6 November 2026 chart (29 data types x 10 tiers).
+   Every number is measured on the computer that runs the test. Nothing is estimated. Save log... writes the log (.txt)
+   and every number (.csv).
+
+5. LIMITS A REVIEWER SHOULD KNOW
+   - Times include program start-up. For small files (LZ4 total decode under 0.5 s) the log says the tiers say little.
+   - Rivals run at the levels listed; other levels or options of the same programs may do better or worse.
+   - HX Complete uses outside specialists (JPEG XL, WebP, packJPG, WavPack) for some file types; the log names them.
+     When one of them wins a file, the win belongs to that specialist inside HX Complete's route choice.
+   - 7z archives store a small header with the file name; .xz, .gz, .bz2, .zst, .lz4, .br, .knz, .bsc, .bz3 store their
+     own small headers. All of these are counted in the compressed size, as each program writes them.
