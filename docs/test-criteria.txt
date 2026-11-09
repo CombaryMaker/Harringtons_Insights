@@ -19,4 +19,5 @@ Fair baselines (added 2026-11-01 after Andrew Goodwin's review)
 Standing rules
 - same machine, same session, order of runs alternated
 - tiers by decode multiple M vs lz4 default (Compression Tier Standard v1.1)
+- Tier 1 split into sub-tiers 1A-1E (additional standard, 9 Nov 2026): docs/Speed-Tier-Standard-Tier-1-Split.txt
 - kennedy.xls shown as an outlier: totals with and without it

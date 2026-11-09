@@ -63,6 +63,10 @@ Michael Hugh Harrington, 8 November 2026. Written so a person or an AI can check
    2000 times, and tier 10 = any speed. A program counts in every tier whose limit it is within. In each tier the
    smallest of ours is compared with the smallest rival: WIN when ours is the same size or smaller. This is the same rule
    as Michael Harrington's 6 November 2026 chart (29 data types x 10 tiers).
+   ADDITIONAL STANDARD (9 Nov 2026): Tier 1 is split into sub-tiers 1A-1E at M <= 0.4, 0.63, 1.0, 1.6 and 2.0 (Renard R5
+   preferred numbers, ISO 3), with a 2.6% guard band for border items (ISO 14253-1, GUM Type B). This version of the app
+   reports the 10 main tiers; the split, its basis and the Silesia sub-tier results are in
+   docs/Speed-Tier-Standard-Tier-1-Split.txt. Open to suggestions for alternative means.
    Every number is measured on the computer that runs the test. Nothing is estimated. Save log... writes the log (.txt)
    and every number (.csv).
 
