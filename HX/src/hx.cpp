@@ -15,9 +15,10 @@
 // environment variable HX_MZIP set to the mzip program (Cranot/mzip, AGPL - run as a separate program, never linked
 // in), --complete also tries mzip on the whole file (mode 8) and as the coder of the split's rest (mode 9).
 // Files made with modes 8/9 need HX_MZIP to decode too.
-// usage: hxf c IN OUT [THREADS] [--full] [--probe KB] [--complete]  |  hxf d IN OUT [THREADS]
+// usage (HX 1.1.0): hx c IN OUT [--complete] [--block=SIZE] [--memlimit=SIZE] [-T N]  |  hx d IN OUT [-T N]   (IN/OUT can be -)
 #define HX_NO_MAIN
 #include "entbench.cpp"
+#define ZSTD_STATIC_LINKING_ONLY
 #include "zstd.h"
 #include "libbsc.h"
 #include "libbz3.h"
@@ -27,6 +28,16 @@
 #include "hx_win_compat.h"
 
 static const size_t SEG = (1u << 20) - (1u << 20) % 12, HBLK = 128 * 1024;
+// HX Ablation Test switches (8 Nov 2026, encoder only - every file still decodes with the normal "hx d"):
+//   --abl-pick1        H Sampler replaced by "sample picks the winner": the probe alone chooses one line, no full-run final
+//   --full             H Sampler replaced by "try every line in full"
+//   --abl-lines-off    Exchange lines replaced by plain order-0 entropy coding of the bytes (Huff0 / FSE / rANS)
+//   --abl-sets-off     Harrington's Sets replaced by plain fixed segments
+//   --abl-gmap FILE    Harrington's Sets classes replaced by an outside grouping map (GMP1 file, 64 KB windows, up to 4 classes)
+//   --abl-repeat-off   the cascade's repeat line replaced by nothing (leftovers stay with the segment coders / stored raw)
+//   --abl-split-off    the split route replaced by whole-file best-of only
+static bool abl_lines_off = false, abl_sets_off = false, abl_repeat_off = false, abl_split_off = false; static string abl_gmap;
+static const vector<int> abl_plain = {0, 32, 128};
 struct Plan { bool sets = false; size_t sw = 65536; vector<int> lab; vector<size_t> worder, soff, slen; };
 static void plan_segments(Plan &P, size_t n) {   // segments of the (possibly class-sorted) stream, from the class map
     P.worder.clear(); P.soff.clear(); P.slen.clear();
@@ -62,12 +73,28 @@ static void hx_decode(const uint8_t *p, size_t m, uint8_t *out, size_t n, int T)
     if (P.sets) { vector<size_t> wpos(P.worder.size()); size_t pos = 0; for (size_t i = 0; i < P.worder.size(); i++) { wpos[i] = pos; pos += min(P.sw, n - P.worder[i] * P.sw); }
         runpar(P.worder.size(), T, [&](size_t i) { size_t w = P.worder[i]; memcpy(out + w * P.sw, tmp.data() + wpos[i], min(P.sw, n - w * P.sw)); }); }
 }
-static B zstd_long(const B &in, int T, int level = 19) {
-    B o(ZSTD_compressBound(in.size())); ZSTD_CCtx *c = ZSTD_createCCtx();
+// zstd-hi (Michael Harrington's encoder-only zstd settings search, 26 Oct 2026): extra encoder settings, chosen per file on a
+// sample; the stream is standard zstd, read by the stock decoder. Config 0 is plain zstd.
+struct ZHi { int mml, tlen, split, slog; };
+static const ZHi ZHI[] = {{0, -1, 0, 0}, {4, 64, 1, 0}, {0, 999, 0, 12}, {3, -1, 2, 12}, {6, 999, 2, 12}, {4, 999, 1, 0}};
+static B zstd_cfg(const uint8_t *d, size_t n, int T, int level, int k) {
+    B o(ZSTD_compressBound(n)); ZSTD_CCtx *c = ZSTD_createCCtx();
     ZSTD_CCtx_setParameter(c, ZSTD_c_compressionLevel, level); ZSTD_CCtx_setParameter(c, ZSTD_c_enableLongDistanceMatching, 1);
     ZSTD_CCtx_setParameter(c, ZSTD_c_windowLog, 27); ZSTD_CCtx_setParameter(c, ZSTD_c_nbWorkers, T);
-    size_t r = ZSTD_compress2(c, o.data(), o.size(), in.data(), in.size()); ZSTD_freeCCtx(c);
-    if (ZSTD_isError(r)) { fprintf(stderr, "hxf: zstd error\n"); exit(1); } o.resize(r); return o;
+    const ZHi &z = ZHI[k]; if (z.mml) ZSTD_CCtx_setParameter(c, ZSTD_c_minMatch, z.mml); if (z.tlen >= 0) ZSTD_CCtx_setParameter(c, ZSTD_c_targetLength, z.tlen);
+    if (z.split) ZSTD_CCtx_setParameter(c, ZSTD_c_useBlockSplitter, z.split); if (z.slog) ZSTD_CCtx_setParameter(c, ZSTD_c_searchLog, z.slog);
+    size_t r = ZSTD_compress2(c, o.data(), o.size(), d, n); ZSTD_freeCCtx(c);
+    if (ZSTD_isError(r)) return B(); o.resize(r); return o;
+}
+static B sample_of(const B &in, size_t cap);
+static int g_zhi = -1;   // chosen zstd-hi config for this file (-1 = not chosen yet)
+static B zstd_long(const B &in, int T, int level = 19) {
+    if (level < 19 || getenv("HX_NO_HI")) { B o = zstd_cfg(in.data(), in.size(), T, level, 0); if (o.empty()) { fprintf(stderr, "hxf: zstd error\n"); exit(1); } return o; }
+    if (g_zhi < 0) { B s = sample_of(in, (size_t)4 << 20); size_t bs = SIZE_MAX; g_zhi = 0;
+        for (int k = 0; k < (int)(sizeof ZHI / sizeof ZHI[0]); k++) { B o = zstd_cfg(s.data(), s.size(), T, level, k); if (!o.empty() && o.size() < bs) { bs = o.size(); g_zhi = k; } } }
+    B o = zstd_cfg(in.data(), in.size(), T, level, 0); if (o.empty()) { fprintf(stderr, "hxf: zstd error\n"); exit(1); }
+    if (g_zhi > 0) { B h = zstd_cfg(in.data(), in.size(), T, level, g_zhi); if (!h.empty() && h.size() < o.size()) o.swap(h); }   // never worse than plain zstd
+    return o;
 }
 static const size_t BCAP = 256u << 20;   // BSC / bzip3 block size cap (files up to this size are one block)
 static B bsc_enc(const uint8_t *d, size_t n) {
@@ -114,7 +141,11 @@ static void writef(const char *fn, const uint8_t *d, size_t n) { FILE *f = fopen
 // HX_PACKJPG, HX_FFMPEG). Mode 10: route byte, header bytes kept as they are, the specialist's file.
 // Routes: 1 JXL raw image, 2 WebP raw image, 3 packJPG, 4 JXL JPEG repack, 5 FFV1 video, 6 x264 lossless video.
 static string tool(const char *env) { const char *v = getenv(env); return v ? v : ""; }
+#ifdef _WIN32
+static string q(const string &x) { return "\"" + x + "\""; }
+#else
 static string q(const string &x) { return "'" + x + "'"; }
+#endif
 static bool sh(const string &cmd) { return hx_system((cmd + " > " HX_NULL " 2>&1").c_str()) == 0; }
 static size_t pnm_header(const B &in, int &kind) {   // binary PGM (5) / PPM (6), maxval 255: returns header length, 0 = not one
     kind = 0; if (in.size() < 16 || in[0] != 'P' || (in[1] != '5' && in[1] != '6')) return 0;
@@ -233,15 +264,29 @@ static B ppmd_route(const B &in, bool dbg) {
     if (dbg && !best.empty()) fprintf(stderr, "  ppmd: %zu\n", best.size());
     return best;
 }
-static B brotli_route(const B &in) {
-    size_t out_n = BrotliEncoderMaxCompressedSize(in.size()); if (!out_n) out_n = in.size() + 1024; B o(out_n + 1);
+// Brotli-hi (Michael Harrington's encoder-only Brotli 11 settings search, 26 Oct 2026): block size, context mode and distance
+// postfix chosen per file on a sample; standard Brotli stream (large window), read by the stock decoder. Config 0 is plain Brotli 11.
+struct BHi { int lgblock, mode, npost, nolcm; };
+static const BHi BHI[] = {{0, 0, -1, 0}, {0, 1, 1, 0}, {16, 1, 2, 0}, {18, 1, 1, 0}, {20, 1, 2, 0}, {0, 0, 2, 0}, {18, 0, -1, 1}};
+static B brotli_cfg(const uint8_t *d, size_t n, int k) {
+    size_t out_n = BrotliEncoderMaxCompressedSize(n); if (!out_n) out_n = n + 1024; B o(out_n + 1);
     BrotliEncoderState *e = BrotliEncoderCreateInstance(nullptr, nullptr, nullptr); if (!e) return B();
-    int lg = 10; while (lg < 30 && ((size_t)1 << lg) < in.size()) lg++;
+    int lg = 10; while (lg < 30 && ((size_t)1 << lg) < n) lg++;
     BrotliEncoderSetParameter(e, BROTLI_PARAM_QUALITY, 11); BrotliEncoderSetParameter(e, BROTLI_PARAM_LARGE_WINDOW, 1); BrotliEncoderSetParameter(e, BROTLI_PARAM_LGWIN, (uint32_t)max(lg, 16));
-    BrotliEncoderSetParameter(e, BROTLI_PARAM_SIZE_HINT, (uint32_t)min(in.size(), (size_t)1 << 30));
-    size_t ai = in.size(), ao = o.size(); const uint8_t *ni = in.data(); uint8_t *no = o.data();
+    BrotliEncoderSetParameter(e, BROTLI_PARAM_SIZE_HINT, (uint32_t)min(n, (size_t)1 << 30));
+    const BHi &b = BHI[k]; if (b.lgblock) BrotliEncoderSetParameter(e, BROTLI_PARAM_LGBLOCK, (uint32_t)b.lgblock);
+    if (b.mode) BrotliEncoderSetParameter(e, BROTLI_PARAM_MODE, (uint32_t)b.mode); if (b.npost >= 0) BrotliEncoderSetParameter(e, BROTLI_PARAM_NPOSTFIX, (uint32_t)b.npost);
+    if (b.nolcm) BrotliEncoderSetParameter(e, BROTLI_PARAM_DISABLE_LITERAL_CONTEXT_MODELING, 1);
+    size_t ai = n, ao = o.size(); const uint8_t *ni = d; uint8_t *no = o.data();
     bool ok = BrotliEncoderCompressStream(e, BROTLI_OPERATION_FINISH, &ai, &ni, &ao, &no, nullptr) && BrotliEncoderIsFinished(e);
     BrotliEncoderDestroyInstance(e); if (!ok) return B(); o.resize(o.size() - ao); return o;
+}
+static B brotli_route(const B &in) {
+    B o = brotli_cfg(in.data(), in.size(), 0); if (o.empty() || getenv("HX_NO_HI")) return o;
+    B s = sample_of(in, (size_t)1 << 20); size_t bs = SIZE_MAX; int best = 0;
+    for (int k = 0; k < (int)(sizeof BHI / sizeof BHI[0]); k++) { B t = brotli_cfg(s.data(), s.size(), k); if (!t.empty() && t.size() < bs) { bs = t.size(); best = k; } }
+    if (best > 0) { B h = brotli_cfg(in.data(), in.size(), best); if (!h.empty() && h.size() < o.size()) o.swap(h); }   // never worse than plain Brotli 11
+    return o;
 }
 static bool brotli_unroute(const uint8_t *p, size_t m, uint8_t *out, size_t n) {
     BrotliDecoderState *d = BrotliDecoderCreateInstance(nullptr, nullptr, nullptr); if (!d) return false;
@@ -329,24 +374,38 @@ static B media_dec(int route, const uint8_t *p, size_t m, size_t n) {
 }
 
 #include "hx_router.h"
-int main(int argc, char **argv) {
-    if (argc < 4) { fprintf(stderr, "HX (Harrington Sets + Exchange lines + cascade + learned router)\nusage: hx c IN OUT [THREADS] [--complete] [--max] [--no-learn] | hx d IN OUT [THREADS]\n  --max       router off: try every route (smallest size, slowest compress)\n  --no-learn  do not add this file to the router's learning table\n"); return 2; }
-    int T = (int)max(1u, thread::hardware_concurrency()); g_probe = 131072; bool complete = false; bsc_init(LIBBSC_FEATURE_NONE); if (getenv("HX_SLICES")) g_slices = max(1, atoi(getenv("HX_SLICES")));
-    for (int a = 4; a < argc; a++) { if (!strcmp(argv[a], "--full")) g_probe = 0; else if (!strcmp(argv[a], "--complete")) complete = true; else if (!strcmp(argv[a], "--max")) setenv("HX_ALLROUTES_MAX", "1", 1); else if (!strcmp(argv[a], "--no-learn")) unsetenv("HX_ROUTELOG"); else if (!strcmp(argv[a], "--probe") && a + 1 < argc) g_probe = (size_t)atoi(argv[++a]) * 1024; else T = max(1, atoi(argv[a])); }
-    B in = readf(argv[2]); double t0 = now();
-    if (argv[1][0] == 'c') {
+// ===== HX 1.1.0 (10 Nov 2026): block mode, memory limit, thread flag, stdin/stdout =====
+// Asked for on encode.su (xman, 10 Nov 2026): a 1.6 GB file did not fit in 16 GB of memory, and HX could not read a pipe.
+// Files made without --block / --memlimit / a pipe are the same HXF1 format as HX 1.0, byte for byte.
+// Block files (HXB1): "HXB1", version 1, block size (8 bytes), then for each block its length (8 bytes) and an HXF1 record
+// of that block, then a 0 length and the total original size (8 bytes). HX 1.1 decodes HX 1.0 files and HXB1 files.
+static FILE *g_msg = stdout;     // status lines; stderr when the output goes to stdout
+static string g_prefix;          // "block k: " in block mode
+static B compress_one(const B &in, int T, bool complete, const string &self, const string &name) {
+    double t0 = now(); g_zhi = -1;   // HX 1.1: settings chosen per file are chosen again for every block
         size_t n = in.size(); B best; int mode = 0;
-        if (n == 0) { B o = {'H', 'X', 'F', '1', 0, 0, 0, 0, 0, 0, 0, 0, 0}; writef(argv[3], o.data(), o.size()); printf("hxf: empty file\n"); return 0; }
+        if (n == 0) { B o = {'H', 'X', 'F', '1', 0, 0, 0, 0, 0, 0, 0, 0, 0}; fprintf(g_msg, "%shxf: empty\n", g_prefix.c_str()); return o; }
         // candidate 1: Sets (64 KB or 65532-byte windows) or none, each followed by the Exchange lines
         g_w16 = detect_width(in.data(), n, 2); g_w8 = detect_width(in.data(), n, 1); g_rec = detect_record(in.data(), n);   // image lines: row width; record lanes: record length
         bool dbg = getenv("HX_DEBUG") != nullptr; auto lap = [&](const char *w) { if (dbg) fprintf(stderr, "  %-28s %7.2f s  best %zu\n", w, now() - t0, best.size()); };
-        Plan none; plan_segments(none, n); vector<int> won, keptall; vector<B> nparts; best = hx_encode(in, none, T, nullptr, &won, &nparts, &keptall); mode = 1;
+        const vector<int> *lines_allow = abl_lines_off ? &abl_plain : nullptr;
+        if (abl_lines_off || abl_sets_off || abl_repeat_off || abl_split_off || !abl_gmap.empty() || g_keepmax != 6 || !g_probe)
+            fprintf(g_msg, "hx ablation: sampler=%s lines=%s sets=%s repeat=%s split=%s\n", !g_probe ? "every line in full" : g_keepmax == 1 ? "sample picks the winner" : "Harrington",
+                abl_lines_off ? "plain entropy coding" : "Harrington", abl_sets_off ? "plain blocks" : !abl_gmap.empty() ? "outside map" : "Harrington",
+                abl_repeat_off ? "off" : "Harrington", abl_split_off ? "whole-file best-of" : "Harrington");
+        Plan none; plan_segments(none, n); vector<int> won, keptall; vector<B> nparts; best = hx_encode(in, none, T, lines_allow, &won, &nparts, &keptall); mode = 1;
         // the Sets passes: HX_ALLOW=all (default: each Sets segment gets its own probe), won (only the winners without Sets), kept (lines kept by the probes)
         const char *ae = getenv("HX_ALLOW"); string am = ae ? ae : "all";
         vector<int> allow = am == "won" ? won : keptall; sort(allow.begin(), allow.end()); allow.erase(unique(allow.begin(), allow.end()), allow.end());
         lap("lines (no Sets)");
-        for (size_t sw : {(size_t)65536, (size_t)65532}) { SW = sw; Plan P; P.sets = true; P.sw = sw; P.lab = sets_labels(in.data(), n);
-            if (*max_element(P.lab.begin(), P.lab.end()) == 0) continue; plan_segments(P, n); B c = hx_encode(in, P, T, (g_probe && am != "all") ? &allow : nullptr); if (c.size() < best.size()) best.swap(c); }
+        vector<int> gmap;
+        if (!abl_gmap.empty()) { B g = readf(abl_gmap.c_str()); size_t nw = (n + 65535) / 65536;
+            if (g.size() < 13 || memcmp(g.data(), "GMP1", 4) || get32(g.data() + 4) != 65536 || get32(g.data() + 8) != nw || g[12] > 4 || g.size() < 13 + nw) { fprintf(stderr, "hx: grouping map does not match this file\n"); exit(1); }
+            for (size_t w = 0; w < nw; w++) { if (g[13 + w] > 3) { fprintf(stderr, "hx: grouping map class out of range\n"); exit(1); } gmap.push_back(g[13 + w]); } }
+        if (!abl_sets_off) for (size_t sw : {(size_t)65536, (size_t)65532}) { if (!gmap.empty() && sw != 65536) continue;
+            SW = sw; Plan P; P.sets = true; P.sw = sw; P.lab = gmap.empty() ? sets_labels(in.data(), n) : gmap;
+            if (*max_element(P.lab.begin(), P.lab.end()) == 0) continue; plan_segments(P, n);
+            B c = hx_encode(in, P, T, abl_lines_off ? &abl_plain : (g_probe && am != "all") ? &allow : nullptr); if (c.size() < best.size()) best.swap(c); }
         // per-segment zstd -19 (the split mode needs it) and, for the estimate below, per-segment zstd -1
         Plan none2; plan_segments(none2, n); size_t ns = none2.soff.size(); vector<double> z19(ns, 0), z1(ns, 0); vector<char> mark(ns, 0);
         runpar(ns, T, [&](size_t k) { B zz(ZSTD_compressBound(none2.slen[k])); const uint8_t *sp = in.data() + none2.soff[k];
@@ -360,13 +419,13 @@ int main(int argc, char **argv) {
         if (est_on) { double s1 = 0; for (double v : z1) s1 += v; B l1 = zstd_long(in, T, 1); gain = min(1.0, l1.size() / max(1.0, s1)); }
         auto est = [&](bool unmarked_only) { double e = 0; for (size_t k = 0; k < ns; k++) if (!unmarked_only || !mark[k]) e += z19[k]; return e * gain; };
         // candidate 2: the cascade's repeat line (whole file, long-distance matching)
-        if (!est_on || est(false) < 1.05 * best.size()) { B z = zstd_long(in, T, 19); if (z.size() < best.size()) { best.swap(z); mode = 2; } }
+        if (!abl_repeat_off && (!est_on || est(false) < 1.05 * best.size())) { B z = zstd_long(in, T, 19); if (z.size() < best.size()) { best.swap(z); mode = 2; } }
         if (dbg) fprintf(stderr, "  estimate: repeat line %.0f (gain %.3f)\n", est(false), gain);
         lap("repeat line (zstd -19 long)");
         // candidate 3 (split, the cascade with HX lines): segments where the Exchange lines clearly beat zstd -19 on
         // that segment go to HX; everything else stays together in ONE repeat-line stream (so long matches survive)
         { size_t nm = 0, hxm = 0; for (size_t k = 0; k < ns; k++) if (mark[k]) { nm++; hxm += nparts[k].size(); }
-          if (nm > 0 && nm < ns && (!est_on || est(true) + hxm < 1.03 * best.size())) {
+          if (!abl_split_off && nm > 0 && nm < ns && (!est_on || est(true) + hxm < 1.03 * best.size())) {
               B rest; for (size_t k = 0; k < ns; k++) if (!mark[k]) rest.insert(rest.end(), in.data() + none2.soff[k], in.data() + none2.soff[k] + none2.slen[k]);
               B zr = zstd_long(rest, T, 19); B c; put32(c, (uint32_t)ns); for (size_t k = 0; k < ns; k++) c.push_back(mark[k]);
               put32(c, (uint32_t)zr.size()); c.insert(c.end(), zr.begin(), zr.end());
@@ -385,7 +444,7 @@ int main(int argc, char **argv) {
         string rlog; size_t hcm_force = getenv("HX_ALLROUTES") ? ((size_t)32 << 20) : 0;
         auto take = [&](B &c, int md) { if (!c.empty() && c.size() < best.size()) { best.swap(c); mode = md; } };
         auto applicable = [&](int id) -> bool { switch (id) {
-            case 5: return !classA; case 13: case 64: return x86cv * 1000 >= n; case 16: return getenv("HX_HCM") != nullptr;
+            case 5: return !classA; case 6: return !abl_split_off; case 13: case 64: return x86cv * 1000 >= n; case 16: return getenv("HX_HCM") != nullptr;
             case 17: return getenv("HX_HCM37") != nullptr; case 10: return media && (pnm || jpg || wav || (y4m && !classA));
             case 11: return media && !pnm && !jpg && !y4m && !getenv("HX_NOEMBED"); case 18: return g_w16 >= 16 && getenv("HX_CJXL") != nullptr && !pnm;
             default: return true; } };
@@ -424,7 +483,7 @@ int main(int argc, char **argv) {
                     if (!kept.empty()) {
                         B rest; size_t pos = 0; for (auto &im : kept) { rest.insert(rest.end(), in.begin() + pos, in.begin() + im.first); pos = im.first + im.second; } rest.insert(rest.end(), in.begin() + pos, in.end());
                         string d = mz_tmp(), a = d + "/r", b = d + "/r.h"; writef(a.c_str(), rest.data(), rest.size());
-                        bool ok = rest.empty() || sh(string(HX_NOEMBED_PREFIX) + q(argv[0]) + " c " + q(a) + " " + q(b) + " " + to_string(T) + " --complete > " HX_NULL "");
+                        bool ok = rest.empty() || sh(string(HX_NOEMBED_PREFIX) + q(self) + " c " + q(a) + " " + q(b) + " " + to_string(T) + " --complete > " HX_NULL "");
                         B rb = (ok && !rest.empty()) ? readf(b.c_str()) : B(); remove(a.c_str()); remove(b.c_str()); rmdir(d.c_str());
                         if (ok) { put32(c, (uint32_t)kept.size()); for (size_t k = 0; k < kept.size(); k++) { put32(c, (uint32_t)kept[k].first); put32(c, (uint32_t)kept[k].second); put32(c, (uint32_t)bodies[k].size()); c.insert(c.end(), bodies[k].begin(), bodies[k].end()); }
                             put32(c, (uint32_t)rb.size()); c.insert(c.end(), rb.begin(), rb.end());
@@ -450,7 +509,7 @@ int main(int argc, char **argv) {
             if (best.size() > 1.10 * pred_best && k < pr.size()) { runk(pr.size()); pass = 3; }
             if (dbg) { fprintf(stderr, "  router: predicted best %.0f, got %zu, pass %d; ranking", pred_best, best.size(), pass); for (auto &x : pr) fprintf(stderr, " %d:%.3f", x.second, x.first); fprintf(stderr, "\n"); } }
         if (const char *lg = getenv("HX_ROUTELOG")) {   // the learning loop: every file teaches the router (misses and surprises flagged)
-            FILE *fl = fopen(lg, "a"); if (fl) { const char *st = getenv("HX_SET"); string fn = argv[2]; fn = fn.substr(fn.find_last_of('/') + 1);
+            FILE *fl = fopen(lg, "a"); if (fl) { const char *st = getenv("HX_SET"); string fn = name; fn = fn.substr(fn.find_last_of('/') + 1);
                 fprintf(fl, "%s,%s,%zu", st ? st : "-", fn.c_str(), n); for (double v : F) fprintf(fl, ",%.6g", v);
                 const char *flag = pass == 9 ? "all" : pass == 4 ? "novel" : best.size() > 1.03 * pred_best ? "miss" : best.size() < 0.90 * pred_best ? "surprise" : "ok";
                 fprintf(fl, ",%zu,%d,%zu,%d,%d:%s,%.0f,%s\n", base_best, base_mode, best.size(), mode, pass, flag, pred_best, rlog.c_str()); fclose(fl); } }
@@ -459,37 +518,38 @@ int main(int argc, char **argv) {
         { B xf = in; size_t cv = x86_filter(xf.data(), n, true); if (cv * 1000 >= n && mode == 2) { B z = zstd_long(xf, T, 19); if (z.size() < best.size()) { best.swap(z); mode = 64 + 2; } } }
         if (best.size() >= n) { best = in; mode = 0; }
         B o = {'H', 'X', 'F', '1'}; for (int i = 0; i < 8; i++) o.push_back((uint64_t)n >> (8 * i) & 255); o.push_back((uint8_t)mode); o.insert(o.end(), best.begin(), best.end());
-        writef(argv[3], o.data(), o.size());
-        int bm = mode & 63; printf("hxf: %zu -> %zu bytes (%s%s), ratio %.3fx, %.2f s\n", n, o.size(), mode & 64 ? "x86 filter + " : "", bm == 1 ? "Sets + Exchange lines" : bm == 2 ? "repeat line" : bm == 3 ? "split: Exchange lines + repeat line" : bm == 4 ? "BSC" : bm == 5 ? "bzip3" : bm == 6 ? "split: Exchange lines + BSC" : bm == 7 ? "split: Exchange lines + bzip3" : bm == 10 ? "format specialist" : bm == 11 ? "embedded images + HX Complete" : bm == 12 ? "LZMA" : bm == 13 ? "BCJ2 + LZMA/BSC" : bm == 14 ? "PPMd" : bm == 15 ? "Brotli 11" : bm == 16 ? "HCM max" : bm == 17 ? "HCM 3.7" : bm == 18 ? "16-bit image to JPEG XL" : bm == 8 ? "mzip (research)" : bm == 9 ? "split: Exchange lines + mzip (research)" : "stored", (double)n / max<size_t>(1, o.size()), now() - t0);
-    } else {
-        if (in.size() < 13 || memcmp(in.data(), "HXF1", 4)) { fprintf(stderr, "hxf: not an HX Fast file\n"); return 1; }
-        uint64_t n = 0; for (int i = 0; i < 8; i++) n |= (uint64_t)in[4 + i] << (8 * i); int mode = in[12]; bool x86 = mode & 64; mode &= 63; const uint8_t *p = in.data() + 13; size_t m = in.size() - 13;
+        int bm = mode & 63; fprintf(g_msg, "%shxf: %zu -> %zu bytes (%s%s), ratio %.3fx, %.2f s\n", g_prefix.c_str(), n, o.size(), mode & 64 ? "x86 filter + " : "", bm == 1 ? "Sets + Exchange lines" : bm == 2 ? "repeat line" : bm == 3 ? "split: Exchange lines + repeat line" : bm == 4 ? "BSC" : bm == 5 ? "bzip3" : bm == 6 ? "split: Exchange lines + BSC" : bm == 7 ? "split: Exchange lines + bzip3" : bm == 10 ? "format specialist" : bm == 11 ? "embedded images + HX Complete" : bm == 12 ? "LZMA" : bm == 13 ? "BCJ2 + LZMA/BSC" : bm == 14 ? "PPMd" : bm == 15 ? "Brotli 11" : bm == 16 ? "HCM max" : bm == 17 ? "HCM 3.7" : bm == 18 ? "16-bit image to JPEG XL" : bm == 8 ? "mzip (research)" : bm == 9 ? "split: Exchange lines + mzip (research)" : "stored", (double)n / max<size_t>(1, o.size()), now() - t0);
+        return o;
+}
+static B decode_one(const uint8_t *data, size_t size, int T, const string &self) {
+        if (size < 13 || memcmp(data, "HXF1", 4)) { fprintf(stderr, "hx: not an HX file\n"); exit(1); }
+        uint64_t n = 0; for (int i = 0; i < 8; i++) n |= (uint64_t)data[4 + i] << (8 * i); int mode = data[12]; bool x86 = mode & 64; mode &= 63; const uint8_t *p = data + 13; size_t m = size - 13;
         B out(n);
         if (mode == 0) memcpy(out.data(), p, n);
         else if (mode == 1) hx_decode(p, m, out.data(), n, T);
-        else if (mode == 2) { size_t r = ZSTD_decompress(out.data(), n, p, m); if (ZSTD_isError(r) || r != n) { fprintf(stderr, "hxf: zstd decode error\n"); return 1; } }
+        else if (mode == 2) { size_t r = ZSTD_decompress(out.data(), n, p, m); if (ZSTD_isError(r) || r != n) { fprintf(stderr, "hxf: zstd decode error\n"); exit(1); } }
         else if (mode == 4) bsc_dec(p, out.data(), n, T);
         else if (mode == 5) bz3_dec(p, m, out.data(), n);
-        else if (mode == 12) { if (!hxlzma::dec(p, m, out.data(), n)) { fprintf(stderr, "hxf: lzma decode failed\n"); return 1; } }
-        else if (mode == 13) { if (!bcj2_unroute(p, m, out.data(), n, T)) { fprintf(stderr, "hxf: bcj2 decode failed\n"); return 1; } }
-        else if (mode == 14) { if (!hxppmd::dec(p, m, out.data(), n)) { fprintf(stderr, "hxf: ppmd decode failed\n"); return 1; } }
-        else if (mode == 15) { if (!brotli_unroute(p, m, out.data(), n)) { fprintf(stderr, "hxf: brotli decode failed\n"); return 1; } }
-        else if (mode == 16) { B r = hcm_run("d", p, m); if (r.size() != n) { fprintf(stderr, "hxf: this file needs HX_HCM (HCM program)\n"); return 1; } memcpy(out.data(), r.data(), n); }
-        else if (mode == 17) { B r = hcm37_unroute(p, m); if (r.size() != n) { fprintf(stderr, "hxf: this file needs HX_HCM37 / HX_KZF\n"); return 1; } memcpy(out.data(), r.data(), n); }
-        else if (mode == 18) { B r = img16_unroute(p, m, n); if (r.size() != n) { fprintf(stderr, "hxf: 16-bit image decode failed (needs HX_DJXL)\n"); return 1; } memcpy(out.data(), r.data(), n); }
-        else if (mode == 10) { B r = media_dec(p[0], p + 1, m - 1, n); if (r.size() != n) { fprintf(stderr, "hxf: media route decode failed\n"); return 1; } memcpy(out.data(), r.data(), n); }
+        else if (mode == 12) { if (!hxlzma::dec(p, m, out.data(), n)) { fprintf(stderr, "hxf: lzma decode failed\n"); exit(1); } }
+        else if (mode == 13) { if (!bcj2_unroute(p, m, out.data(), n, T)) { fprintf(stderr, "hxf: bcj2 decode failed\n"); exit(1); } }
+        else if (mode == 14) { if (!hxppmd::dec(p, m, out.data(), n)) { fprintf(stderr, "hxf: ppmd decode failed\n"); exit(1); } }
+        else if (mode == 15) { if (!brotli_unroute(p, m, out.data(), n)) { fprintf(stderr, "hxf: brotli decode failed\n"); exit(1); } }
+        else if (mode == 16) { B r = hcm_run("d", p, m); if (r.size() != n) { fprintf(stderr, "hxf: this file needs HX_HCM (HCM program)\n"); exit(1); } memcpy(out.data(), r.data(), n); }
+        else if (mode == 17) { B r = hcm37_unroute(p, m); if (r.size() != n) { fprintf(stderr, "hxf: this file needs HX_HCM37 / HX_KZF\n"); exit(1); } memcpy(out.data(), r.data(), n); }
+        else if (mode == 18) { B r = img16_unroute(p, m, n); if (r.size() != n) { fprintf(stderr, "hxf: 16-bit image decode failed (needs HX_DJXL)\n"); exit(1); } memcpy(out.data(), r.data(), n); }
+        else if (mode == 10) { B r = media_dec(p[0], p + 1, m - 1, n); if (r.size() != n) { fprintf(stderr, "hxf: media route decode failed\n"); exit(1); } memcpy(out.data(), r.data(), n); }
         else if (mode == 11) { size_t cnt = get32(p); p += 4; vector<size_t> off(cnt), len(cnt); vector<B> img(cnt);
             for (size_t k = 0; k < cnt; k++) { off[k] = get32(p); p += 4; len[k] = get32(p); p += 4; size_t bl = get32(p); p += 4;
-                img[k] = media_dec(p[0], p + 1, bl - 1, len[k]); if (img[k].size() != len[k]) { fprintf(stderr, "hxf: embedded image decode failed\n"); return 1; } p += bl; }
+                img[k] = media_dec(p[0], p + 1, bl - 1, len[k]); if (img[k].size() != len[k]) { fprintf(stderr, "hxf: embedded image decode failed\n"); exit(1); } p += bl; }
             size_t rl = get32(p); p += 4; B rest;
             if (rl) { string d = mz_tmp(), a = d + "/r.h", b = d + "/r"; writef(a.c_str(), p, rl);
-                bool ok = sh(q(argv[0]) + " d " + q(a) + " " + q(b) + " " + to_string(T) + " > " HX_NULL); if (ok) rest = readf(b.c_str()); remove(a.c_str()); remove(b.c_str()); rmdir(d.c_str());
-                if (!ok) { fprintf(stderr, "hxf: rest decode failed\n"); return 1; } }
+                bool ok = sh(q(self) + " d " + q(a) + " " + q(b) + " " + to_string(T) + " > " HX_NULL); if (ok) rest = readf(b.c_str()); remove(a.c_str()); remove(b.c_str()); rmdir(d.c_str());
+                if (!ok) { fprintf(stderr, "hxf: rest decode failed\n"); exit(1); } }
             size_t pos = 0, q2 = 0; for (size_t k = 0; k < cnt; k++) { size_t gap = off[k] - pos; memcpy(out.data() + pos, rest.data() + q2, gap); q2 += gap; memcpy(out.data() + off[k], img[k].data(), len[k]); pos = off[k] + len[k]; }
             memcpy(out.data() + pos, rest.data() + q2, n - pos); }
-        else if (mode == 8) { B r = mz_run("d", p, m); if (r.size() != n) { fprintf(stderr, "hxf: mzip size mismatch\n"); return 1; } memcpy(out.data(), r.data(), n); }
+        else if (mode == 8) { B r = mz_run("d", p, m); if (r.size() != n) { fprintf(stderr, "hxf: mzip size mismatch\n"); exit(1); } memcpy(out.data(), r.data(), n); }
         else {   // split: the repeat-line stream on one core while the HX segments decode on the others
-            Plan P; plan_segments(P, n); size_t ns = get32(p); p += 4; if (ns != P.soff.size()) { fprintf(stderr, "hxf: damaged file\n"); return 1; }
+            Plan P; plan_segments(P, n); size_t ns = get32(p); p += 4; if (ns != P.soff.size()) { fprintf(stderr, "hxf: damaged file\n"); exit(1); }
             vector<char> mark(p, p + ns); p += ns; size_t zl = get32(p); p += 4; const uint8_t *zp = p; p += zl;
             vector<const uint8_t *> hpp(ns, nullptr); size_t restn = 0; for (size_t k = 0; k < ns; k++) { if (mark[k]) { size_t L = get32(p); p += 4; hpp[k] = p; p += L; } else restn += P.slen[k]; }
             B rest(restn); vector<size_t> hk; for (size_t k = 0; k < ns; k++) if (mark[k]) hk.push_back(k);
@@ -500,8 +560,107 @@ int main(int argc, char **argv) {
             runpar(hk.size(), max(1, T - 1), [&](size_t i) { size_t k = hk[i]; hx_seg_dec(hpp[k], out.data() + P.soff[k], P.slen[k], HBLK); });
             zt.join(); }
         if (x86) x86_filter(out.data(), n, false);
-        double ds = now() - t0; writef(argv[3], out.data(), n);
-        printf("hxf: decoded %llu bytes in %.4f s (in memory)\n", (unsigned long long)n, ds);
+        return out;
+}
+#ifdef _WIN32
+#include <fcntl.h>
+#endif
+// --memlimit (HX 1.1.0): peak memory was measured at blocks of 16M-256M (HX Fast) and 16M-128M (HX Complete), 1-16 threads
+// (HX/notes/HX-1.1.0-memory.txt). Every measured peak lies on or under the line
+//   peak (MiB) = BASE + PER_BYTE x block (MiB) + PER_THREAD x threads
+// so --memlimit gives the block (limit - BASE - PER_THREAD x threads) / PER_BYTE, rounded down to whole MiB, and never more
+// than the largest block measured (256M Fast, 128M Complete).
+static const double MEM_BASE_FAST = 160, MEM_PER_BYTE_FAST = 4.75, MEM_BASE_COMPLETE = 640, MEM_PER_BYTE_COMPLETE = 12, MEM_PER_THREAD = 26;
+static const size_t MEM_MAX_BLOCK_FAST = (size_t)256 << 20, MEM_MAX_BLOCK_COMPLETE = (size_t)128 << 20;
+static const size_t MIN_BLOCK = (size_t)1 << 20, MAX_BLOCK = (size_t)2047 << 20, PIPE_BLOCK = (size_t)256 << 20;
+static bool parse_size(const char *s, size_t &v) {   // 1048576, 512K, 256M, 8G (binary units; a trailing B or iB is allowed)
+    char *e; double x = strtod(s, &e); if (e == s || x <= 0) return false;
+    string u(e); for (auto &c : u) c = toupper(c); if (u == "B" || u.empty()) {} else if (u[0] == 'K') x *= 1024.0; else if (u[0] == 'M') x *= 1048576.0; else if (u[0] == 'G') x *= 1073741824.0; else return false;
+    if (u.size() > 1 && u.substr(1) != "B" && u.substr(1) != "IB") return false;
+    v = (size_t)x; return true;
+}
+static size_t read_full(FILE *f, uint8_t *d, size_t n) { size_t g = 0; while (g < n) { size_t r = fread(d + g, 1, n - g, f); if (!r) break; g += r; } return g; }
+static void write_all(FILE *f, const uint8_t *d, size_t n) { if (n && fwrite(d, 1, n, f) != n) { fprintf(stderr, "hx: write error\n"); exit(1); } }
+static void put64f(FILE *f, uint64_t v) { uint8_t b[8]; for (int i = 0; i < 8; i++) b[i] = v >> (8 * i) & 255; write_all(f, b, 8); }
+static bool get64f(FILE *f, uint64_t &v) { uint8_t b[8]; if (read_full(f, b, 8) != 8) return false; v = 0; for (int i = 0; i < 8; i++) v |= (uint64_t)b[i] << (8 * i); return true; }
+static string mib(size_t v) { char b[32]; if (v % ((size_t)1 << 20) == 0) snprintf(b, sizeof b, "%zuM", v >> 20); else snprintf(b, sizeof b, "%zu bytes", v); return b; }
+int main(int argc, char **argv) {
+    if (argc < 4) { fprintf(stderr, "HX 1.1.0 (Harrington Sets + Exchange lines + cascade + learned router)\n"
+        "usage: hx c IN OUT [options]   |   hx d IN OUT [options]      (IN or OUT can be - for stdin / stdout)\n"
+        "  --complete       HX Complete (every route, smallest size, slow compress)\n"
+        "  --block=SIZE     compress in independent blocks of SIZE (e.g. 64M, 256M, 1G); memory follows the block, not the file\n"
+        "  --memlimit=SIZE  choose the block size so compression stays under SIZE of memory (e.g. 8G)\n"
+        "  -T N, --threads=N  threads (default: all logical cores); a plain number also sets the threads\n"
+        "  --max            router off: try every route (smallest size, slowest compress)\n"
+        "  --no-learn       do not add this file to the router's learning table\n"
+        "Without --block / --memlimit / a pipe, the output is the HX 1.0 format, unchanged. Reading a pipe uses 256M blocks\n"
+        "unless --block or --memlimit says otherwise. HX 1.1 decodes every HX 1.0 file.\n"); return 2; }
+    int T = (int)max(1u, thread::hardware_concurrency()); g_probe = 131072; bool complete = false; bsc_init(LIBBSC_FEATURE_NONE); if (getenv("HX_SLICES")) g_slices = max(1, atoi(getenv("HX_SLICES")));
+    size_t blk = 0, memlim = 0;
+    auto need = [&](int &a, const char *flag) -> const char * { if (a + 1 >= argc) { fprintf(stderr, "hx: %s needs a value\n", flag); exit(2); } return argv[++a]; };
+    auto size_arg = [&](const char *v, const char *flag) { size_t x; if (!parse_size(v, x)) { fprintf(stderr, "hx: bad size for %s: %s (use e.g. 256M or 8G)\n", flag, v); exit(2); } return x; };
+    for (int a = 4; a < argc; a++) { const char *s = argv[a];
+        if (!strcmp(s, "--full")) g_probe = 0; else if (!strcmp(s, "--complete")) complete = true; else if (!strcmp(s, "--max")) setenv("HX_ALLROUTES_MAX", "1", 1); else if (!strcmp(s, "--no-learn")) unsetenv("HX_ROUTELOG"); else if (!strcmp(s, "--probe") && a + 1 < argc) g_probe = (size_t)atoi(argv[++a]) * 1024;
+        else if (!strcmp(s, "--abl-pick1")) g_keepmax = 1; else if (!strcmp(s, "--abl-lines-off")) abl_lines_off = true;
+        else if (!strcmp(s, "--abl-sets-off")) abl_sets_off = true; else if (!strcmp(s, "--abl-repeat-off")) abl_repeat_off = true;
+        else if (!strcmp(s, "--abl-split-off")) abl_split_off = true; else if (!strcmp(s, "--abl-gmap") && a + 1 < argc) abl_gmap = argv[++a];
+        else if (!strncmp(s, "--block=", 8)) blk = size_arg(s + 8, "--block"); else if (!strcmp(s, "--block") || !strcmp(s, "-b")) blk = size_arg(need(a, s), "--block");
+        else if (!strncmp(s, "--memlimit=", 11)) memlim = size_arg(s + 11, "--memlimit"); else if (!strcmp(s, "--memlimit") || !strcmp(s, "-M")) memlim = size_arg(need(a, s), "--memlimit");
+        else if (!strncmp(s, "--threads=", 10)) T = max(1, atoi(s + 10)); else if (!strcmp(s, "-T") || !strcmp(s, "--threads")) T = max(1, atoi(need(a, s)));
+        else if (s[0] == '-' && s[1] == 'T' && isdigit((unsigned char)s[2])) T = max(1, atoi(s + 2));
+        else if (isdigit((unsigned char)s[0])) T = max(1, atoi(s));
+        else { fprintf(stderr, "hx: unknown option %s\n", s); return 2; } }
+    const string self = argv[0]; bool in_std = !strcmp(argv[2], "-"), out_std = !strcmp(argv[3], "-");
+#ifdef _WIN32
+    if (in_std) _setmode(_fileno(stdin), _O_BINARY);
+    if (out_std) _setmode(_fileno(stdout), _O_BINARY);
+#endif
+    if (out_std) g_msg = stderr;
+    string name = argv[2]; { size_t sl = name.find_last_of("/\\"); if (sl != string::npos) name = name.substr(sl + 1); }
+    double t0 = now();
+    if (argv[1][0] == 'c') {
+        if (blk && memlim) { fprintf(stderr, "hx: use --block or --memlimit, not both\n"); return 2; }
+        if (memlim) { double base = complete ? MEM_BASE_COMPLETE : MEM_BASE_FAST, per = complete ? MEM_PER_BYTE_COMPLETE : MEM_PER_BYTE_FAST;
+            double room = memlim / 1048576.0 - base - MEM_PER_THREAD * T; blk = room > 0 ? (size_t)(room / per) << 20 : 0; blk = min(blk, complete ? MEM_MAX_BLOCK_COMPLETE : MEM_MAX_BLOCK_FAST);
+            if (blk < MIN_BLOCK) { fprintf(stderr, "hx: --memlimit %s is too small for %d threads; use a larger limit or fewer threads (-T)\n", mib(memlim).c_str(), T); return 2; } }
+        if (!blk && in_std) blk = PIPE_BLOCK;
+        if (blk) blk = min(max(blk, MIN_BLOCK), MAX_BLOCK);
+        FILE *fi = in_std ? stdin : fopen(argv[2], "rb"); if (!fi) { perror(argv[2]); return 1; }
+        FILE *fo = out_std ? stdout : fopen(argv[3], "wb"); if (!fo) { perror(argv[3]); return 1; }
+        if (!blk) {   // HX 1.0 format: the whole file is one HXF1 record
+            fclose(fi); fi = nullptr; B in = readf(argv[2]); B o = compress_one(in, T, complete, self, name); write_all(fo, o.data(), o.size());
+        } else {
+            fprintf(g_msg, "hx: block mode, blocks of %s%s, %d threads\n", mib(blk).c_str(), memlim ? (" (from --memlimit " + mib(memlim) + ")").c_str() : "", T);
+            write_all(fo, (const uint8_t *)"HXB1", 4); uint8_t ver = 1; write_all(fo, &ver, 1); put64f(fo, blk);
+            uint64_t total = 0, outn = 13; size_t k = 0;
+            for (;; k++) { B buf(blk); size_t n = read_full(fi, buf.data(), blk); if (!n) break; buf.resize(n);
+                g_prefix = "block " + to_string(k + 1) + ": "; B o = compress_one(buf, T, complete, self, name); B().swap(buf);
+                put64f(fo, o.size()); write_all(fo, o.data(), o.size()); total += n; outn += 8 + o.size(); if (n < blk) { k++; break; } }
+            put64f(fo, 0); put64f(fo, total); outn += 16; g_prefix.clear();
+            fprintf(g_msg, "hx: %llu -> %llu bytes in %zu block%s, ratio %.3fx, %.2f s\n", (unsigned long long)total, (unsigned long long)outn, k, k == 1 ? "" : "s", (double)total / max<uint64_t>(1, outn), now() - t0);
+        }
+        if (fi && fi != stdin) fclose(fi);
+        if (fflush(fo) || (fo != stdout && fclose(fo))) { fprintf(stderr, "hx: write error\n"); return 1; }
+    } else {
+        FILE *fi = in_std ? stdin : fopen(argv[2], "rb"); if (!fi) { perror(argv[2]); return 1; }
+        uint8_t mg[4]; if (read_full(fi, mg, 4) != 4) { fprintf(stderr, "hx: not an HX file\n"); return 1; }
+        FILE *fo = out_std ? stdout : fopen(argv[3], "wb"); if (!fo) { perror(argv[3]); return 1; }
+        uint64_t total = 0;
+        if (!memcmp(mg, "HXF1", 4)) {   // HX 1.0 format
+            B in(mg, mg + 4); { uint8_t b[1 << 16]; size_t r; while ((r = fread(b, 1, sizeof b, fi)) > 0) in.insert(in.end(), b, b + r); }
+            B out = decode_one(in.data(), in.size(), T, self); B().swap(in); write_all(fo, out.data(), out.size()); total = out.size();
+        } else if (!memcmp(mg, "HXB1", 4)) {
+            uint8_t ver; uint64_t bs, len; if (read_full(fi, &ver, 1) != 1 || ver != 1 || !get64f(fi, bs)) { fprintf(stderr, "hx: unknown HX block format version\n"); return 1; }
+            for (;;) { if (!get64f(fi, len)) { fprintf(stderr, "hx: damaged or cut-off file\n"); return 1; }
+                if (!len) { uint64_t want; if (!get64f(fi, want) || want != total) { fprintf(stderr, "hx: damaged file (total size does not match)\n"); return 1; } break; }
+                if (len > bs + bs / 8 + ((size_t)1 << 20)) { fprintf(stderr, "hx: damaged file (block too long)\n"); return 1; }
+                B c(len); if (read_full(fi, c.data(), len) != len) { fprintf(stderr, "hx: damaged or cut-off file\n"); return 1; }
+                B out = decode_one(c.data(), c.size(), T, self); if (out.size() > bs) { fprintf(stderr, "hx: damaged file\n"); return 1; }
+                write_all(fo, out.data(), out.size()); total += out.size(); }
+        } else { fprintf(stderr, "hx: not an HX file\n"); return 1; }
+        if (fi != stdin) fclose(fi);
+        if (fflush(fo) || (fo != stdout && fclose(fo))) { fprintf(stderr, "hx: write error\n"); return 1; }
+        fprintf(g_msg, "hxf: decoded %llu bytes in %.4f s\n", (unsigned long long)total, now() - t0);
     }
     return 0;
 }

@@ -1,0 +1,41 @@
+HX 1.1.0 - PEAK MEMORY MEASUREMENTS (10 November 2026)
+Michael Hugh Harrington. Peak memory = maximum resident set size of the hx process (Linux wait4 ru_maxrss), one run each.
+Machine: Linux cloud machine, 2 cores, 7 GiB. Build: HX 1.1.0 (source sha256 in the release folder), g++ -O2, static.
+Data (public): enwik8 (Hutter Prize text), the Snappy test set, asl16.nii / asl32.nii (neuro images).
+  e16 / e32 / e64 = first 16 / 32 / 64 MiB of enwik8
+  m128 / m256 = first 128 / 256 MiB of enwik8 + Snappy set + asl16 + asl32 + asl32 + enwik8 again
+
+HX FAST (whole input as one block)
+  input   threads   peak MiB    wall s
+  e16        2        260.3       48.3
+  e32        2        303.4       86.6
+  e64        1        481.5      214.9
+  e64        2        512.4      163.6
+  e64        8        599.5      164.8
+  e64       16        736.9      172.3
+  m128       2        816.2      438.4   (another job ran at the same time)
+  m256       2      1,376.2      702.2   (another job ran at the same time)
+  m256      12      1,632.6      825.3   (another job ran at the same time)
+
+HX COMPLETE (whole input as one block)
+  input   threads   peak MiB    wall s
+  e16        2        455.1      210.8
+  e32        2        626.0      313.5
+  e64        2      1,458.5      637.1   (PPMd uses its 1 GiB model from 64 MiB up)
+  e64       12      1,614.2      591.7   (another job ran at the same time)
+  m128       2      2,212.6    1,567.0   (another job ran at the same time)
+
+LINE USED BY --memlimit (every point above lies on or under it)
+  peak MiB = BASE + PER_BYTE x block MiB + 26 x threads
+  HX Fast:     BASE 160, PER_BYTE 4.75     (largest measured block 256M)
+  HX Complete: BASE 640, PER_BYTE 12       (largest measured block 128M)
+  26 MiB per thread: the largest measured per-thread rise (HX Fast, m256, 2 -> 12 threads: 25.6 MiB per thread).
+
+CHECKS OF THE LIMIT
+  HX Fast, e64, --memlimit=400M, 2 threads -> 39M blocks, peak 359.4 MiB, 18,027,889 bytes, decode exact.
+  HX Complete, e64, --memlimit=1G, 2 threads -> 27M blocks, peak 561.1 MiB, 14,911,473 bytes (whole file:
+  14,201,001, the same bytes with 2 or 12 threads), 545.4 s, decode exact.
+
+BLOCK MODE MEMORY
+  HX Fast, m256, --block=64M, 2 threads: peak 552.8 MiB (whole file: 1,376.2 MiB), 75,513,839 bytes (whole: 70,936,962;
+  this file holds enwik8 twice, which only the whole-file run can match across). Decode 0.9 s, peak 160.3 MiB, exact.

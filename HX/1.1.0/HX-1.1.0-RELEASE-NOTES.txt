@@ -1,0 +1,69 @@
+HX 1.1.0 - RELEASE NOTES (10 November 2026)
+Michael Hugh Harrington. Patent Pending (U.S. Provisional App. 64/192,843). Same license as HX (see LICENSE.txt).
+
+WHY
+On encode.su (10 Nov 2026) xman reported that a 1.6 GB test set did not fit in 16 GB of memory, and asked for a block or
+memory limit and for a way to skip packing files into a TAR first. HX 1.0 read the whole file into memory and compressed
+it as one piece, and could only read a named file.
+
+WHAT IS NEW
+  --block=SIZE      compress in independent blocks of SIZE (1M to 2047M, e.g. 64M, 256M). Memory follows the block size,
+                    not the file size, so any file size works.
+  --memlimit=SIZE   HX picks the block size so compression stays under SIZE (e.g. 8G). Short form -M SIZE.
+  -T N, --threads=N threads (default: all logical cores). A plain number after the file names still sets the threads.
+  - as IN or OUT    read from stdin / write to stdout, e.g.  tar cf - folder | hx c - out.hx
+                    Reading a pipe uses 256M blocks unless --block or --memlimit says otherwise. With output to stdout,
+                    all status lines go to stderr.
+  Sizes: plain bytes, or K, M, G (binary: 1M = 1,048,576 bytes).
+
+COMPATIBILITY
+  Without --block, --memlimit or a pipe, HX 1.1.0 writes the HX 1.0 format (HXF1), byte for byte the same as HX 1.0.1.
+  HX 1.1.0 decodes every HX 1.0 file. Block files are a new container (HXB1) that HX 1.0 cannot read, so this is 1.1.0,
+  not 2.0. Includes the 9 Nov 2026 HX Fast decode-crash fix (HX/FIX-2026-11-09-HX-Fast-decode-crash.txt).
+
+BLOCK FORMAT (HXB1)
+  "HXB1", version byte 1, block size (8 bytes, little-endian); then for each block: its length (8 bytes) and an HXF1
+  record of that block; then a 0 length and the total original size (8 bytes), checked on decode. Every block is
+  independent, so a pipe can be compressed and decoded block by block with memory for one block only.
+
+HOW --memlimit CHOOSES THE BLOCK
+  Peak memory (maximum resident set) was measured for HX Fast at blocks of 16M to 256M and HX Complete at 16M to 128M,
+  with 1 to 16 threads (HX-1.1.0-memory.txt). Every measured peak lies on or under the line
+      peak (MiB) = BASE + PER_BYTE x block (MiB) + 26 x threads
+      HX Fast:     BASE 160, PER_BYTE 4.75          HX Complete: BASE 640, PER_BYTE 12
+  --memlimit gives block = (limit - BASE - 26 x threads) / PER_BYTE, rounded down to whole MiB, and never more than the
+  largest block measured (256M Fast, 128M Complete). If the limit is too small for even a 1M block, HX says so and stops.
+
+SPEED AND SIZE (measured, enwik8 first 64 MiB, HX Fast, 2 threads, Linux cloud machine)
+                             compressed bytes   ratio    compress   decode   peak memory
+  whole file (HX 1.0 way)        17,838,546     3.762x    173.7 s    0.2 s     512.4 MiB
+  --memlimit=400M (39M blocks)   18,027,889     3.723x    160.2 s    0.2 s     359.4 MiB
+  Blocks cost 1.06% in size here (matches cannot cross a block border) and were a little faster to compress.
+  The loss depends on the data: a 256 MiB test file holding enwik8 twice lost 6.5% in 64M blocks, because the second
+  copy could no longer be matched against the first. Decode speed does not change.
+  HX Complete, same 64 MiB, --memlimit=1G (27M blocks): 14,911,473 bytes vs 14,201,001 whole (5.0% larger), peak
+  561.1 MiB vs 1,458.5 MiB whole. Small blocks cost HX Complete more, since its strongest coders (PPMd, Brotli) gain from
+  a long history; use the largest block the memory allows.
+
+TESTS PASSED (Linux build and the Windows exe under Wine)
+  - Output without the new flags identical to HX 1.0.1 on 10 files (Snappy set, asl16.nii), HX Fast and HX Complete.
+  - HX 1.0 files decode exactly with HX 1.1.0.
+  - Block mode, file to file and pipe to pipe: same bytes either way, every decode exact (59 MB mixed set, 64 MiB and
+    256 MiB files).
+  - --memlimit=400M kept HX Fast at 359.4 MiB peak and --memlimit=1G kept HX Complete at 561.1 MiB.
+  - A cut-off block file is refused ("damaged or cut-off file").
+  - Bad sizes, --block with --memlimit, and too-small limits give clear messages.
+
+TEST ON A WINDOWS PC (12 logical cores, 16 GB, 10 Nov 2026; results-HX-1.1.0-PC-2026-11-10.txt)
+  - Same output as HX 1.0.1 on all 25 Calgary + Squash Snappy files; all 25 HX 1.0.1 files decoded exactly.
+  - enwik8, HX Fast: whole file 26,465,362 bytes, 92.4 s, peak 507 MiB, decode 0.19 s; --block=64M 26,671,336 bytes
+    (0.78% larger), 101.5 s, peak 376 MiB; --memlimit=1G and 4G stayed under their limits (528 / 668 MiB). All exact.
+  - Pipes: stdin, stdout and a real "hx d | hx c" pipe gave the same bytes as file mode; decode exact.
+  - enwik8, HX Complete, --memlimit=2G (91M blocks): 20,922,947 bytes, 606.0 s, peak 1,455 MiB, decode 8.71 s, exact
+    (whole file in the HX Competition Test: 20,749,628 bytes; 0.83% smaller).
+  - Windows peaks were lower than the Linux measurements the --memlimit line is built from.
+
+LIMITS A REVIEWER SHOULD KNOW
+  - The --memlimit line was measured on Linux (glibc); on Windows the measured peaks were lower.
+  - Folders are not read directly yet; pipe a TAR (or any archiver's stored output) into HX. Folder support with file
+    grouping is planned as a later release.

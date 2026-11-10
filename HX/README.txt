@@ -16,8 +16,11 @@ Two modes, one program:
                              likely best three routes and escalates when a result misses its prediction.
                              --max tries every route.
 
-Usage:  hx c IN OUT [THREADS] [--complete] [--max] [--no-learn]
-        hx d IN OUT [THREADS]
+Usage (HX 1.1.0):  hx c IN OUT [--complete] [--block=SIZE] [--memlimit=SIZE] [-T N] [--max] [--no-learn]
+                   hx d IN OUT [-T N]
+  IN or OUT can be - for stdin / stdout. --block compresses in independent blocks (memory follows the block,
+  not the file); --memlimit picks the block size to stay under a memory limit. Without these, the output is the
+  HX 1.0 format, unchanged. See 1.1.0/HX-1.1.0-RELEASE-NOTES.txt.
 
 Files in src/:
   hx.cpp        the compressor/decompressor (container, segment plan, Sets, routes, split modes)

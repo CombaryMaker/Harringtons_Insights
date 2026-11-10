@@ -1,0 +1,30 @@
+HX 1.1.0 - TEST ON MICHAEL'S PC   2026-11-10 13:23   12 logical cores
+
+1. VERIFY
+   hx-1.1.0.exe  2a257be2b840980bd8db4596546509f90efc4a0b12d6fa3fd1c8ad962ee9a205  OK
+   hx-1.0.1.exe  0961469b22f871352934d893404391e003f93b4597841f08d25c37f2896c5275  OK (Competition Test app copy)
+   enwik8 MD5    a1fa5ffddb56f4953e226637dabbb36a  OK
+
+2. SAME OUTPUT AS HX 1.0.1 (no new flags) AND HX 1.0.1 FILES DECODE WITH 1.1.0  (Calgary 18 + Snappy 7 files)
+   identical output: 25 of 25     HX 1.0.1 files decoded exactly by 1.1.0: 25 of 25
+
+3. ENWIK8 (100,000,000 bytes), HX FAST, 12 threads
+   run                          bytes        ratio    compress s  peak MiB   decode s  peak MiB  exact
+   whole file (HX 1.0 format)    26,465,362    3.779x       92.4       507       0.19       126  yes
+   --block=64M                   26,671,336    3.749x      101.5       376       0.19        86  yes
+      (hx: block mode, blocks of 64M, 12 threads)
+   --memlimit=1G                 26,465,399    3.779x       99.7       528       0.20       125  yes
+      (hx: block mode, blocks of 116M (from --memlimit 1024M), 12 threads)
+   --memlimit=4G                 26,465,399    3.779x       96.4       668       0.19       125  yes
+      (hx: block mode, blocks of 256M (from --memlimit 4096M), 12 threads)
+
+4. PIPES (enwik8, 64M blocks)
+   stdin -> file:            same bytes as file mode: yes   94.1 s
+   file -> stdout decode:    exact: yes   0.16 s
+   hx d | hx c (real pipe):  same bytes again: yes   91.8 s
+
+5. ENWIK8, HX COMPLETE, --memlimit=2G, 12 threads
+    20,922,947 bytes  4.779x  compress 606.0 s  peak 1,455 MiB  decode 8.71 s  peak 669 MiB  exact yes
+   (hx: block mode, blocks of 91M (from --memlimit 2048M), 12 threads)
+
+Finished 2026-11-10 13:43. Peak MiB = Windows peak working set, sampled every 50 ms.
