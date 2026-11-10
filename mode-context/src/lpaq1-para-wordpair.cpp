@@ -617,7 +617,7 @@ void Predictor::update(int y) {
   static StateMap sm[8];
   static APM a1(0x100), a2(0x4000);
   static U32 h[8];
-  // Harrington paragraph context (10 Nov 2026, in-house test). PARA: paragraph type (dialogue or not, from its first
+  // Harrington paragraph context (10 Nov 2026). PARA: paragraph type (dialogue or not, from its first
   // character), the last two paragraph types, and the word count inside the paragraph, joined to order 2.
   // CTRL: the same slot used for a plain context (word pair) instead, as the fair comparison.
   static int nl=0, pst=0, pby=0, ptype=2, ph=0, pw=0, inw=0; static U32 wprev=0;

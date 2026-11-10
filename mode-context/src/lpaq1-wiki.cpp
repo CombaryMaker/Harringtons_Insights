@@ -617,7 +617,7 @@ void Predictor::update(int y) {
   static StateMap sm[8];
   static APM a1(0x100), a2(0x4000);
   static U32 h[8];
-  // Harrington segment-type context for Wikipedia (10 Nov 2026, in-house test). WIKI: the kind of line being coded
+  // Harrington segment-type context for Wikipedia (10 Nov 2026). WIKI: the kind of line being coded
   // (prose, heading, list, template/table/fact box, code/XML, category or language link, math, reference-section line),
   // read from the line's first bytes as they are coded, plus the previous line's kind and whether we are inside a
   // References / External links / See also / Notes section; joined to order 2.

@@ -1,5 +1,5 @@
 PRIOR ART CHECK - paragraph context and paragraph grouping (10 Nov 2026). Michael Hugh Harrington.
-Search: paq8px source (TextModel), web search (papers, encode.su). Not a formal patent search.
+Search: paq8px source (TextModel), web search (papers, encode.su). Not an exhaustive search.
 
 ALREADY KNOWN (the general principles)
   - Grouping like with like before compressing: XMill (Liefke and Suciu, SIGMOD 2000) splits XML into structure and
@@ -17,5 +17,5 @@ NOT FOUND (looks new as an application)
     to undo it, as a compression step.
   - The flow of paragraph types (the types of the previous paragraphs) plus position inside the paragraph, used as an
     explicit context in a context-mixing text model.
-  Reading: a new application of a known principle (grouping like with like, as in XMill), not a new principle. A
-  patent examiner could call it an obvious combination; the measured gains are what would carry it.
+  Reading: a new application of a known principle (grouping like with like, as in XMill), not a new principle; the
+  measured gains are what carry it.
