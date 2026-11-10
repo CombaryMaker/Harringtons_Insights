@@ -1,0 +1,40 @@
+PARAGRAPH CONTEXT EXPERIMENT (10 Nov 2026) - Michael Hugh Harrington. Small test model para.cpp (CC0), cloud machine.
+Size = the model's code length in bytes, plus any stored labels. Public texts (Project Gutenberg, header/footer removed):
+Pride and Prejudice (pg1342), Frankenstein (pg84), Adventures of Sherlock Holmes (pg1661); nonfiction: Calgary book2.
+
+Variants: base = 11 plain guessers. C = control, 2 more plain guessers. A = free paragraph structure (paragraph type
+from its first character - dialogue or not - the last two paragraph types, sentence and word number in the paragraph).
+B = stored paragraph label (k-means groups from each paragraph's make-up; label cost included). +m = blend chosen by
+the paragraph type/label. RO = paragraphs reordered: dialogue paragraphs first, the rest after (1-bit type per
+paragraph stored to undo it; cost included in the RO lines).
+
+                       Pride&Prej   Frankenstein   Sherlock    book2 (nonfiction)
+  base                    167,818       107,663     143,854      141,101
+  C (control)             167,623       107,597     143,732      140,825
+  A                       167,589       107,544     143,681      140,950
+  A + C                   167,402       107,481     143,556      140,694
+  B (labels, K=4)         168,315       107,990     144,475      141,034
+  B K=2 / K=8     168,002 / 168,683  107,887 / 108,070  144,168 / 144,795  141,106 / 141,012
+  AB                      168,159       107,893     144,334      140,962
+  A+m / B+m / AB+m   167,742 / 169,038 / 170,221   107,951 / 108,909 / 110,448   143,939 / 145,180 / 146,196
+  RO + C   (+type cost)   166,947       107,495     143,669
+  RO + A + C (+type cost) 166,661       107,382     143,483
+    type cost (bytes)         279            65         174
+
+  Reorder with other compressors (original -> reordered + type cost):
+                 Pride&Prej             Frankenstein          Sherlock
+  xz -9e      217,924 -> 217,255     137,208 -> 137,281     183,264 -> 183,270
+  bzip2 -9    186,234 -> 186,408     120,005 -> 120,214     160,245 -> 160,477
+  HX Fast     219,745 -> 219,124     138,422 -> 138,580     184,938 -> 184,859
+  test model  167,818 -> 167,098     107,663 -> 107,525     143,854 -> 143,768
+
+FINDINGS
+  - A (free paragraph structure) beat the equal-size control on all three novels and added on top of it (A + C better
+    than C everywhere, book2 included).
+  - Reordering paragraphs by type helped the context-mixing model on all three novels, most on Pride and Prejudice
+    (dialogue and narration both large), and helped HX Fast and xz there; bzip2 lost on every book.
+  - Best combination, reorder + A + C: Pride and Prejudice 0.57% smaller than the control (0.69% smaller than base),
+    Frankenstein 0.20%, Sherlock 0.17%.
+  - Stored k-means labels (B) and switching the blend by type (+m) made every book larger.
+  - Caution: a small model; gains often shrink inside a strong model such as paq8px, which already tracks some
+    paragraph facts.

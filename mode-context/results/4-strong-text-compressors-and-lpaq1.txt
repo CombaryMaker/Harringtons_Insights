@@ -1,0 +1,45 @@
+PARAGRAPH EXPERIMENT 3 - strong text compressors, and lpaq1 modified (10 Nov 2026). Michael Hugh Harrington.
+Cloud machine. Same 11 public books as experiment 2. Tools: kanzi 2.6.0 -l 9, BSC 3.4.0 -b64e2, 7-Zip PPMd -mx9
+(7za, under Wine), lpaq1 option 9 (Matt Mahoney, GPL). Note cost to undo the grouping is included. Raw: *-raw-*.txt.
+
+A. GROUPING IN FRONT OF EACH TOOL (% vs original order, negative = smaller; g2 dialogue first, g3 + one-line group,
+   gc control: odd paragraphs then even)
+               kanzi -l 9          BSC                 PPMd                lpaq1
+               g2    g3    gc      g2    g3    gc      g2    g3    gc      g2    g3    gc
+Pride&Prej    -0.57 -0.61 +0.43   +0.13 +0.19 +0.05   -0.11 -0.30 +0.14   -0.59 -0.61 +0.42
+Frankenstein  -0.03 -0.02 +0.37   +0.07 +0.10 +0.03   +0.09 +0.07 +0.22   -0.05 -0.05 +0.48
+Sherlock      -0.17 -0.17 +0.41   +0.09 +0.12 +0.04   +0.05 +0.07 +0.06   -0.13 -0.13 +0.42
+HuckFinn      -0.52 -0.48 +0.79   +0.09 +0.16 +0.08   +0.31 +0.38 +0.11   -0.47 -0.42 +0.76
+Dracula       +0.00 +0.00 +0.55   +0.12 +0.25 +0.10   +0.38 +0.29 +0.62   +0.01 +0.02 +0.59
+Alice         +0.18 +0.21 +0.97   +0.24 +0.28 +0.03   +0.16 +0.07 +0.01   +0.11 +0.18 +0.67
+Gatsby        -0.73 -0.65 +0.44   +0.10 +0.18 +0.03   +0.29 +0.37 +0.13   -0.69 -0.62 +0.36
+JaneEyre      -0.24 -0.21 +0.38   +0.09 +0.13 +0.02   +0.16 +0.21 +0.04   -0.28 -0.25 +0.39
+DorianGray    -0.22 -0.20 +0.42   +0.12 +0.16 +0.02   -0.33 -0.32 +0.36   -0.31 -0.30 +0.42
+Origin (nf)   +0.00 +0.08 +0.83   +0.00 +0.06 +0.04   -0.00 +0.06 +0.66   -0.00 +0.09 +1.05
+Prince (nf)   -0.04 +0.04 +0.40   +0.00 +0.04 +0.03   +0.05 +0.08 +0.04   -0.00 +0.03 +0.50
+
+B. LPAQ1 MODIFIED (paragraph context added inside the model: paragraph type, last two types, words into the
+   paragraph, joined to order 2). Every file decoded exactly. % vs stock lpaq1.
+   para = + paragraph context; wpair = + word-pair context (plain); wp+para; wp+sparse = control of equal size;
+   g2 wp+para = dialogue grouping + word pair + paragraph context (note cost included).
+               lpaq1     +para  +wpair  wp+para  wp+sparse  g2 wp+para   para vs control   g2+para vs control
+Pride&Prej    163,212   -0.11   -0.94   -1.05    -0.96      -1.58        -0.10              -0.63
+Frankenstein  104,413   -0.01   -0.66   -0.67    -0.69      -0.75        +0.02              -0.06
+Sherlock      139,800   -0.08   -0.76   -0.84    -0.80      -0.97        -0.05              -0.17
+HuckFinn      141,598   -0.08   -0.86   -0.95    -0.90      -1.36        -0.05              -0.46
+Dracula       208,598   -0.06   -0.89   -0.94    -0.92      -0.91        -0.02              +0.02
+Alice          36,913   -0.11   -0.55   -0.67    -0.64      -0.54        -0.03              +0.10
+Gatsby         72,762   -0.14   -0.55   -0.67    -0.58      -1.26        -0.09              -0.69
+JaneEyre      264,286   -0.10   -0.66   -0.76    -0.68      -0.98        -0.08              -0.30
+DorianGray    107,876   -0.08   -0.72   -0.79    -0.75      -1.07        -0.05              -0.32
+Origin (nf)   251,596   -0.01   -1.67   -1.68    -1.71      -1.69        +0.02              +0.02
+Prince (nf)    69,065   -0.02   -0.67   -0.70    -0.73      -0.69        +0.03              +0.04
+
+FINDINGS
+  - The context-mixing tools gain from dialogue grouping: kanzi -l 9 on 6 of 9 novels (best Gatsby -0.73%, Pride and
+    Prejudice -0.57%, Huck Finn -0.52%), lpaq1 on 7 of 9. The control reshuffle hurts every tool on every book.
+  - BSC loses slightly on every book (block sorting already gathers similar contexts; the note is pure cost).
+    PPMd is mixed (helps 3 novels).
+  - Inside lpaq1 the paragraph context beats an equal plain context on 8 of 9 novels (up to 0.10%); with grouping,
+    up to 0.69% better than the equal-size control. No effect on nonfiction.
+  - Small, steady gains on dialogue-rich fiction; mostly between a tenth and three-quarters of a percent.

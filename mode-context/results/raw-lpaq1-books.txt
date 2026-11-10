@@ -1,0 +1,88 @@
+pg1342 body lpaq1 163212
+pg1342 body lpaq1ctrl 161676
+pg1342 body lpaq1para 163029
+pg1342 body lpaq1ctrl2 161652
+pg1342 body lpaq1both 161497
+pg1342 g2 lpaq1both 160353
+pg1342 g2 lpaq1ctrl2 160425
+pg1342 decode exact
+pg84 body lpaq1 104413
+pg84 body lpaq1ctrl 103723
+pg84 body lpaq1para 104400
+pg84 body lpaq1ctrl2 103696
+pg84 body lpaq1both 103712
+pg84 g2 lpaq1both 103569
+pg84 g2 lpaq1ctrl2 103556
+pg84 decode exact
+pg1661 body lpaq1 139800
+pg1661 body lpaq1ctrl 138742
+pg1661 body lpaq1para 139688
+pg1661 body lpaq1ctrl2 138687
+pg1661 body lpaq1both 138619
+pg1661 g2 lpaq1both 138276
+pg1661 g2 lpaq1ctrl2 138331
+pg1661 decode exact
+pg76 body lpaq1 141598
+pg76 body lpaq1ctrl 140376
+pg76 body lpaq1para 141482
+pg76 body lpaq1ctrl2 140320
+pg76 body lpaq1both 140255
+pg76 g2 lpaq1both 139436
+pg76 g2 lpaq1ctrl2 139419
+pg76 decode exact
+pg345 body lpaq1 208598
+pg345 body lpaq1ctrl 206733
+pg345 body lpaq1para 208483
+pg345 body lpaq1ctrl2 206675
+pg345 body lpaq1both 206629
+pg345 g2 lpaq1both 206477
+pg345 g2 lpaq1ctrl2 206498
+pg345 decode exact
+pg11 body lpaq1 36913
+pg11 body lpaq1ctrl 36711
+pg11 body lpaq1para 36871
+pg11 body lpaq1ctrl2 36677
+pg11 body lpaq1both 36665
+pg11 g2 lpaq1both 36627
+pg11 g2 lpaq1ctrl2 36622
+pg11 decode exact
+pg64317 body lpaq1 72762
+pg64317 body lpaq1ctrl 72365
+pg64317 body lpaq1para 72658
+pg64317 body lpaq1ctrl2 72341
+pg64317 body lpaq1both 72274
+pg64317 g2 lpaq1both 71649
+pg64317 g2 lpaq1ctrl2 71647
+pg64317 decode exact
+pg1260 body lpaq1 264286
+pg1260 body lpaq1ctrl 262534
+pg1260 body lpaq1para 264032
+pg1260 body lpaq1ctrl2 262481
+pg1260 body lpaq1both 262271
+pg1260 g2 lpaq1both 261283
+pg1260 g2 lpaq1ctrl2 261367
+pg1260 decode exact
+pg174 body lpaq1 107876
+pg174 body lpaq1ctrl 107100
+pg174 body lpaq1para 107791
+pg174 body lpaq1ctrl2 107071
+pg174 body lpaq1both 107021
+pg174 g2 lpaq1both 106575
+pg174 g2 lpaq1ctrl2 106604
+pg174 decode exact
+pg2009 body lpaq1 251596
+pg2009 body lpaq1ctrl 247388
+pg2009 body lpaq1para 251576
+pg2009 body lpaq1ctrl2 247304
+pg2009 body lpaq1both 247359
+pg2009 g2 lpaq1both 247352
+pg2009 g2 lpaq1ctrl2 247297
+pg2009 decode exact
+pg1232 body lpaq1 69065
+pg1232 body lpaq1ctrl 68602
+pg1232 body lpaq1para 69050
+pg1232 body lpaq1ctrl2 68563
+pg1232 body lpaq1both 68583
+pg1232 g2 lpaq1both 68588
+pg1232 g2 lpaq1ctrl2 68544
+pg1232 decode exact

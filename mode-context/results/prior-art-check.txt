@@ -1,0 +1,21 @@
+PRIOR ART CHECK - paragraph context and paragraph grouping (10 Nov 2026). Michael Hugh Harrington.
+Search: paq8px source (TextModel), web search (papers, encode.su). Not a formal patent search.
+
+ALREADY KNOWN (the general principles)
+  - Grouping like with like before compressing: XMill (Liefke and Suciu, SIGMOD 2000) splits XML into structure and
+    puts text values into separate containers by element path; web collections are compressed better after reordering
+    documents by similarity (Ferragina and Manzini, "On compressing the textual web", WSDM 2010); document reordering
+    for index compression; data reordering studies (Du, York University, 2024); optimal partitioning of a text
+    (Ferragina, Nitto, Venturini 2009). Harrington's Sets is in this family.
+  - Position-in-line and newline contexts, quote state, sentence type: paq8px TextModel uses them.
+  - paq8px also COUNTS paragraph facts (sentences per paragraph, the mix of statement / question / exclamation) but
+    the counts are never used in any prediction (only written, never read, in the current source).
+  - Neural compressors (cmix LSTM, NNCP, LLM-based) can learn paragraph rhythm implicitly, without being told.
+
+NOT FOUND (looks new as an application)
+  - Grouping the paragraphs of narrative text by mode (dialogue vs narration) with a 1-bit type per paragraph stored
+    to undo it, as a compression step.
+  - The flow of paragraph types (the types of the previous paragraphs) plus position inside the paragraph, used as an
+    explicit context in a context-mixing text model.
+  Reading: a new application of a known principle (grouping like with like, as in XMill), not a new principle. A
+  patent examiner could call it an obvious combination; the measured gains are what would carry it.

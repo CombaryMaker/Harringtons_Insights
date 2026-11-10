@@ -1,0 +1,26 @@
+CONTEXT EXPERIMENT - sentence position and speech vs narration (10 Nov 2026)
+Michael Hugh Harrington. Small test model ctxcm.cpp (CC0), cloud machine. Size = the model's code length in bytes.
+Files (public): Calgary book1 (Hardy novel), book2 (textbook), paper1, paper2; first 3,000,000 bytes of enwik8.
+S = words since the last . ? ! and since the last ; : , with the mark type. Q = inside spoken quotes or not.
+
+A. ADDED AS EXTRA GUESSERS (controls add the same number of plain standard guessers)
+  file     base      +2 plain   +S        +Q        +4 plain  +S and Q
+  book1    208,860   208,255    208,743   208,867   208,150   208,745
+  book2    142,604   141,724    142,313   142,418   141,109   142,152
+  paper1    14,755    14,725     14,775    14,811    14,705    14,841
+  paper2    22,404    22,401     22,446    22,497    22,396    22,546
+  enwik8 3M 761,235   751,222    759,636   758,447   748,385   756,993
+  -> S and Q helped a little on book2 and enwik8, hurt on the papers, and always less than plain extra guessers.
+
+B. USED TO CHOOSE THE BLEND (on top of base + 4 plain guessers; control chooses by the previous byte)
+  file     none      control   by S      by Q      by S and Q
+  book1    208,150   206,252   212,127   208,264   212,557
+  book2    141,109   139,774   143,882   141,312   144,197
+  paper1    14,705    14,795    15,276    14,829    15,445
+  paper2    22,396    22,369    23,174    22,555    23,474
+  enwik8 3M 748,385   739,705   759,420   748,146   756,828
+  -> Worse on every file except a tiny gain for Q on enwik8.
+
+READING: in these simple forms the two signals add almost nothing the last few letters do not already carry (the
+punctuation and quote marks are already in the recent letters). Not tested: viewpoint/voice memories, the pre-read
+rhythm note, "what the sentence still owes", scene mood.

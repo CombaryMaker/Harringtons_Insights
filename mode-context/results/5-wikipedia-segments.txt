@@ -1,0 +1,29 @@
+WIKIPEDIA SEGMENT-TYPE TEST (10 Nov 2026) - Michael Hugh Harrington's idea. Cloud machine.
+Data (public): three 4 MiB slices of enwik8 (the Hutter Prize test file's first 100 MB), from 0, 40 and 80 MiB.
+Line kinds: prose, heading, list, template/table/fact box, indented (code, XML page data), category/language link,
+escaped tag (&lt;...), any line in a References / External links / See also / Notes section, blank.
+Share of the slices: prose 63-69%, lists 12-14%, reference sections 9-10%, indented/XML 5-8%, templates 3-4%.
+
+A. SEGMENT-TYPE CONTEXT INSIDE LPAQ1 (lpaq1w.cpp; nothing stored - the kind is read from each line's first bytes as
+   they are coded, plus the previous line's kind and whether we are in a reference section). Every slice decoded
+   exactly. Fair control: the same model with a plain sparse context in that slot (both have the word-pair context).
+   slice   stock lpaq1   control    segment context   vs control   vs stock
+   s0        918,543     912,027      907,665          -0.48%       -1.18%
+   s40       931,431     925,201      920,694          -0.49%       -1.15%
+   s80       939,256     932,811      929,105          -0.40%       -1.08%
+
+B. GROUPING LINES BY KIND (all lines of a kind moved together; the note to undo it, about 5 KB per slice, is counted)
+   % vs the original order; control = odd lines then even lines.
+                 kanzi -l 9   lpaq1   lpaq1+segment   HCM 3.6.1 max   BSC     xz -9e
+   s0  grouped    -0.15      -0.02      +0.38          -0.45         +0.29   -0.52
+   s40 grouped    -0.00      +0.15      +0.53          -0.28         +0.33   -0.35
+   s80 grouped    +0.05      +0.12      +0.45          -0.25         +0.26   -0.39
+   control        +2.3 to +2.5% for all tools except BSC (+0.3 to +0.4%)
+
+FINDINGS
+  - The segment-type context is the winner: about half a percent better than an equal plain context on every slice,
+    with nothing stored - larger than any gain on the novels. Wikipedia's marked switches make the kind cheap to know.
+  - Grouping lines by kind helps HCM and xz a little after paying for the note, is about even for kanzi, and hurts
+    lpaq1 and BSC. With the segment context inside the model, grouping only hurts: the context already captures it.
+  - Next: richer segment contexts (kind with the word, with place in the line, template field names, reference-section
+    layout) and a cheaper note.
