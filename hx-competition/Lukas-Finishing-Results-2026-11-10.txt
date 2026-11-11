@@ -1,0 +1,95 @@
+HX COMPETITION TEST - LUKAS MEDICAL CORPUS (2D 16-bit DICOM set) - FINISHING RESULTS
+Source: http://www.data-compression.info/files/corpora/lukas_2d_16_dicom.zip (20 files, 147,783,454 bytes; every file
+checked against the archive size and CRC before the run). Full log: HX-Competition-Lukas-2026-11-10.txt
+
+HX Competition Test 1.0   2026-11-10 15:22
+Computer: AMD Ryzen 5 7500X3D 6-Core Processor, 12 logical cores, 16.2 GB RAM, Windows 10.0 build 26200
+Runs per program per file: 1 (times are the median; wall clock including program start-up). Threads: each program with its own default; HX uses all 12 cores.
+Every result below is decoded by its own program and checked byte for byte (SHA-256). Every number is measured on this computer.
+
+TOTAL for 20 files, 147,783,454 bytes (programs that finished every file exactly; sorted smallest first)
+  Program                                             Group           Bytes    Ratio    Comp s  Decomp s    x LZ4  Tier
+  HX Complete                                         ours       20,264,929   7.293x   890.505     1.441     2.74  2
+  bzip3 1.5.1                                         rival      24,047,162   6.146x     6.190     5.608    10.66  4
+  kanzi 2.6.0 -l 7                                    rival      24,134,996   6.123x     6.956     4.647     8.84  3
+  BSC 3.4.0 -b64e2 (best)                             rival      24,631,504   6.000x     5.006     4.588     8.72  3
+  kanzi 2.6.0 -l 9                                    rival      24,654,404   5.994x    40.381    41.466    78.84  6
+  BSC 3.4.0 (default)                                 rival      24,880,752   5.940x     3.435     2.481     4.72  2
+  7-Zip 26.06 -mx9 PPMd                               rival      25,480,925   5.800x     8.799     9.350    17.78  4
+  kanzi 2.6.0 -l 5                                    rival      25,822,026   5.723x     3.244     1.309     2.49  2
+  bzip2-hi (standard .bz2, decoded by stock libbz2)   ours       26,736,855   5.527x  2322.049     2.870     5.46  3
+  bzip2 -9 (libbz2 1.1)                               rival      26,809,205   5.512x    18.635     2.840     5.40  3
+  HX Fast                                             ours       27,343,382   5.405x    54.240     0.528     1.00  1D
+  xz-hi (standard .xz, decoded by stock xz)           ours       32,213,704   4.588x 14029.881     1.291     2.46  2
+  xz 5.6.3 -9e                                        rival      32,405,180   4.560x    35.182     1.279     2.43  2
+  7-Zip 26.06 -mx9 LZMA2                              rival      32,408,456   4.560x    10.405     1.326     2.52  2
+  Brotli 1.2.0 -q 11                                  rival      34,062,218   4.339x   116.926     0.771     1.47  1D
+  kanzi 2.6.0 -l 3                                    rival      35,101,402   4.210x     0.903     0.710     1.35  1D
+  rd-zstd (record delta + zstd -19)                   ours       35,702,600   4.139x    40.090     0.471     0.89  1C
+  zstd 1.5.6 --ultra -22 --long=31                    rival      36,460,322   4.053x    35.660     0.623     1.18  1D
+  zstd 1.5.6 -19 --long=27                            rival      36,493,481   4.050x    18.892     0.506     0.96  1C
+  zstd 1.5.6 -19                                      rival      36,495,403   4.049x    18.691     0.514     0.98  1C
+  hs_zstd 1.3 level 19 (Harrington's Sets)            ours       36,957,963   3.999x    14.407     0.441     0.84  1C
+  Brotli 1.2.0 -q 9                                   rival      37,459,113   3.945x     8.338     0.622     1.18  1D
+  Brotli 1.2.0 -q 5                                   rival      38,831,866   3.806x     2.893     0.615     1.17  1D
+  zstd 1.5.6 -9                                       rival      39,774,177   3.716x     2.147     0.489     0.93  1C
+  gzip -12 (libdeflate 1.26, max)                     rival      42,403,046   3.485x    15.212     0.463     0.88  1C
+  lzav-hi (LZAV format, decoded by stock LZAV)        ours       42,454,076   3.481x    27.143     0.344     0.65  1C
+  zstd 1.5.6 -3                                       rival      44,101,302   3.351x     0.876     0.481     0.91  1C
+  hs_zstd 1.3 level 3 (Harrington's Sets)             ours       44,152,714   3.347x     0.753     0.424     0.81  1C
+  gzip -6 (libdeflate 1.26)                           rival      45,419,002   3.254x     1.373     0.430     0.82  1C
+  Brotli 1.2.0 -q 1                                   rival      49,472,288   2.987x     0.797     0.737     1.40  1D
+  LZAV 7.1 HI (stock encoder)                         rival      49,751,092   2.970x     1.387     0.326     0.62  1B
+  LZ4 1.11.0 -12 (HC max)                             rival      51,090,635   2.893x    14.522     0.552     1.05  1D
+  LZ4 1.11.0 -9 (HC)                                  rival      51,584,924   2.865x     3.278     0.541     1.03  1D
+  kanzi 2.6.0 -l 1                                    rival      52,370,302   2.822x     0.763     0.525     1.00  1C
+  zstd 1.5.6 -1                                       rival      53,146,628   2.781x     0.676     0.452     0.86  1C
+  LZ4 1.11.0 -1                                       rival      68,947,507   2.143x     0.678     0.526     1.00  1C
+  Snappy 1.3.1                                        rival      72,662,518   2.034x     0.556     0.357     0.68  1C
+
+HX FAST RACE - every program decoding the files in no more than 2x HX Fast's decode time, smallest first
+  1.   HX Fast                                                 27,343,382   5.405x   decode 0.528 s   compress 54.240 s   <- HX Fast
+  2.   Brotli 1.2.0 -q 11                                      34,062,218   4.339x   decode 0.771 s   compress 116.926 s
+  3.   kanzi 2.6.0 -l 3                                        35,101,402   4.210x   decode 0.710 s   compress 0.903 s
+  4.   zstd 1.5.6 --ultra -22 --long=31                        36,460,322   4.053x   decode 0.623 s   compress 35.660 s
+  5.   zstd 1.5.6 -19 --long=27                                36,493,481   4.050x   decode 0.506 s   compress 18.892 s
+  6.   zstd 1.5.6 -19                                          36,495,403   4.049x   decode 0.514 s   compress 18.691 s
+  7.   Brotli 1.2.0 -q 9                                       37,459,113   3.945x   decode 0.622 s   compress 8.338 s
+  8.   Brotli 1.2.0 -q 5                                       38,831,866   3.806x   decode 0.615 s   compress 2.893 s
+  9.   zstd 1.5.6 -9                                           39,774,177   3.716x   decode 0.489 s   compress 2.147 s
+  10.  gzip -12 (libdeflate 1.26, max)                         42,403,046   3.485x   decode 0.463 s   compress 15.212 s
+  11.  zstd 1.5.6 -3                                           44,101,302   3.351x   decode 0.481 s   compress 0.876 s
+  12.  gzip -6 (libdeflate 1.26)                               45,419,002   3.254x   decode 0.430 s   compress 1.373 s
+  13.  Brotli 1.2.0 -q 1                                       49,472,288   2.987x   decode 0.737 s   compress 0.797 s
+  14.  LZAV 7.1 HI (stock encoder)                             49,751,092   2.970x   decode 0.326 s   compress 1.387 s
+  15.  LZ4 1.11.0 -12 (HC max)                                 51,090,635   2.893x   decode 0.552 s   compress 14.522 s
+  16.  LZ4 1.11.0 -9 (HC)                                      51,584,924   2.865x   decode 0.541 s   compress 3.278 s
+  17.  kanzi 2.6.0 -l 1                                        52,370,302   2.822x   decode 0.525 s   compress 0.763 s
+  18.  zstd 1.5.6 -1                                           53,146,628   2.781x   decode 0.452 s   compress 0.676 s
+  19.  LZ4 1.11.0 -1                                           68,947,507   2.143x   decode 0.526 s   compress 0.678 s
+  20.  Snappy 1.3.1                                            72,662,518   2.034x   decode 0.357 s   compress 0.556 s
+  HX Fast places 1 of 20 in this race.
+
+HX COMPLETE RACE - every program within 10% of HX Complete's ratio or better, smallest first
+  1.   HX Complete                                             20,264,929   7.293x   decode 1.441 s   compress 890.505 s   <- HX Complete
+  HX Complete places 1 of 1 in this race.
+
+SPEED TIERS (6 Nov 2026 rule; tier 1 split into 1A-1E at 0.4, 0.63, 1.0, 1.6 and 2x LZ4, ISO 3 R5; a program counts in a tier if it decodes within its limit;
+  border items, within 2.6% above a 1A-1D limit, also count there and are marked - ISO 14253-1 guard band. The Speed tiers button explains it)
+  LZ4 -1 total decode time on this computer: 0.526 s
+  Tier 1A  (decode within 0.4x LZ4's time)    -     nothing this fast
+  Tier 1B  (decode within 0.63x LZ4's time)   LOSS  none of ours this fast; best rival LZAV 7.1 HI (stock encoder) 2.970x
+  Tier 1C  (decode within 1x LZ4's time)      WIN   HX Fast 5.405x vs zstd 1.5.6 -19 --long=27 4.050x
+            border items in this tier: HX Fast (1.005x)
+  Tier 1D  (decode within 1.6x LZ4's time)    WIN   HX Fast 5.405x vs Brotli 1.2.0 -q 11 4.339x
+  Tier 1E  (decode within 2x LZ4's time)      WIN   HX Fast 5.405x vs Brotli 1.2.0 -q 11 4.339x
+  Tier 2   (decode within 5x LZ4's time)      WIN   HX Complete 7.293x vs BSC 3.4.0 (default) 5.940x
+  Tier 3   (decode within 10x LZ4's time)     WIN   HX Complete 7.293x vs kanzi 2.6.0 -l 7 6.123x
+  Tier 4   (decode within 20x LZ4's time)     WIN   HX Complete 7.293x vs bzip3 1.5.1 6.146x
+  Tier 5   (decode within 50x LZ4's time)     WIN   HX Complete 7.293x vs bzip3 1.5.1 6.146x
+  Tier 6   (decode within 100x LZ4's time)    WIN   HX Complete 7.293x vs bzip3 1.5.1 6.146x
+  Tier 7   (decode within 200x LZ4's time)    WIN   HX Complete 7.293x vs bzip3 1.5.1 6.146x
+  Tier 8   (decode within 500x LZ4's time)    WIN   HX Complete 7.293x vs bzip3 1.5.1 6.146x
+  Tier 9   (decode within 2000x LZ4's time)   WIN   HX Complete 7.293x vs bzip3 1.5.1 6.146x
+  Tier 10  (any speed)                        WIN   HX Complete 7.293x vs bzip3 1.5.1 6.146x
+  Harrington's compression concepts won 12 of 13 tiers for the folder "lukas".

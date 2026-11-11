@@ -1,0 +1,40 @@
+HX COMPETITION TEST - ALL RESULTS SO FAR (8-10 November 2026)
+Michael Hugh Harrington. HX Competition Test 1.0, 1 run per corpus, 37 programs, every result decoded and checked byte
+for byte (SHA-256). Same Windows PC for every run (AMD Ryzen 5 7500X3D, 12 logical cores, 16 GB). Public data only, each
+file verified against its official source before the run. HX version in these runs: HX 1.0.1 (the 9 Nov crash fix).
+
+  Corpus            Date        Files        Bytes   HX Complete            Best rival                        Difference          HX Fast   HX Complete  Speed tiers
+                                                         bytes     ratio      name          bytes     ratio                         race      race         won
+  Silesia           2026-11-08     12   211,938,580   41,531,539   5.103x   kanzi -l 9  40,785,680   5.196x   rival 1.80% smaller    1 of 15   2 of 2       8 of 14 *
+  Canterbury        2026-11-09     11     2,810,784      350,205   8.026x   kanzi -l 9     412,514   6.814x   ours 15.10% smaller    7 of 27   1 of 1       9 of 13
+  Calgary           2026-11-09     18     3,251,493      709,427   4.583x   kanzi -l 9     731,676   4.444x   ours 3.04% smaller     10 of 28  1 of 2       9 of 13
+  Kodak             2026-11-09     24    28,311,912    9,982,724   2.836x   kanzi -l 9  11,831,936   2.393x   ours 15.63% smaller    - **      1 of 1       12 of 13
+  enwik8            2026-11-09      1   100,000,000   20,749,628   4.819x   kanzi -l 9  20,035,687   4.991x   rival 3.44% smaller    3 of 21   2 of 6       4 of 13
+  Squash Snappy     2026-11-09      7     1,742,488      367,635   4.740x   kanzi -l 9     408,324   4.267x   ours 9.96% smaller     5 of 15   1 of 2       11 of 14
+  Max Compression   2026-11-09     10    53,134,726    9,324,857   5.698x   kanzi -l 9  10,358,492   5.130x   ours 9.98% smaller     2 of 20   1 of 2       11 of 13
+  Lukas 2D 16-bit   2026-11-10     20   147,783,454   20,264,929   7.293x   bzip3       24,047,162   6.146x   ours 15.73% smaller    1 of 20   1 of 1       12 of 13
+  Large Canterbury  2026-11-10      3    11,159,482    2,188,294   5.100x   kanzi -l 9   2,162,555   5.160x   rival 1.18% smaller    2 of 21   2 of 8       2 of 13
+  ALL NINE                        106   560,132,919  105,469,238   5.311x   kanzi -l 9 111,381,268   5.029x   ours 5.31% smaller
+  * Silesia was run with the first app version (10 tiers); 8 of 14 is the same data under the Tier 1 split.
+  ** HX Fast failed to decode 4 Kodak photos (thread bug, fixed 9 Nov 2026); it is not in the Kodak totals.
+  Best rival = the smallest rival total. On Lukas the best rival was bzip3; kanzi -l 9 there: 24,654,404 bytes (5.994x).
+  The ALL NINE line compares HX Complete with kanzi -l 9 (the strongest rival overall) on the same 9 corpora.
+  Percent differences are measured against the larger of the two totals.
+
+WHAT THE RESULTS SHOW
+  1. HX Complete is the smallest program overall on 6 of the 9 corpora: Canterbury, Calgary, Kodak, Squash Snappy,
+     Maximum Compression and Lukas. kanzi -l 9 wins Silesia (1.80%), enwik8 (3.44%) and Large Canterbury (1.18%).
+  2. Images and medical data are its strongest ground: Kodak photos 15.63% smaller than kanzi -l 9, Lukas medical
+     X-rays 15.73% smaller than the best rival (bzip3) and 17.80% smaller than kanzi -l 9.
+  3. Its weak ground is machine code and large plain text (Silesia program files, enwik8, bible.txt).
+  4. HX Fast is first in its speed race on Silesia and Lukas, second on Maximum Compression and Large Canterbury.
+  5. Speed tiers: Harrington's compression concepts won most tiers on 7 of the 9 corpora.
+  6. HX Complete compresses far more slowly than the rivals (minutes where kanzi takes seconds); decoding is fast.
+
+NEWER HX VERSIONS (not used in the runs above)
+  HX 1.1.0 (10 Nov): block mode, memory limit, threads flag, stdin/stdout; same output as 1.0.1 without the new flags.
+  HX 1.1.1 / 1.0.2 (10 Nov): mode context route for dialogue-rich books and Wikipedia-style text (0.18%-0.71% smaller
+  on such text in testing); identical output on other files.
+
+RESULTS FILES (this folder): one Finishing-Results file per corpus with every program's totals, races and tiers.
+Still to run: Mahoney Generic Compression Benchmark (running), DNA corpus, the rest of Lukas, Canterbury artificial.

@@ -6,6 +6,9 @@ WHAT IT DOES
 Runs HX Fast and HX Complete, Michael Harrington's other tools, and 29 settings of published compressors (LZ4, Snappy,
 LZAV, gzip/libdeflate, zstd, Brotli, bzip2, xz, 7-Zip LZMA2 and PPMd, BSC, bzip3, kanzi) on the same files, on your
 computer. Every result is decoded and checked byte for byte, and every result is shown, the poor ones too.
+
+RESULTS SO FAR: All-Comparison-Results-2026-11-10.txt (nine public corpora: Silesia, Canterbury, Calgary, Kodak,
+enwik8, Squash Snappy, Maximum Compression, Lukas 2D 16-bit, Large Canterbury), with one Finishing-Results file per corpus.
 Then it ranks them: an HX Fast race (everything about as fast to decode as HX Fast), an HX Complete race (everything
 close to HX Complete's compression or better), and wins and losses in 10 speed tiers measured against LZ4.
 
