@@ -21,11 +21,16 @@ Usage (HX 1.1.0):  hx c IN OUT [--complete] [--block=SIZE] [--memlimit=SIZE] [-T
   IN or OUT can be - for stdin / stdout. --block compresses in independent blocks (memory follows the block,
   not the file); --memlimit picks the block size to stay under a memory limit. Without these, the output is the
   HX 1.0 format, unchanged. See 1.1.0/HX-1.1.0-RELEASE-NOTES.txt.
+  HX 1.1.1 / 1.0.2 (10 Nov 2026) add the mode context route (mode 19, src/hx_mode.h): text that switches between
+  modes (dialogue vs narration in books, line kinds in Wikipedia markup) is grouped by mode before compressing; kept only
+  when smaller. See 1.1.1/HX-1.1.1-and-1.0.2-RELEASE-NOTES.txt and ../mode-context/.
 
 Files in src/:
   hx.cpp        the compressor/decompressor (container, segment plan, Sets, routes, split modes)
   entbench.cpp  the Harrington Exchange lines and the coder harness (included by hx.cpp)
   hx_router.h   the learned router (features, nearest-neighbour route prediction, escalation)
+  hx_mode.h     mode context grouping (route / mode 19, HX 1.1.1 and 1.0.2)
+  hx-1.0.2.cpp  HX 1.0.2: the 1.0.x command line (no block mode) with the mode context route
   x86f.h        E8/E9 x86 address filter
   hx_lzma.h, hx_bcj2.h, hx_ppmd.h   LZMA, BCJ2 and PPMd routes (wrapping Igor Pavlov's public-domain C code)
 See BUILD.txt for how it is built, results/All-Software-Test-Results-2026-11-06.txt for results, and radar/ for the

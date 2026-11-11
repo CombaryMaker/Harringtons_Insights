@@ -58,6 +58,11 @@ FILES
   results/prior-art-check.txt   what is already known (XMill containers, document reordering, paq8px text model)
   results/raw-*.txt             raw sizes
 
+USED IN HX
+  Michael Harrington's compressor HX uses the grouping form of this idea from HX 1.1.1 and 1.0.2 on (route / mode 19,
+  HX/src/hx_mode.h): HX Complete was 0.42% smaller on an enwik8 slice and 0.44% smaller on Huckleberry Finn.
+  HX itself has its own license (see HX/LICENSE.txt); the idea here stays public domain.
+
 LICENSES
   Everything here is CC0 1.0 (public domain) except the three modified lpaq1 files: lpaq1 is (C) 2007 Matt Mahoney
   under the GNU GPL, so those files stay under the GNU GPL.

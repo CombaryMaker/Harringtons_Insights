@@ -114,7 +114,7 @@ struct Router {
         for (int id : app) { double ws = 0, s = 0; int k = 0; for (auto &dd : dist) { auto it = rows[dd.second].lr.find(id); if (it == rows[dd.second].lr.end()) continue;
                 double wt = 1.0 / (0.05 + dd.first); s += wt * it->second; ws += wt; if (++k >= K) break; }
             out.push_back({ws > 0 ? exp(s / ws) : 1.02, id}); }
-        // rule: a detected format's specialist (10 = media, 18 = 16-bit image) always runs in the first pass
-        stable_sort(out.begin(), out.end(), [](const pair<double, int> &a, const pair<double, int> &b) { int sa = a.second == 10 || a.second == 18, sb = b.second == 10 || b.second == 18; return sa != sb ? sa > sb : a.first < b.first; });
+        // rule: a detected format's specialist (10 = media, 18 = 16-bit image, 19 = mode context, only when text modes were detected) always runs in the first pass
+        stable_sort(out.begin(), out.end(), [](const pair<double, int> &a, const pair<double, int> &b) { int sa = a.second == 10 || a.second == 18 || a.second == 19, sb = b.second == 10 || b.second == 18 || b.second == 19; return sa != sb ? sa > sb : a.first < b.first; });
         return out; }
 };

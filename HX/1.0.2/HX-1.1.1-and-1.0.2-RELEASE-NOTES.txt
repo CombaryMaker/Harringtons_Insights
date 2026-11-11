@@ -1,0 +1,46 @@
+HX 1.1.1 and HX 1.0.2 - RELEASE NOTES (10 November 2026)
+Michael Hugh Harrington. Patent Pending (U.S. Provisional App. 64/192,843). Same license as HX (see LICENSE.txt).
+
+WHAT CHANGED
+  Both versions add the MODE CONTEXT route (file mode 19, source src/hx_mode.h):
+    HX 1.1.1 = HX 1.1.0 (block mode, memory limit, threads, stdin/stdout) + mode context
+    HX 1.0.2 = HX 1.0.1 (with the 9 Nov HX Fast decode-crash fix) + mode context
+  The mode context idea is public domain (CC0); its open write-up, code and experiments are in mode-context/ on GitHub.
+
+THE MODE CONTEXT ROUTE
+  Text switches between modes that are written differently. HX now recognises two layouts:
+    books: paragraphs that open with a quote mark (dialogue) and the other paragraphs;
+    Wikipedia-style markup: each line's kind - prose, heading, list, template/table, indented, category or language
+    link, escaped tag, line in a References / External links / See also / Notes section, blank.
+  The units of each kind are moved together, the kind of every unit is stored with a small adaptive coder so the order
+  can be restored exactly, and the grouped text is compressed by the normal HX pipeline in a separate run.
+  HX Fast tries it with HX Fast; HX Complete tries it as route 19 with HX Complete (in the router's first pass whenever
+  a layout is detected). As with every HX route, it is kept only when the whole result is smaller and every grouping is
+  checked to come back exactly before it is used. Files where no layout is detected are handled exactly as before.
+
+COMPATIBILITY
+  Files made by HX 1.1.1 / 1.0.2 with mode 19 need HX 1.1.1 / 1.0.2 (or later) to decode. Every older HX file decodes
+  as before. On files where the route does not win, the output is byte for byte the same as HX 1.1.0 / 1.0.1
+  (checked on 10 files: Squash Snappy set, asl16.nii, Calgary book1 and paper1).
+
+MEASURED (cloud machine, 2 threads; Linux build, the Windows exe gave the same bytes under Wine)
+  HX Fast                         1.1.0 bytes   1.1.1 bytes   change    route used    compress time 1.1.0 -> 1.1.1
+  Pride and Prejudice (752,487)      219,745       219,163    -0.26%    mode context      3.20 s ->  6.29 s
+  The Great Gatsby (286,681)          95,961        95,787    -0.18%    mode context      1.39 s ->  3.54 s
+  enwik8 slice at 40 MiB (4 MiB)   1,219,626     1,212,991    -0.54%    mode context     23.21 s -> 47.30 s
+  Alice in Wonderland (154,483)       48,744        48,744     same     repeat line
+  Origin of Species (1,283,088)      336,888       336,888     same     repeat line (no layout detected)
+  enwik8 slice at 0 MiB, --block=2M 1,253,043     1,244,159    -0.71%   (2 blocks)
+  Every result decoded exactly; 1.0.2 gave the same bytes as 1.1.1. Decode time is unchanged apart from undoing the
+  grouping (a fast copy).
+
+  HX Complete (with the HCM route on)  1.1.0 bytes   1.1.1 bytes   change    route used    compress time
+  Huckleberry Finn (602,635)             138,844       138,238    -0.44%    mode context     21.53 s ->  47.42 s
+  enwik8 slice at 0 MiB (4 MiB)          957,116       953,067    -0.42%    mode context    102.80 s -> 209.91 s
+  Both decoded exactly.
+  Earlier screening with the same grouping (HX Complete + HCM, note cost counted): smaller on 7 of 9 novels (up to
+  -0.57% on The Great Gatsby) and on all three enwik8 slices (-0.25% to -0.45%).
+
+COST
+  On text where a layout is detected, compression runs a second HX pass on the grouped text, so it takes about twice
+  as long. Other files are not affected.

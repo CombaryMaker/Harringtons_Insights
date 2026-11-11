@@ -15,7 +15,7 @@
 // environment variable HX_MZIP set to the mzip program (Cranot/mzip, AGPL - run as a separate program, never linked
 // in), --complete also tries mzip on the whole file (mode 8) and as the coder of the split's rest (mode 9).
 // Files made with modes 8/9 need HX_MZIP to decode too.
-// usage (HX 1.1.0): hx c IN OUT [--complete] [--block=SIZE] [--memlimit=SIZE] [-T N]  |  hx d IN OUT [-T N]   (IN/OUT can be -)
+// usage (HX 1.1.1): hx c IN OUT [--complete] [--block=SIZE] [--memlimit=SIZE] [-T N]  |  hx d IN OUT [-T N]   (IN/OUT can be -)
 #define HX_NO_MAIN
 #include "entbench.cpp"
 #define ZSTD_STATIC_LINKING_ONLY
@@ -374,6 +374,31 @@ static B media_dec(int route, const uint8_t *p, size_t m, size_t n) {
 }
 
 #include "hx_router.h"
+#include "hx_mode.h"
+// Mode context route (mode 19, 10 Nov 2026): group the text by mode (hx_mode.h), compress the grouped text with HX in a
+// separate run (HX_NOMODE set, so it does not group again), keep it only when smaller. Body: scheme, unit count, tail
+// length, kinds-note length, kinds note, then the inner HX file of the grouped text.
+static B mode_route(int scheme, const vector<uint8_t> &kinds, const B &g, size_t tail, int T, bool complete, const string &self) {
+    if (!scheme) return B();
+    B note = hxmode::enc_kinds(kinds);
+    string d = mz_tmp(), a = d + "/g", b = d + "/g.hx"; writef(a.c_str(), g.data(), g.size());
+    setenv("HX_NOMODE", "1", 1);
+    bool ok = sh(q(self) + " c " + q(a) + " " + q(b) + " " + to_string(T) + (complete ? " --complete" : ""));
+    unsetenv("HX_NOMODE");
+    B inner = ok ? readf(b.c_str()) : B(); remove(a.c_str()); remove(b.c_str()); rmdir(d.c_str());
+    if (inner.empty()) return B();
+    B o; o.push_back((uint8_t)scheme); put32(o, (uint32_t)kinds.size()); put32(o, (uint32_t)tail); put32(o, (uint32_t)note.size());
+    o.insert(o.end(), note.begin(), note.end()); o.insert(o.end(), inner.begin(), inner.end()); return o;
+}
+static B mode_unroute(const uint8_t *p, size_t m, size_t n, int T, const string &self) {
+    if (m < 13) return B(); int scheme = p[0]; size_t cnt = get32(p + 1), tail = get32(p + 5), nl = get32(p + 9); if (13 + nl > m) return B();
+    vector<uint8_t> kinds; if (!hxmode::dec_kinds(p + 13, nl, cnt, kinds)) return B();
+    string d = mz_tmp(), a = d + "/g.hx", b = d + "/g"; writef(a.c_str(), p + 13 + nl, m - 13 - nl);
+    bool ok = sh(q(self) + " d " + q(a) + " " + q(b) + " " + to_string(T)); B g = ok ? readf(b.c_str()) : B();
+    remove(a.c_str()); remove(b.c_str()); rmdir(d.c_str());
+    B out = hxmode::ungroup(scheme, g, kinds, tail); if (out.size() != n) return B(); return out;
+}
+// ===== HX 1.1.1 (10 Nov 2026): mode context route (mode 19, hx_mode.h) added to HX 1.1.0 =====
 // ===== HX 1.1.0 (10 Nov 2026): block mode, memory limit, thread flag, stdin/stdout =====
 // Asked for on encode.su (xman, 10 Nov 2026): a 1.6 GB file did not fit in 16 GB of memory, and HX could not read a pipe.
 // Files made without --block / --memlimit / a pipe are the same HXF1 format as HX 1.0, byte for byte.
@@ -432,6 +457,10 @@ static B compress_one(const B &in, int T, bool complete, const string &self, con
               for (size_t k = 0; k < ns; k++) if (mark[k]) { put32(c, (uint32_t)nparts[k].size()); c.insert(c.end(), nparts[k].begin(), nparts[k].end()); }
               if (c.size() < best.size()) { best.swap(c); mode = 3; } } }
         lap("split");
+        // mode context grouping (10 Nov 2026): HX Fast tries the grouped text with HX Fast; HX Complete does it as route 19
+        vector<uint8_t> mkinds; B mgroup; size_t mtail = 0; int mscheme = hxmode::group(in, mkinds, mgroup, mtail);
+        if (!complete && mscheme) { B c = mode_route(mscheme, mkinds, mgroup, mtail, T, false, self); if (!c.empty() && c.size() < best.size()) { best.swap(c); mode = 19; } }
+        lap("mode context");
         // ===== HX Complete 15: the expensive routes as a table, picked by the learned router =====
         if (complete) {
         size_t base_best = best.size(); int base_mode = mode; bool classA = getenv("HX_CLASS_A") != nullptr;
@@ -446,7 +475,7 @@ static B compress_one(const B &in, int T, bool complete, const string &self, con
         auto applicable = [&](int id) -> bool { switch (id) {
             case 5: return !classA; case 6: return !abl_split_off; case 13: case 64: return x86cv * 1000 >= n; case 16: return getenv("HX_HCM") != nullptr;
             case 17: return getenv("HX_HCM37") != nullptr; case 10: return media && (pnm || jpg || wav || (y4m && !classA));
-            case 11: return media && !pnm && !jpg && !y4m && !getenv("HX_NOEMBED"); case 18: return g_w16 >= 16 && getenv("HX_CJXL") != nullptr && !pnm;
+            case 19: return mscheme != 0; case 11: return media && !pnm && !jpg && !y4m && !getenv("HX_NOEMBED"); case 18: return g_w16 >= 16 && getenv("HX_CJXL") != nullptr && !pnm;
             default: return true; } };
         auto run_route = [&](int id) { double ts = now(); size_t sz = 0;
             switch (id) {
@@ -471,6 +500,7 @@ static B compress_one(const B &in, int T, bool complete, const string &self, con
             case 10: { vector<int> routes; if (pnm) routes = {1, 2}; if (jpg) routes = classA ? vector<int>{4} : vector<int>{3, 4}; if (wav) routes = {7}; if (y4m && !classA) { routes = {5}; if (getenv("HX_MZIP") || getenv("HX_RESEARCH")) routes.push_back(6); }
                 for (int r : routes) { B body = media_enc(r, in); if (!body.empty() && (!sz || body.size() < sz)) sz = body.size(); take(body, 10); } break; }
             case 18: { B b = img16_route(in, g_w16, dbg); sz = b.size(); take(b, 18); break; }
+            case 19: { B b = mode_route(mscheme, mkinds, mgroup, mtail, T, true, self); sz = b.size(); take(b, 19); break; }
             case 11: { size_t before = best.size(); int bm0 = mode;
             {
                 vector<pair<size_t, size_t>> imgs = find_embedded_pnm(in), jp = find_embedded_jpeg(in);
@@ -495,7 +525,7 @@ static B compress_one(const B &in, int T, bool complete, const string &self, con
             }
             char e[96]; snprintf(e, sizeof e, "%s%d:%zu:%.3f", rlog.empty() ? "" : "|", id, sz, now() - ts); rlog += e;
             if (dbg) fprintf(stderr, "  route %-3d %10zu bytes  %7.2f s\n", id, sz, now() - ts); };
-        vector<int> ALL = {4, 5, 6, 12, 14, 15, 13, 16, 17, 64, 10, 11, 18}, app; for (int id : ALL) if (applicable(id)) app.push_back(id);
+        vector<int> ALL = {4, 5, 6, 12, 14, 15, 13, 16, 17, 64, 10, 11, 18, 19}, app; for (int id : ALL) if (applicable(id)) app.push_back(id);
         if (const char *only = getenv("HX_ONLY")) { vector<int> keep; for (int id : app) { string o = string(",") + only + ","; if (o.find("," + to_string(id) + ",") != string::npos) keep.push_back(id); } app.swap(keep); }
         const char *rt = getenv("HX_ROUTER"); Router R; int pass = 9; double pred_best = 0;
         bool use = rt && !getenv("HX_ALLROUTES") && !getenv("HX_ALLROUTES_MAX") && R.load(rt, getenv("HX_HOLDOUT") ? getenv("HX_HOLDOUT") : "");
@@ -518,7 +548,7 @@ static B compress_one(const B &in, int T, bool complete, const string &self, con
         { B xf = in; size_t cv = x86_filter(xf.data(), n, true); if (cv * 1000 >= n && mode == 2) { B z = zstd_long(xf, T, 19); if (z.size() < best.size()) { best.swap(z); mode = 64 + 2; } } }
         if (best.size() >= n) { best = in; mode = 0; }
         B o = {'H', 'X', 'F', '1'}; for (int i = 0; i < 8; i++) o.push_back((uint64_t)n >> (8 * i) & 255); o.push_back((uint8_t)mode); o.insert(o.end(), best.begin(), best.end());
-        int bm = mode & 63; fprintf(g_msg, "%shxf: %zu -> %zu bytes (%s%s), ratio %.3fx, %.2f s\n", g_prefix.c_str(), n, o.size(), mode & 64 ? "x86 filter + " : "", bm == 1 ? "Sets + Exchange lines" : bm == 2 ? "repeat line" : bm == 3 ? "split: Exchange lines + repeat line" : bm == 4 ? "BSC" : bm == 5 ? "bzip3" : bm == 6 ? "split: Exchange lines + BSC" : bm == 7 ? "split: Exchange lines + bzip3" : bm == 10 ? "format specialist" : bm == 11 ? "embedded images + HX Complete" : bm == 12 ? "LZMA" : bm == 13 ? "BCJ2 + LZMA/BSC" : bm == 14 ? "PPMd" : bm == 15 ? "Brotli 11" : bm == 16 ? "HCM max" : bm == 17 ? "HCM 3.7" : bm == 18 ? "16-bit image to JPEG XL" : bm == 8 ? "mzip (research)" : bm == 9 ? "split: Exchange lines + mzip (research)" : "stored", (double)n / max<size_t>(1, o.size()), now() - t0);
+        int bm = mode & 63; fprintf(g_msg, "%shxf: %zu -> %zu bytes (%s%s), ratio %.3fx, %.2f s\n", g_prefix.c_str(), n, o.size(), mode & 64 ? "x86 filter + " : "", bm == 1 ? "Sets + Exchange lines" : bm == 2 ? "repeat line" : bm == 3 ? "split: Exchange lines + repeat line" : bm == 4 ? "BSC" : bm == 5 ? "bzip3" : bm == 6 ? "split: Exchange lines + BSC" : bm == 7 ? "split: Exchange lines + bzip3" : bm == 10 ? "format specialist" : bm == 11 ? "embedded images + HX Complete" : bm == 12 ? "LZMA" : bm == 13 ? "BCJ2 + LZMA/BSC" : bm == 14 ? "PPMd" : bm == 15 ? "Brotli 11" : bm == 16 ? "HCM max" : bm == 17 ? "HCM 3.7" : bm == 18 ? "16-bit image to JPEG XL" : bm == 19 ? "mode context grouping + HX" : bm == 8 ? "mzip (research)" : bm == 9 ? "split: Exchange lines + mzip (research)" : "stored", (double)n / max<size_t>(1, o.size()), now() - t0);
         return o;
 }
 static B decode_one(const uint8_t *data, size_t size, int T, const string &self) {
@@ -547,6 +577,7 @@ static B decode_one(const uint8_t *data, size_t size, int T, const string &self)
                 if (!ok) { fprintf(stderr, "hxf: rest decode failed\n"); exit(1); } }
             size_t pos = 0, q2 = 0; for (size_t k = 0; k < cnt; k++) { size_t gap = off[k] - pos; memcpy(out.data() + pos, rest.data() + q2, gap); q2 += gap; memcpy(out.data() + off[k], img[k].data(), len[k]); pos = off[k] + len[k]; }
             memcpy(out.data() + pos, rest.data() + q2, n - pos); }
+        else if (mode == 19) { B r = mode_unroute(p, m, n, T, self); if (r.size() != n) { fprintf(stderr, "hxf: mode context decode failed\n"); exit(1); } memcpy(out.data(), r.data(), n); }
         else if (mode == 8) { B r = mz_run("d", p, m); if (r.size() != n) { fprintf(stderr, "hxf: mzip size mismatch\n"); exit(1); } memcpy(out.data(), r.data(), n); }
         else {   // split: the repeat-line stream on one core while the HX segments decode on the others
             Plan P; plan_segments(P, n); size_t ns = get32(p); p += 4; if (ns != P.soff.size()) { fprintf(stderr, "hxf: damaged file\n"); exit(1); }
@@ -585,7 +616,7 @@ static void put64f(FILE *f, uint64_t v) { uint8_t b[8]; for (int i = 0; i < 8; i
 static bool get64f(FILE *f, uint64_t &v) { uint8_t b[8]; if (read_full(f, b, 8) != 8) return false; v = 0; for (int i = 0; i < 8; i++) v |= (uint64_t)b[i] << (8 * i); return true; }
 static string mib(size_t v) { char b[32]; if (v % ((size_t)1 << 20) == 0) snprintf(b, sizeof b, "%zuM", v >> 20); else snprintf(b, sizeof b, "%zu bytes", v); return b; }
 int main(int argc, char **argv) {
-    if (argc < 4) { fprintf(stderr, "HX 1.1.0 (Harrington Sets + Exchange lines + cascade + learned router)\n"
+    if (argc < 4) { fprintf(stderr, "HX 1.1.1 (Harrington Sets + Exchange lines + cascade + learned router + mode context)\n"
         "usage: hx c IN OUT [options]   |   hx d IN OUT [options]      (IN or OUT can be - for stdin / stdout)\n"
         "  --complete       HX Complete (every route, smallest size, slow compress)\n"
         "  --block=SIZE     compress in independent blocks of SIZE (e.g. 64M, 256M, 1G); memory follows the block, not the file\n"
