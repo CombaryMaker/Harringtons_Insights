@@ -1,13 +1,28 @@
-SPEED TIER STANDARD - TIER 1 SPLIT (additional standard)
-Michael Hugh Harrington, 9 November 2026. Copyright (c) 2026 Michael Hugh Harrington. MIT License.
-Open to suggestions for alternative means.
+SPEED TIER STANDARD - MAIN TIERS AND TIER 1 SPLIT
+Michael Hugh Harrington. Main tiers 4 November 2026; Tier 1 split 9 November 2026.
+Copyright (c) 2026 Michael Hugh Harrington. MIT License. Open to suggestions for alternative means.
 
+A. THE MAIN TIERS (Compression Tier Standard v2.0, 4 Nov 2026)
+   Where they came from: Michael Harrington's Compression Tier Standard. v1.1 (26 Oct 2026) set the rule of placing
+   programs by decode speed against LZ4; v2.0 (4 Nov 2026) fixed the ten tiers below, first used on his 6 Nov 2026
+   chart (29 data types x 10 tiers). The limits follow the 1-2-5 series (1, 2, 5, 10, 20, 50 ...), the common
+   engineering sequence for scales that span many powers of ten.
+   Measure: M = total decode time of a program / total decode time of LZ4 -1, same files, same computer, same session.
+   Tier 1  M <= 2        Tier 6   M <= 100
+   Tier 2  M <= 5        Tier 7   M <= 200
+   Tier 3  M <= 10       Tier 8   M <= 500
+   Tier 4  M <= 20       Tier 9   M <= 2,000
+   Tier 5  M <= 50       Tier 10  any speed
+   Rules:
+   - Cumulative: a program counts in every tier whose limit it is within (a Tier 1 program also counts in Tiers 2-10).
+   - Win: in each tier the smallest of ours is compared with the smallest rival; WIN when ours is the same size or
+     smaller.
+   - Only programs that decode every file exactly are counted.
+
+B. THE TIER 1 SPLIT (additional standard, 9 Nov 2026)
 WHY
-The speed tiers place every compressor by its decode time divided by LZ4 -1's decode time on the same files
-(M = T_decode(program) / T_decode(LZ4 -1)), with tier limits 2, 5, 10, 20, 50, 100, 200, 500, 2000 and any speed.
-Tier 1 (M <= 2) holds far too wide a range of speeds: on the Silesia corpus it held programs from M = 0.38 to M = 1.70,
-more than a four-fold spread, so the fastest decoders were judged against programs four times slower. This standard
-splits Tier 1 into five sub-tiers. Tiers 2 to 10 do not change.
+Tier 1 was too wide: on Silesia it held decoders from M 0.38 to 1.70, so the fastest were judged against ones four
+times slower. Tier 1 is now split into five sub-tiers. Tiers 2 to 10 do not change.
 
 1. THE SUB-TIERS (Renard R5 preferred numbers, ISO 3)
    The limits are the R5 series of ISO 3 (preferred numbers, steps of the fifth root of 10, about 1.6x), the standard
@@ -28,7 +43,7 @@ splits Tier 1 into five sub-tiers. Tiers 2 to 10 do not change.
    This is a cautious (wide) figure, since the three LZ4 files differ slightly in content.
 
 3. THE WIN RULE (unchanged)
-   In each sub-tier, the smallest of ours is compared with the smallest rival. WIN when ours is the same size or smaller.
+   Same as the main tiers, applied in each sub-tier.
 
 4. FIRST APPLICATION: SILESIA CORPUS (12 files, 211,938,580 bytes), HX Competition Test 1.0, 8 Nov 2026
    Existing results only (hx-competition/Original-Test-Comparison-Tool.txt); no new runs. LZ4 -1 decode: 0.944 s.
