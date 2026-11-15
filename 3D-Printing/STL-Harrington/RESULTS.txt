@@ -1,0 +1,417 @@
+STL-HARRINGTON - RESULTS
+Michael Hugh Harrington. MIT License.
+Created with the assistance of Claude AI. The formal directing and structure behind this work are by Michael Hugh Harrington.
+
+The benchmark below (14 November 2026) measured the STL-Harrington mesh coder against the other exact mesh coders and plain
+packers, all in one test program under the same rules. STL-Harrington.exe uses the same coder; a .stlh file adds a 16-byte
+header and, for binary STL, the original 80-byte STL header (packed with the rest), so its files are a few dozen bytes larger
+than the coder sizes below. Example: nasa_01_side_a 7,257 bytes in the benchmark (zstd), 7,306 as a .stlh file (Fast).
+"Smallest" in the program = the ZPAQ -m5 rows; "Fast" = the zstd -19 rows. The benchmark program (meshbench2.cpp) is in
+source/benchmark/.
+
+=============================================================================================================================
+STL-HARRINGTON - FAIR SPEED AND SIZE BENCHMARK (C++), 14 November 2026. Michael Hugh Harrington research, MIT License.
+STL-Harrington = the stlx3 coder (working name) ported to C++. All coders run in one program (meshbench2.cpp), same rules:
+  - every coder starts from the same indexed mesh in memory (float32 positions + triangle list) and ends with it decoded;
+    reading/writing files is not timed (in-memory, like TurboBench). One thread. Median of 5 runs (3 for files over 20 MB;
+    ZPAQ: 3, or 1 over 20 MB).
+  - every decoded result checked: same triangles, bit-exact float32 coordinates, winding kept (triangle order/rotation free).
+    "raw STL" rows are checked byte for byte against the original file.
+  - STL-Harrington encode time includes trying 3 triangle orders (file order, neighbour pre-sort, side walk) and keeping
+    the smallest (zstd -3 used to choose), then the final back end. meshoptimizer: vertex-cache + vertex-fetch order,
+    lossless index/vertex codecs (vertex level 2). Draco 1.5.9 Edgebreaker speed 0 (=-cl 10), no quantization.
+Machine: cloud VM, Intel Xeon @ 2.10 GHz, 2 vCPUs (1 used), Ubuntu 24.04, g++ 13.3 -O3 -march=x86-64-v2.
+Libraries: zstd 1.5.6, liblzma 5.4.5, libzpaq 7.15, meshoptimizer 1.3, OpenCTM 1.0.3 (MG1, level 9), Draco 1.5.9.
+Data: 21 real STL files exactly as published (Voron-2, Original Prusa i3, NASA 3D Resources, 3DBenchy, a gyroid) and 6 scan
+models converted to STL by us (fandisk, rocker arm, Stanford bunny, Happy Buddha, armadillo, Nefertiti). 198,064,268 bytes.
+Units: bytes; ratio = STL bytes / compressed bytes; bpt = bits per triangle; bpv = bits per vertex; MB/s = STL bytes per
+second (10^6); Mtri/s = million triangles per second; memory = peak resident memory of the whole process (includes the
+loaded STL file and the indexed mesh).
+
+1. TOTALS, ALL 27 FILES (198,064,268 STL bytes, 3,804,302 triangles)
+  coder                               bytes   ratio     bpt     bpv   enc MB/s   dec MB/s enc Mtri/s dec Mtri/s  exact
+  STL-Harrington + zstd -19       5,423,737   36.52   10.95   21.76        9.6       50.5       0.19       1.01  27/27
+  STL-Harrington + xz -9e         5,078,831   39.00   10.26   20.38        7.4       46.1       0.15       0.92  27/27
+  STL-Harrington + ZPAQ -m5       4,714,565   42.01    9.52   18.91        2.1        2.4       0.04       0.05  27/27
+  meshoptimizer + zstd -19       14,365,888   13.79   29.01   57.63       26.5     2566.8       0.53      51.34  27/27
+  meshoptimizer + xz -9e         14,051,891   14.10   28.38   56.37       18.0      235.4       0.36       4.71  27/27
+  meshoptimizer + ZPAQ -m5       13,511,004   14.66   27.29   54.20        2.7        2.6       0.05       0.05  27/27
+  OpenCTM MG1                     8,880,412   22.30   17.93   35.63       12.3      274.0       0.25       5.48  27/27
+  Draco (no quantization)        24,475,875    8.09   49.43   98.19      131.2      492.6       2.62       9.85  25/27
+  raw STL + zstd -19             40,043,862    4.95   80.87  160.65        2.8      570.1       0.06      11.40  27/27
+  raw STL + xz -9e               26,372,515    7.51   53.26  105.80        1.6      102.6       0.03       2.05  27/27
+  raw STL + ZPAQ -m5             36,240,987    5.47   73.19  145.39        0.3        0.3       0.01       0.01  27/27
+  Note: totals are dominated by gyroid (144 MB of 198 MB). Section 2 gives every file.
+  Without gyroid (26 files, 54,218,984 STL bytes): STL-Harrington + zstd 3,514,832 (decode 116.7 MB/s, encode 12.8 MB/s);
+    meshoptimizer + zstd 4,241,283 (decode 3,727 MB/s, encode 58.2 MB/s); OpenCTM MG1 5,286,927 (decode 161.1 MB/s, encode
+    10.9 MB/s); Draco 6,614,560 (decode 690.8 MB/s, encode 196.0 MB/s). STL-Harrington + ZPAQ 3,142,730 vs meshoptimizer + ZPAQ
+    3,991,229. On gyroid STL-Harrington decodes slowly (3.5 s, 41 MB/s): its side lookup table becomes the bottleneck at 2.9
+    million triangles - a known spot to optimise.
+
+2. EVERY FILE - size (bytes), encode / decode time (ms), peak memory (MB)
+  REAL FILES
+  nasa_01_side_a.stl  (143,684 bytes, 2,872 triangles, 1,438 vertices, loading alone 4 MB)
+    STL-Harrington + zstd -19          7,257  ratio   19.80  bpt  20.21  enc      10.8  dec       0.6  mem      6  exact
+    STL-Harrington + xz -9e            6,953  ratio   20.67  bpt  19.37  enc      25.0  dec       1.0  mem     26  exact
+    STL-Harrington + ZPAQ -m5          6,801  ratio   21.13  bpt  18.94  enc     104.2  dec     100.8  mem    115  exact
+    meshoptimizer + zstd -19          11,708  ratio   12.27  bpt  32.61  enc       2.1  dec       0.1  mem      5  exact
+    meshoptimizer + xz -9e            11,573  ratio   12.42  bpt  32.24  enc      24.0  dec       0.6  mem     37  exact
+    meshoptimizer + ZPAQ -m5          11,575  ratio   12.41  bpt  32.24  enc      93.9  dec      82.6  mem    109  exact
+    OpenCTM MG1                       11,940  ratio   12.03  bpt  33.26  enc      62.4  dec       0.7  mem     69  exact
+    Draco (no quantization)           17,515  ratio    8.20  bpt  48.79  enc       0.4  dec       0.1  mem      5  exact
+    raw STL + zstd -19                41,462  ratio    3.47  bpt 115.49  enc      25.0  dec       0.1  mem     10  exact
+    raw STL + xz -9e                  33,125  ratio    4.34  bpt  92.27  enc      73.1  dec       2.9  mem     63  exact
+    raw STL + ZPAQ -m5                36,755  ratio    3.91  bpt 102.38  enc     492.6  dec     487.3  mem    128  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + xz -9e): -41.2%
+  nasa_04_nozzle_ABS.stl  (243,284 bytes, 4,864 triangles, 2,434 vertices, loading alone 4 MB)
+    STL-Harrington + zstd -19         13,774  ratio   17.66  bpt  22.65  enc      18.4  dec       1.2  mem      7  exact
+    STL-Harrington + xz -9e           13,073  ratio   18.61  bpt  21.50  enc      46.6  dec       2.0  mem     40  exact
+    STL-Harrington + ZPAQ -m5         12,486  ratio   19.48  bpt  20.54  enc     161.0  dec     147.9  mem    115  exact
+    meshoptimizer + zstd -19          21,900  ratio   11.11  bpt  36.02  enc       3.4  dec       0.1  mem      6  exact
+    meshoptimizer + xz -9e            21,469  ratio   11.33  bpt  35.31  enc      39.4  dec       1.2  mem     52  exact
+    meshoptimizer + ZPAQ -m5          21,133  ratio   11.51  bpt  34.76  enc     120.9  dec     129.4  mem    109  exact
+    OpenCTM MG1                       21,214  ratio   11.47  bpt  34.89  enc      77.2  dec       1.5  mem     69  exact
+    Draco (no quantization)           29,507  ratio    8.24  bpt  48.53  enc       0.8  dec       0.3  mem      6  exact
+    raw STL + zstd -19                78,548  ratio    3.10  bpt 129.19  enc      39.4  dec       0.3  mem     10  exact
+    raw STL + xz -9e                  61,581  ratio    3.95  bpt 101.28  enc      97.8  dec       3.7  mem     69  exact
+    raw STL + ZPAQ -m5                66,722  ratio    3.65  bpt 109.74  enc     713.8  dec     823.2  mem    122  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -40.9%
+  nasa_05_cone_ABS.stl  (127,884 bytes, 2,556 triangles, 1,280 vertices, loading alone 4 MB)
+    STL-Harrington + zstd -19          6,869  ratio   18.62  bpt  21.50  enc       9.9  dec       0.5  mem      6  exact
+    STL-Harrington + xz -9e            6,553  ratio   19.52  bpt  20.51  enc      24.7  dec       0.9  mem     26  exact
+    STL-Harrington + ZPAQ -m5          6,438  ratio   19.86  bpt  20.15  enc     107.2  dec      91.5  mem    109  exact
+    meshoptimizer + zstd -19          10,767  ratio   11.88  bpt  33.70  enc       2.2  dec       0.0  mem      5  exact
+    meshoptimizer + xz -9e            10,697  ratio   11.96  bpt  33.48  enc      26.3  dec       0.7  mem     36  exact
+    meshoptimizer + ZPAQ -m5          10,865  ratio   11.77  bpt  34.01  enc      84.8  dec      85.0  mem    109  exact
+    OpenCTM MG1                       10,346  ratio   12.36  bpt  32.38  enc      67.9  dec       0.8  mem     69  exact
+    Draco (no quantization)           15,646  ratio    8.17  bpt  48.97  enc       0.5  dec       0.1  mem      5  exact
+    raw STL + zstd -19                44,327  ratio    2.89  bpt 138.74  enc      22.1  dec       0.1  mem      7  exact
+    raw STL + xz -9e                  34,665  ratio    3.69  bpt 108.50  enc      73.3  dec       2.3  mem     61  exact
+    raw STL + ZPAQ -m5                38,933  ratio    3.28  bpt 121.86  enc     442.7  dec     384.5  mem    122  exact
+    -> STL-Harrington (ZPAQ) vs best rival (OpenCTM MG1): -37.8%
+  nasa_1-body.stl  (916,984 bytes, 18,338 triangles, 9,157 vertices, loading alone 6 MB)
+    STL-Harrington + zstd -19         71,077  ratio   12.90  bpt  31.01  enc      74.8  dec       5.2  mem     14  exact
+    STL-Harrington + xz -9e           67,041  ratio   13.68  bpt  29.25  enc     149.1  dec       8.3  mem     73  exact
+    STL-Harrington + ZPAQ -m5         62,867  ratio   14.59  bpt  27.43  enc     358.7  dec     421.4  mem    111  exact
+    meshoptimizer + zstd -19          72,375  ratio   12.67  bpt  31.57  enc      11.3  dec       0.2  mem      9  exact
+    meshoptimizer + xz -9e            70,801  ratio   12.95  bpt  30.89  enc      69.8  dec       4.0  mem     70  exact
+    meshoptimizer + ZPAQ -m5          68,532  ratio   13.38  bpt  29.90  enc     321.3  dec     339.3  mem    110  exact
+    OpenCTM MG1                       90,023  ratio   10.19  bpt  39.27  enc     119.2  dec       5.8  mem     72  exact
+    Draco (no quantization)          113,056  ratio    8.11  bpt  49.32  enc       4.3  dec       1.3  mem      8  exact
+    raw STL + zstd -19               115,347  ratio    7.95  bpt  50.32  enc     222.7  dec       1.1  mem     24  exact
+    raw STL + xz -9e                  94,673  ratio    9.69  bpt  41.30  enc     262.8  dec       7.0  mem     76  exact
+    raw STL + ZPAQ -m5                82,961  ratio   11.05  bpt  36.19  enc    2167.9  dec    2239.4  mem    124  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -8.3%
+  nasa_All_pieces.stl  (429,584 bytes, 8,590 triangles, 4,287 vertices, loading alone 4 MB)
+    STL-Harrington + zstd -19         39,478  ratio   10.88  bpt  36.77  enc      28.0  dec       2.1  mem      9  exact
+    STL-Harrington + xz -9e           37,849  ratio   11.35  bpt  35.25  enc      83.9  dec       4.8  mem     61  exact
+    STL-Harrington + ZPAQ -m5         36,017  ratio   11.93  bpt  33.54  enc     239.6  dec     226.5  mem    110  exact
+    meshoptimizer + zstd -19          38,186  ratio   11.25  bpt  35.56  enc       5.2  dec       0.1  mem      7  exact
+    meshoptimizer + xz -9e            37,309  ratio   11.51  bpt  34.75  enc      57.9  dec       2.4  mem     63  exact
+    meshoptimizer + ZPAQ -m5          36,430  ratio   11.79  bpt  33.93  enc     237.5  dec     209.8  mem    109  exact
+    OpenCTM MG1                       52,910  ratio    8.12  bpt  49.28  enc     103.8  dec       2.9  mem     70  exact
+    Draco (no quantization)           53,083  ratio    8.09  bpt  49.44  enc       2.2  dec       0.5  mem      6  NOT EXACT
+    raw STL + zstd -19                87,838  ratio    4.89  bpt  81.80  enc     100.2  dec       0.4  mem     14  exact
+    raw STL + xz -9e                  76,913  ratio    5.59  bpt  71.63  enc     169.9  dec       4.5  mem     67  exact
+    raw STL + ZPAQ -m5                63,872  ratio    6.73  bpt  59.48  enc    1347.7  dec    1343.9  mem    123  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -1.1%
+  nasa_Apollo_11_-_Landing_Site.stl  (7,138,484 bytes, 142,768 triangles, 71,386 vertices, loading alone 19 MB)
+    STL-Harrington + zstd -19        126,854  ratio   56.27  bpt   7.11  enc     437.9  dec      65.6  mem     73  exact
+    STL-Harrington + xz -9e          115,637  ratio   61.73  bpt   6.48  enc     663.6  dec      69.5  mem    112  exact
+    STL-Harrington + ZPAQ -m5         96,082  ratio   74.30  bpt   5.38  enc    1936.0  dec    1700.2  mem    144  exact
+    meshoptimizer + zstd -19         150,966  ratio   47.29  bpt   8.46  enc     116.8  dec       2.0  mem     30  exact
+    meshoptimizer + xz -9e           139,365  ratio   51.22  bpt   7.81  enc     172.7  dec       8.0  mem     88  exact
+    meshoptimizer + ZPAQ -m5         127,235  ratio   56.10  bpt   7.13  enc    1194.2  dec    1254.1  mem    133  exact
+    OpenCTM MG1                      214,839  ratio   33.23  bpt  12.04  enc     533.6  dec      17.0  mem    100  exact
+    Draco (no quantization)          862,002  ratio    8.28  bpt  48.30  enc      26.7  dec       8.4  mem     33  exact
+    raw STL + zstd -19               473,598  ratio   15.07  bpt  26.54  enc    2856.2  dec       6.5  mem    107  exact
+    raw STL + xz -9e                 330,765  ratio   21.58  bpt  18.53  enc    4282.5  dec      31.0  mem    142  exact
+    raw STL + ZPAQ -m5               230,871  ratio   30.92  bpt  12.94  enc   15681.4  dec   14952.5  mem    262  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -24.5%
+  nasa_Asteroid_101955_Bennu.stl  (2,457,684 bytes, 49,152 triangles, 24,578 vertices, loading alone 8 MB)
+    STL-Harrington + zstd -19        169,403  ratio   14.51  bpt  27.57  enc     147.4  dec      11.5  mem     26  exact
+    STL-Harrington + xz -9e          169,953  ratio   14.46  bpt  27.66  enc     284.1  dec      21.0  mem     85  exact
+    STL-Harrington + ZPAQ -m5        160,590  ratio   15.30  bpt  26.14  enc     967.8  dec     961.1  mem    113  exact
+    meshoptimizer + zstd -19         231,582  ratio   10.61  bpt  37.69  enc      31.9  dec       0.5  mem     20  exact
+    meshoptimizer + xz -9e           229,509  ratio   10.71  bpt  37.35  enc     135.0  dec      14.2  mem     77  exact
+    meshoptimizer + ZPAQ -m5         221,983  ratio   11.07  bpt  36.13  enc     945.6  dec     976.5  mem    114  exact
+    OpenCTM MG1                      222,796  ratio   11.03  bpt  36.26  enc     183.9  dec      17.0  mem     79  exact
+    Draco (no quantization)          296,770  ratio    8.28  bpt  48.30  enc       9.2  dec       3.0  mem     15  exact
+    raw STL + zstd -19               996,651  ratio    2.47  bpt 162.22  enc     459.6  dec       3.3  mem     62  exact
+    raw STL + xz -9e                 832,029  ratio    2.95  bpt 135.42  enc     653.0  dec      68.1  mem     98  exact
+    raw STL + ZPAQ -m5               792,184  ratio    3.10  bpt 128.94  enc    9355.2  dec    9627.8  mem    200  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -27.7%
+  nasa_Chandra_base.stl  (466,084 bytes, 9,320 triangles, 4,662 vertices, loading alone 4 MB)
+    STL-Harrington + zstd -19         30,319  ratio   15.37  bpt  26.02  enc      32.7  dec       2.2  mem      9  exact
+    STL-Harrington + xz -9e           29,125  ratio   16.00  bpt  25.00  enc      84.4  dec       3.5  mem     55  exact
+    STL-Harrington + ZPAQ -m5         27,733  ratio   16.81  bpt  23.81  enc     218.2  dec     216.7  mem    110  exact
+    meshoptimizer + zstd -19          30,752  ratio   15.16  bpt  26.40  enc       7.1  dec       0.1  mem      7  exact
+    meshoptimizer + xz -9e            29,737  ratio   15.67  bpt  25.53  enc      46.1  dec       1.7  mem     58  exact
+    meshoptimizer + ZPAQ -m5          29,381  ratio   15.86  bpt  25.22  enc     162.8  dec     157.1  mem    109  exact
+    OpenCTM MG1                       38,244  ratio   12.19  bpt  32.83  enc      80.0  dec       2.3  mem     70  exact
+    Draco (no quantization)           57,477  ratio    8.11  bpt  49.34  enc       1.7  dec       0.5  mem      7  exact
+    raw STL + zstd -19                93,496  ratio    4.99  bpt  80.25  enc      92.8  dec       0.4  mem     14  exact
+    raw STL + xz -9e                  73,225  ratio    6.37  bpt  62.85  enc     180.3  dec       4.9  mem     69  exact
+    raw STL + ZPAQ -m5                65,657  ratio    7.10  bpt  56.36  enc    1257.2  dec    1220.7  mem    123  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -5.6%
+  nasa_CubeSat_top.stl  (234,884 bytes, 4,696 triangles, 2,350 vertices, loading alone 4 MB)
+    STL-Harrington + zstd -19         12,898  ratio   18.21  bpt  21.97  enc      14.2  dec       1.0  mem      7  exact
+    STL-Harrington + xz -9e           12,469  ratio   18.84  bpt  21.24  enc      32.2  dec       1.5  mem     33  exact
+    STL-Harrington + ZPAQ -m5         11,983  ratio   19.60  bpt  20.41  enc     126.6  dec     127.9  mem    109  exact
+    meshoptimizer + zstd -19          13,669  ratio   17.18  bpt  23.29  enc       4.2  dec       0.1  mem      6  exact
+    meshoptimizer + xz -9e            13,213  ratio   17.78  bpt  22.51  enc      32.2  dec       0.9  mem     41  exact
+    meshoptimizer + ZPAQ -m5          13,094  ratio   17.94  bpt  22.31  enc     104.1  dec     106.8  mem    114  exact
+    OpenCTM MG1                       20,293  ratio   11.57  bpt  34.57  enc      78.2  dec       1.2  mem     69  exact
+    Draco (no quantization)           29,149  ratio    8.06  bpt  49.66  enc       1.0  dec       0.4  mem      6  exact
+    raw STL + zstd -19                32,083  ratio    7.32  bpt  54.66  enc      55.7  dec       0.2  mem     10  exact
+    raw STL + xz -9e                  27,017  ratio    8.69  bpt  46.03  enc      85.7  dec       1.5  mem     42  exact
+    raw STL + ZPAQ -m5                21,266  ratio   11.05  bpt  36.23  enc     541.5  dec     592.0  mem    122  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -8.5%
+  prusa_adapter-printer-mmu2s.stl  (955,084 bytes, 19,100 triangles, 9,550 vertices, loading alone 6 MB)
+    STL-Harrington + zstd -19         57,567  ratio   16.59  bpt  24.11  enc      65.0  dec       5.6  mem     14  exact
+    STL-Harrington + xz -9e           53,557  ratio   17.83  bpt  22.43  enc     139.1  dec       9.0  mem     72  exact
+    STL-Harrington + ZPAQ -m5         49,955  ratio   19.12  bpt  20.92  enc     402.8  dec     367.6  mem    111  exact
+    meshoptimizer + zstd -19          79,592  ratio   12.00  bpt  33.34  enc      13.9  dec       0.2  mem      9  exact
+    meshoptimizer + xz -9e            78,509  ratio   12.17  bpt  32.88  enc      76.8  dec       5.4  mem     71  exact
+    meshoptimizer + ZPAQ -m5          76,039  ratio   12.56  bpt  31.85  enc     330.7  dec     351.5  mem    110  exact
+    OpenCTM MG1                       84,422  ratio   11.31  bpt  35.36  enc     129.5  dec       6.1  mem     72  exact
+    Draco (no quantization)          115,875  ratio    8.24  bpt  48.53  enc       3.8  dec       1.0  mem      8  exact
+    raw STL + zstd -19               353,477  ratio    2.70  bpt 148.05  enc     135.7  dec       1.1  mem     25  exact
+    raw STL + xz -9e                 279,269  ratio    3.42  bpt 116.97  enc     251.2  dec      18.4  mem     79  exact
+    raw STL + ZPAQ -m5               281,396  ratio    3.39  bpt 117.86  enc    3432.4  dec    3276.7  mem    125  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -34.3%
+  prusa_adapter-printer.stl  (1,214,484 bytes, 24,288 triangles, 12,142 vertices, loading alone 6 MB)
+    STL-Harrington + zstd -19         82,159  ratio   14.78  bpt  27.06  enc     100.1  dec       8.8  mem     16  exact
+    STL-Harrington + xz -9e           78,209  ratio   15.53  bpt  25.76  enc     160.5  dec      14.3  mem     76  exact
+    STL-Harrington + ZPAQ -m5         72,902  ratio   16.66  bpt  24.01  enc     518.7  dec     421.3  mem    112  exact
+    meshoptimizer + zstd -19         103,004  ratio   11.79  bpt  33.93  enc      24.7  dec       0.4  mem     10  exact
+    meshoptimizer + xz -9e           101,561  ratio   11.96  bpt  33.45  enc      79.3  dec       6.6  mem     72  exact
+    meshoptimizer + ZPAQ -m5          98,817  ratio   12.29  bpt  32.55  enc     477.0  dec     484.5  mem    111  exact
+    OpenCTM MG1                      117,610  ratio   10.33  bpt  38.74  enc     127.3  dec       7.9  mem     74  exact
+    Draco (no quantization)          147,455  ratio    8.24  bpt  48.57  enc       4.4  dec       1.4  mem      9  exact
+    raw STL + zstd -19               358,791  ratio    3.38  bpt 118.18  enc     199.8  dec       1.4  mem     41  exact
+    raw STL + xz -9e                 297,769  ratio    4.08  bpt  98.08  enc     316.6  dec      16.7  mem     82  exact
+    raw STL + ZPAQ -m5               290,752  ratio    4.18  bpt  95.77  enc    4285.8  dec    4110.5  mem    161  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -26.2%
+  prusa_extruder-body.stl  (1,073,284 bytes, 21,464 triangles, 10,702 vertices, loading alone 6 MB)
+    STL-Harrington + zstd -19         75,587  ratio   14.20  bpt  28.17  enc      86.0  dec       5.8  mem     15  exact
+    STL-Harrington + xz -9e           71,589  ratio   14.99  bpt  26.68  enc     151.3  dec      10.0  mem     75  exact
+    STL-Harrington + ZPAQ -m5         67,599  ratio   15.88  bpt  25.20  enc     503.4  dec     421.6  mem    112  exact
+    meshoptimizer + zstd -19          91,229  ratio   11.76  bpt  34.00  enc      18.2  dec       0.4  mem      9  exact
+    meshoptimizer + xz -9e            89,765  ratio   11.96  bpt  33.46  enc      76.5  dec       4.6  mem     72  exact
+    meshoptimizer + ZPAQ -m5          87,251  ratio   12.30  bpt  32.52  enc     429.1  dec     396.8  mem    111  exact
+    OpenCTM MG1                       94,182  ratio   11.40  bpt  35.10  enc     128.5  dec       5.4  mem     73  exact
+    Draco (no quantization)          131,101  ratio    8.19  bpt  48.86  enc       3.6  dec       1.2  mem      9  exact
+    raw STL + zstd -19               280,875  ratio    3.82  bpt 104.69  enc     214.6  dec       1.4  mem     41  exact
+    raw STL + xz -9e                 233,109  ratio    4.60  bpt  86.88  enc     296.8  dec      12.9  mem     81  exact
+    raw STL + ZPAQ -m5               221,321  ratio    4.85  bpt  82.49  enc    3300.2  dec    3410.4  mem    160  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -22.5%
+  prusa_extruder-motor-plate.stl  (742,184 bytes, 14,842 triangles, 7,413 vertices, loading alone 5 MB)
+    STL-Harrington + zstd -19         54,965  ratio   13.50  bpt  29.63  enc      60.4  dec       4.4  mem     13  exact
+    STL-Harrington + xz -9e           52,093  ratio   14.25  bpt  28.08  enc     111.6  dec       5.7  mem     70  exact
+    STL-Harrington + ZPAQ -m5         48,864  ratio   15.19  bpt  26.34  enc     368.9  dec     338.0  mem    111  exact
+    meshoptimizer + zstd -19          66,369  ratio   11.18  bpt  35.77  enc      12.2  dec       0.3  mem      8  exact
+    meshoptimizer + xz -9e            65,593  ratio   11.31  bpt  35.36  enc      70.6  dec       4.2  mem     69  exact
+    meshoptimizer + ZPAQ -m5          63,811  ratio   11.63  bpt  34.39  enc     308.4  dec     275.8  mem    110  exact
+    OpenCTM MG1                       68,675  ratio   10.81  bpt  37.02  enc      93.1  dec       3.8  mem     72  exact
+    Draco (no quantization)           90,819  ratio    8.17  bpt  48.95  enc       2.5  dec       0.8  mem      8  exact
+    raw STL + zstd -19               218,595  ratio    3.40  bpt 117.83  enc     107.9  dec       0.7  mem     24  exact
+    raw STL + xz -9e                 183,265  ratio    4.05  bpt  98.78  enc     223.6  dec      12.4  mem     77  exact
+    raw STL + ZPAQ -m5               178,903  ratio    4.15  bpt  96.43  enc    2338.9  dec    2472.8  mem    124  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -23.4%
+  voron_Duet2_Duet3Mini5_bracket_set.stl  (1,472,484 bytes, 29,448 triangles, 14,704 vertices, loading alone 7 MB)
+    STL-Harrington + zstd -19         65,188  ratio   22.59  bpt  17.71  enc     120.0  dec       9.8  mem     17  exact
+    STL-Harrington + xz -9e           61,637  ratio   23.89  bpt  16.74  enc     197.6  dec      12.9  mem     77  exact
+    STL-Harrington + ZPAQ -m5         59,521  ratio   24.74  bpt  16.17  enc     623.0  dec     544.8  mem    111  exact
+    meshoptimizer + zstd -19         112,462  ratio   13.09  bpt  30.55  enc      28.6  dec       0.5  mem     13  exact
+    meshoptimizer + xz -9e           110,341  ratio   13.34  bpt  29.98  enc      88.9  dec       5.9  mem     73  exact
+    meshoptimizer + ZPAQ -m5         105,671  ratio   13.93  bpt  28.71  enc     491.8  dec     530.8  mem    112  exact
+    OpenCTM MG1                      106,715  ratio   13.80  bpt  28.99  enc     141.1  dec       6.4  mem     75  exact
+    Draco (no quantization)          178,845  ratio    8.23  bpt  48.59  enc       4.7  dec       1.5  mem     11  exact
+    raw STL + zstd -19               286,300  ratio    5.14  bpt  77.78  enc     325.7  dec       1.8  mem     42  exact
+    raw STL + xz -9e                 224,013  ratio    6.57  bpt  60.86  enc     409.8  dec      11.6  mem     85  exact
+    raw STL + ZPAQ -m5               204,272  ratio    7.21  bpt  55.49  enc    4409.7  dec    4602.9  mem    161  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -43.7%
+  voron_duet_duex_bracket_frame_x2.stl  (2,236,684 bytes, 44,732 triangles, 22,350 vertices, loading alone 8 MB)
+    STL-Harrington + zstd -19        107,737  ratio   20.76  bpt  19.27  enc     123.1  dec      16.6  mem     25  exact
+    STL-Harrington + xz -9e           97,801  ratio   22.87  bpt  17.49  enc     218.3  dec      23.9  mem     84  exact
+    STL-Harrington + ZPAQ -m5         90,635  ratio   24.68  bpt  16.21  enc    1021.2  dec     948.4  mem    114  exact
+    meshoptimizer + zstd -19         134,604  ratio   16.62  bpt  24.07  enc      41.4  dec       0.5  mem     15  exact
+    meshoptimizer + xz -9e           132,685  ratio   16.86  bpt  23.73  enc     113.4  dec       8.6  mem     75  exact
+    meshoptimizer + ZPAQ -m5         133,799  ratio   16.72  bpt  23.93  enc     757.4  dec     774.6  mem    113  exact
+    OpenCTM MG1                      143,916  ratio   15.54  bpt  25.74  enc     180.8  dec      10.9  mem     78  exact
+    Draco (no quantization)          274,534  ratio    8.15  bpt  49.10  enc       8.7  dec       3.0  mem     13  exact
+    raw STL + zstd -19               681,864  ratio    3.28  bpt 121.95  enc     477.7  dec       2.9  mem     61  exact
+    raw STL + xz -9e                 497,753  ratio    4.49  bpt  89.02  enc     739.2  dec      32.4  mem     94  exact
+    raw STL + ZPAQ -m5               575,350  ratio    3.89  bpt 102.90  enc    8469.5  dec    8288.0  mem    199  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + xz -9e): -31.7%
+  voron_exhaust_filter_grill.stl  (242,084 bytes, 4,840 triangles, 2,380 vertices, loading alone 4 MB)
+    STL-Harrington + zstd -19         11,141  ratio   21.73  bpt  18.41  enc      14.7  dec       1.1  mem      7  exact
+    STL-Harrington + xz -9e           10,333  ratio   23.43  bpt  17.08  enc      41.1  dec       1.7  mem     35  exact
+    STL-Harrington + ZPAQ -m5          9,841  ratio   24.60  bpt  16.27  enc     123.5  dec     127.5  mem    109  exact
+    meshoptimizer + zstd -19          13,622  ratio   17.77  bpt  22.52  enc       4.7  dec       0.1  mem      5  exact
+    meshoptimizer + xz -9e            12,993  ratio   18.63  bpt  21.48  enc      28.2  dec       0.7  mem     40  exact
+    meshoptimizer + ZPAQ -m5          12,873  ratio   18.81  bpt  21.28  enc     100.4  dec     111.7  mem    109  exact
+    OpenCTM MG1                       16,998  ratio   14.24  bpt  28.10  enc      72.1  dec       1.1  mem     69  exact
+    Draco (no quantization)           29,427  ratio    8.23  bpt  48.64  enc       0.8  dec       0.3  mem      6  exact
+    raw STL + zstd -19                32,871  ratio    7.36  bpt  54.33  enc      70.1  dec       0.2  mem     10  exact
+    raw STL + xz -9e                  26,857  ratio    9.01  bpt  44.39  enc      91.0  dec       1.7  mem     37  exact
+    raw STL + ZPAQ -m5                18,663  ratio   12.97  bpt  30.85  enc     625.6  dec     647.0  mem    122  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -23.6%
+  voron_front_skirt_a_250.stl  (744,484 bytes, 14,888 triangles, 7,422 vertices, loading alone 5 MB)
+    STL-Harrington + zstd -19         45,866  ratio   16.23  bpt  24.65  enc      56.8  dec       4.5  mem     13  exact
+    STL-Harrington + xz -9e           43,461  ratio   17.13  bpt  23.35  enc     115.3  dec       6.7  mem     68  exact
+    STL-Harrington + ZPAQ -m5         40,766  ratio   18.26  bpt  21.91  enc     349.1  dec     266.5  mem    111  exact
+    meshoptimizer + zstd -19          62,004  ratio   12.01  bpt  33.32  enc       9.0  dec       0.2  mem      8  exact
+    meshoptimizer + xz -9e            61,169  ratio   12.17  bpt  32.87  enc      60.1  dec       3.1  mem     69  exact
+    meshoptimizer + ZPAQ -m5          59,387  ratio   12.54  bpt  31.91  enc     276.3  dec     307.7  mem    110  exact
+    OpenCTM MG1                       62,518  ratio   11.91  bpt  33.59  enc     107.1  dec       4.6  mem     71  exact
+    Draco (no quantization)           90,864  ratio    8.19  bpt  48.83  enc       3.5  dec       1.1  mem      8  exact
+    raw STL + zstd -19               219,047  ratio    3.40  bpt 117.70  enc     160.9  dec       1.0  mem     24  exact
+    raw STL + xz -9e                 177,117  ratio    4.20  bpt  95.17  enc     237.6  dec      12.2  mem     77  exact
+    raw STL + ZPAQ -m5               172,245  ratio    4.32  bpt  92.56  enc    2526.5  dec    2499.8  mem    124  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -31.4%
+  voron_z_chain_guide.stl  (878,284 bytes, 17,564 triangles, 8,782 vertices, loading alone 6 MB)
+    STL-Harrington + zstd -19         37,003  ratio   23.74  bpt  16.85  enc      53.0  dec       4.7  mem     14  exact
+    STL-Harrington + xz -9e           33,417  ratio   26.28  bpt  15.22  enc     119.3  dec       9.2  mem     67  exact
+    STL-Harrington + ZPAQ -m5         27,818  ratio   31.57  bpt  12.67  enc     360.5  dec     339.9  mem    111  exact
+    meshoptimizer + zstd -19          56,730  ratio   15.48  bpt  25.84  enc      14.6  dec       0.3  mem      8  exact
+    meshoptimizer + xz -9e            55,317  ratio   15.88  bpt  25.20  enc      63.2  dec       3.3  mem     68  exact
+    meshoptimizer + ZPAQ -m5          52,414  ratio   16.76  bpt  23.87  enc     294.3  dec     265.0  mem    110  exact
+    OpenCTM MG1                       53,898  ratio   16.30  bpt  24.55  enc      96.2  dec       4.3  mem     72  exact
+    Draco (no quantization)          106,398  ratio    8.25  bpt  48.46  enc       3.1  dec       1.1  mem      8  exact
+    raw STL + zstd -19               284,746  ratio    3.08  bpt 129.70  enc     209.5  dec       1.1  mem     24  exact
+    raw STL + xz -9e                 214,253  ratio    4.10  bpt  97.59  enc     265.3  dec      13.4  mem     78  exact
+    raw STL + ZPAQ -m5               210,437  ratio    4.17  bpt  95.85  enc    2731.8  dec    3186.7  mem    125  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -46.9%
+  voron_z_drive_main_a_x2.stl  (1,165,484 bytes, 23,308 triangles, 11,638 vertices, loading alone 6 MB)
+    STL-Harrington + zstd -19         53,188  ratio   21.91  bpt  18.26  enc      76.7  dec       6.5  mem     15  exact
+    STL-Harrington + xz -9e           50,241  ratio   23.20  bpt  17.24  enc     203.7  dec      14.5  mem     72  exact
+    STL-Harrington + ZPAQ -m5         46,591  ratio   25.02  bpt  15.99  enc     503.2  dec     368.0  mem    112  exact
+    meshoptimizer + zstd -19          87,731  ratio   13.28  bpt  30.11  enc      16.7  dec       0.3  mem     10  exact
+    meshoptimizer + xz -9e            85,925  ratio   13.56  bpt  29.49  enc      72.7  dec       4.3  mem     71  exact
+    meshoptimizer + ZPAQ -m5          82,456  ratio   14.13  bpt  28.30  enc     429.5  dec     402.9  mem    111  exact
+    OpenCTM MG1                       83,254  ratio   14.00  bpt  28.58  enc     118.5  dec       5.5  mem     73  exact
+    Draco (no quantization)          141,879  ratio    8.21  bpt  48.70  enc       4.3  dec       1.5  mem      9  exact
+    raw STL + zstd -19               291,627  ratio    4.00  bpt 100.10  enc     228.2  dec       1.6  mem     41  exact
+    raw STL + xz -9e                 232,361  ratio    5.02  bpt  79.75  enc     354.2  dec      16.2  mem     82  exact
+    raw STL + ZPAQ -m5               209,038  ratio    5.58  bpt  71.75  enc    3846.0  dec    3702.9  mem    160  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -43.5%
+  3DBenchy.stl  (11,285,384 bytes, 225,706 triangles, 112,662 vertices, loading alone 27 MB)
+    STL-Harrington + zstd -19        614,502  ratio   18.37  bpt  21.78  enc    1107.4  dec     143.2  mem     97  exact
+    STL-Harrington + xz -9e          585,573  ratio   19.27  bpt  20.76  enc    1449.1  dec     171.3  mem    146  exact
+    STL-Harrington + ZPAQ -m5        518,777  ratio   21.75  bpt  18.39  enc    4110.4  dec    3857.3  mem    140  exact
+    meshoptimizer + zstd -19         880,933  ratio   12.81  bpt  31.22  enc     232.2  dec       3.3  mem     66  exact
+    meshoptimizer + xz -9e           859,097  ratio   13.14  bpt  30.45  enc     419.7  dec      56.4  mem    106  exact
+    meshoptimizer + ZPAQ -m5         794,787  ratio   14.20  bpt  28.17  enc    3997.7  dec    3780.7  mem    159  exact
+    OpenCTM MG1                      944,915  ratio   11.94  bpt  33.49  enc     752.4  dec      59.6  mem    118  exact
+    Draco (no quantization)        1,373,410  ratio    8.22  bpt  48.68  enc      52.2  dec      21.1  mem     47  NOT EXACT
+    raw STL + zstd -19             3,731,587  ratio    3.02  bpt 132.26  enc    3201.1  dec      16.0  mem    123  exact
+    raw STL + xz -9e               2,863,473  ratio    3.94  bpt 101.49  enc    4139.2  dec     183.4  mem    202  exact
+    raw STL + ZPAQ -m5             2,398,298  ratio    4.71  bpt  85.01  enc   41826.5  dec   43302.0  mem    342  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -34.7%
+  gyroid.stl  (143,845,284 bytes, 2,876,904 triangles, 1,452,240 vertices, loading alone 302 MB)
+    STL-Harrington + zstd -19      1,908,905  ratio   75.35  bpt   5.31  enc   16472.8  dec    3460.4  mem    775  exact
+    STL-Harrington + xz -9e        1,714,185  ratio   83.91  bpt   4.77  enc   20004.1  dec    3679.0  mem    995  exact
+    STL-Harrington + ZPAQ -m5      1,571,835  ratio   91.51  bpt   4.37  enc   71571.2  dec   62143.8  mem    775  exact
+    meshoptimizer + zstd -19      10,124,605  ratio   14.21  bpt  28.15  enc    6546.2  dec      62.6  mem    566  exact
+    meshoptimizer + xz -9e         9,881,785  ratio   14.56  bpt  27.48  enc    8257.9  dec     578.1  mem    566  exact
+    meshoptimizer + ZPAQ -m5       9,519,775  ratio   15.11  bpt  26.47  enc   56074.0  dec   56383.9  mem    631  exact
+    OpenCTM MG1                    3,593,485  ratio   40.03  bpt   9.99  enc   11183.9  dec     386.3  mem    697  exact
+    Draco (no quantization)       17,861,315  ratio    8.05  bpt  49.67  enc    1233.1  dec     323.6  mem    578  exact
+    raw STL + zstd -19            22,158,699  ratio    6.49  bpt  61.62  enc   56764.5  dec     281.7  mem    522  exact
+    raw STL + xz -9e              11,257,137  ratio   12.78  bpt  31.30  enc  103938.2  dec     976.7  mem   1112  exact
+    raw STL + ZPAQ -m5            21,597,799  ratio    6.66  bpt  60.06  enc  498823.8  dec  490573.3  mem    805  exact
+    -> STL-Harrington (ZPAQ) vs best rival (OpenCTM MG1): -56.3%
+  CONVERTED SCAN MODELS
+  fandisk.stl  (647,384 bytes, 12,946 triangles, 6,475 vertices, loading alone 5 MB)
+    STL-Harrington + zstd -19         42,120  ratio   15.37  bpt  26.03  enc      46.1  dec       3.6  mem     10  exact
+    STL-Harrington + xz -9e           39,745  ratio   16.29  bpt  24.56  enc     102.8  dec       6.0  mem     66  exact
+    STL-Harrington + ZPAQ -m5         37,640  ratio   17.20  bpt  23.26  enc     343.8  dec     343.5  mem    117  exact
+    meshoptimizer + zstd -19          57,198  ratio   11.32  bpt  35.35  enc       8.1  dec       0.2  mem      7  exact
+    meshoptimizer + xz -9e            55,997  ratio   11.56  bpt  34.60  enc      61.7  dec       3.4  mem     68  exact
+    meshoptimizer + ZPAQ -m5          54,339  ratio   11.91  bpt  33.58  enc     267.9  dec     257.4  mem    110  exact
+    OpenCTM MG1                       57,871  ratio   11.19  bpt  35.76  enc      84.8  dec       3.3  mem     71  exact
+    Draco (no quantization)           78,735  ratio    8.22  bpt  48.65  enc       2.2  dec       0.6  mem      7  exact
+    raw STL + zstd -19               206,027  ratio    3.14  bpt 127.31  enc      95.2  dec       0.6  mem     23  exact
+    raw STL + xz -9e                 154,985  ratio    4.18  bpt  95.77  enc     185.8  dec      10.6  mem     76  exact
+    raw STL + ZPAQ -m5               169,862  ratio    3.81  bpt 104.97  enc    2052.2  dec    2073.0  mem    124  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -30.7%
+  rocker-arm.stl  (1,004,484 bytes, 20,088 triangles, 10,044 vertices, loading alone 6 MB)
+    STL-Harrington + zstd -19        101,216  ratio    9.92  bpt  40.31  enc      68.9  dec       5.8  mem     14  exact
+    STL-Harrington + xz -9e           96,857  ratio   10.37  bpt  38.57  enc     144.8  dec      10.7  mem     76  exact
+    STL-Harrington + ZPAQ -m5         91,550  ratio   10.97  bpt  36.46  enc     461.4  dec     467.6  mem    112  exact
+    meshoptimizer + zstd -19         105,325  ratio    9.54  bpt  41.95  enc      25.7  dec       0.4  mem      9  exact
+    meshoptimizer + xz -9e           104,689  ratio    9.59  bpt  41.69  enc      82.9  dec       5.4  mem     72  exact
+    meshoptimizer + ZPAQ -m5         101,489  ratio    9.90  bpt  40.42  enc     406.8  dec     423.7  mem    111  exact
+    OpenCTM MG1                      139,020  ratio    7.23  bpt  55.36  enc     134.4  dec       7.9  mem     73  exact
+    Draco (no quantization)          123,504  ratio    8.13  bpt  49.19  enc       5.5  dec       1.3  mem      9  exact
+    raw STL + zstd -19               429,063  ratio    2.34  bpt 170.87  enc     159.0  dec       0.9  mem     25  exact
+    raw STL + xz -9e                 407,101  ratio    2.47  bpt 162.13  enc     281.7  dec      22.2  mem     80  exact
+    raw STL + ZPAQ -m5               383,382  ratio    2.62  bpt 152.68  enc    3403.7  dec    3281.3  mem    119  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -9.8%
+  stanford-bunny.stl  (3,472,634 bytes, 69,451 triangles, 34,834 vertices, loading alone 11 MB)
+    STL-Harrington + zstd -19        281,651  ratio   12.33  bpt  32.44  enc     265.7  dec      27.8  mem     39  exact
+    STL-Harrington + xz -9e          272,041  ratio   12.77  bpt  31.34  enc     372.0  dec      44.4  mem     93  exact
+    STL-Harrington + ZPAQ -m5        256,897  ratio   13.52  bpt  29.59  enc    1307.8  dec    1379.2  mem    113  exact
+    meshoptimizer + zstd -19         330,899  ratio   10.49  bpt  38.12  enc      52.9  dec       0.8  mem     22  exact
+    meshoptimizer + xz -9e           327,773  ratio   10.59  bpt  37.76  enc     167.1  dec      21.7  mem     80  exact
+    meshoptimizer + ZPAQ -m5         315,261  ratio   11.02  bpt  36.31  enc    1223.6  dec    1272.0  mem    116  exact
+    OpenCTM MG1                      478,101  ratio    7.26  bpt  55.07  enc     284.4  dec      26.3  mem     84  exact
+    Draco (no quantization)          423,523  ratio    8.20  bpt  48.79  enc      17.0  dec       4.2  mem     18  exact
+    raw STL + zstd -19             1,596,089  ratio    2.18  bpt 183.85  enc     659.0  dec       3.5  mem     67  exact
+    raw STL + xz -9e               1,448,181  ratio    2.40  bpt 166.81  enc    1043.4  dec      70.1  mem    111  exact
+    raw STL + ZPAQ -m5             1,501,229  ratio    2.31  bpt 172.93  enc   13553.4  dec   13065.5  mem    193  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -18.5%
+  happy.stl  (4,930,134 bytes, 98,601 triangles, 49,251 vertices, loading alone 14 MB)
+    STL-Harrington + zstd -19        459,034  ratio   10.74  bpt  37.24  enc     419.7  dec      37.9  mem     45  exact
+    STL-Harrington + xz -9e          445,085  ratio   11.08  bpt  36.11  enc     525.2  dec      48.7  mem    103  exact
+    STL-Harrington + ZPAQ -m5        425,752  ratio   11.58  bpt  34.54  enc    2242.7  dec    2095.8  mem    116  exact
+    meshoptimizer + zstd -19         485,506  ratio   10.15  bpt  39.39  enc      81.8  dec       1.2  mem     34  exact
+    meshoptimizer + xz -9e           481,249  ratio   10.24  bpt  39.05  enc     218.3  dec      31.4  mem     86  exact
+    meshoptimizer + ZPAQ -m5         463,771  ratio   10.63  bpt  37.63  enc    1848.2  dec    1779.0  mem    120  exact
+    OpenCTM MG1                      685,461  ratio    7.19  bpt  55.61  enc     408.7  dec      42.2  mem     90  exact
+    Draco (no quantization)          605,302  ratio    8.14  bpt  49.11  enc      33.9  dec       8.0  mem     26  exact
+    raw STL + zstd -19             2,237,911  ratio    2.20  bpt 181.57  enc     892.9  dec       6.9  mem    104  exact
+    raw STL + xz -9e               2,021,649  ratio    2.44  bpt 164.03  enc    1431.2  dec     113.1  mem    129  exact
+    raw STL + ZPAQ -m5             2,015,188  ratio    2.45  bpt 163.50  enc   18497.8  dec   18609.6  mem    252  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -8.2%
+  armadillo.stl  (4,998,884 bytes, 99,976 triangles, 49,990 vertices, loading alone 14 MB)
+    STL-Harrington + zstd -19        474,449  ratio   10.54  bpt  37.97  enc     409.2  dec      45.1  mem     47  exact
+    STL-Harrington + xz -9e          457,213  ratio   10.93  bpt  36.59  enc     588.2  dec      58.7  mem    103  exact
+    STL-Harrington + ZPAQ -m5        438,689  ratio   11.40  bpt  35.10  enc    2423.1  dec    2240.1  mem    114  exact
+    meshoptimizer + zstd -19         497,359  ratio   10.05  bpt  39.80  enc      93.1  dec       1.2  mem     35  exact
+    meshoptimizer + xz -9e           492,961  ratio   10.14  bpt  39.45  enc     230.0  dec      32.6  mem     86  exact
+    meshoptimizer + ZPAQ -m5         475,530  ratio   10.51  bpt  38.05  enc    1871.9  dec    1862.3  mem    121  exact
+    OpenCTM MG1                      802,060  ratio    6.23  bpt  64.18  enc     391.2  dec      53.7  mem     92  exact
+    Draco (no quantization)          613,833  ratio    8.14  bpt  49.12  enc      50.7  dec       8.7  mem     25  exact
+    raw STL + zstd -19             2,443,033  ratio    2.05  bpt 195.49  enc    1228.6  dec       6.8  mem    105  exact
+    raw STL + xz -9e               2,281,961  ratio    2.19  bpt 182.60  enc    1666.5  dec     142.1  mem    130  exact
+    raw STL + ZPAQ -m5             2,386,638  ratio    2.09  bpt 190.98  enc   19774.6  dec   20250.9  mem    244  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -7.7%
+  nefertiti.stl  (4,996,984 bytes, 99,938 triangles, 49,971 vertices, loading alone 14 MB)
+    STL-Harrington + zstd -19        473,530  ratio   10.55  bpt  37.91  enc     392.8  dec      43.6  mem     45  exact
+    STL-Harrington + xz -9e          457,141  ratio   10.93  bpt  36.59  enc     599.4  dec      55.1  mem    103  exact
+    STL-Harrington + ZPAQ -m5        437,936  ratio   11.41  bpt  35.06  enc    2163.7  dec    1919.5  mem    115  exact
+    meshoptimizer + zstd -19         494,811  ratio   10.10  bpt  39.61  enc      70.3  dec       1.2  mem     35  exact
+    meshoptimizer + xz -9e           490,809  ratio   10.18  bpt  39.29  enc     212.2  dec      32.1  mem     86  exact
+    meshoptimizer + ZPAQ -m5         473,306  ratio   10.56  bpt  37.89  enc    1802.5  dec    1995.1  mem    121  exact
+    OpenCTM MG1                      664,706  ratio    7.52  bpt  53.21  enc     415.8  dec      38.2  mem     91  exact
+    Draco (no quantization)          614,851  ratio    8.13  bpt  49.22  enc      29.0  dec       7.3  mem     25  exact
+    raw STL + zstd -19             2,269,910  ratio    2.20  bpt 181.71  enc     942.7  dec       5.2  mem    104  exact
+    raw STL + xz -9e               2,008,269  ratio    2.49  bpt 160.76  enc    1411.4  dec     138.6  mem    130  exact
+    raw STL + ZPAQ -m5             2,026,993  ratio    2.47  bpt 162.26  enc   17383.7  dec   17672.2  mem    241  exact
+    -> STL-Harrington (ZPAQ) vs best rival (meshoptimizer + ZPAQ -m5): -7.5%
+
+3. WHO IS SMALLEST (exact results only), per back-end class
+  fast (zstd -19)  {'STL-Harrington + zstd -19': 26, 'meshoptimizer + zstd -19': 1}   files not won by STL-Harrington: nasa_All_pieces.stl
+  middle (xz -9e)  {'STL-Harrington + xz -9e': 26, 'meshoptimizer + xz -9e': 1}   files not won by STL-Harrington: nasa_All_pieces.stl
+  max (ZPAQ -m5)   {'STL-Harrington + ZPAQ -m5': 27}   files not won by STL-Harrington: none
+
+4. NOTES
+  - Draco was NOT exact on 2 files (Hubble all pieces, 3DBenchy): it drops zero-area triangles.
+  - STL-Harrington keeps exact geometry, not the STL file bytes (header and stored normals are not kept); so do meshoptimizer,
+    OpenCTM and Draco. An earlier Python version (stlx) kept the STL bytes exactly; it is not part of this release.
+  - meshoptimizer decodes far faster than anything else here (about 2.5 GB/s with zstd); STL-Harrington with zstd decodes at
+    about OpenCTM speed. Speed figures are from a 2-vCPU cloud VM; relative order is what matters.
+  - The neighbour pre-sort uses meshoptimizer's vertex-cache sort (MIT) - credited.

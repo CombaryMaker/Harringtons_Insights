@@ -1,0 +1,38 @@
+HARRINGTON-3MF - METHODS
+Michael Hugh Harrington, 15 November 2026. MIT License.
+Created with the assistance of Claude AI. The formal directing and structure behind this work are by Michael Hugh Harrington.
+The code for every step is in source/s3mf_core.h.
+
+1. READING
+Binary STL (recognised by its exact size, 84 + 50 bytes per triangle), ASCII STL (every "vertex x y z" line, numbers read
+with correct rounding) and OBJ ("v" and "f" lines; texture and normal indices are skipped, negative indices allowed, polygons
+split into triangle fans). Corners with exactly the same 32-bit coordinates are merged into one vertex. Triangles that use the
+same vertex twice are left out, because the 3MF core specification forbids them.
+
+2. SHORTEST EXACT NUMBER TEXT
+Each coordinate is written with C++17 std::to_chars, which gives the shortest decimal text that reads back as exactly the same
+32-bit float (negative zero is kept as -0). Normal writers print a fixed number of digits, which is either longer than needed
+or rounds the model.
+
+3. MINIMAL XML
+The model part is written with the 3MF core namespace (2015/02), unit millimetre, one object, one build item, and nothing
+else: no indentation, no line breaks between elements (one after the XML declaration), no optional attributes.
+One metadata line names the encoder.
+[Content_Types].xml and _rels/.rels are the standard short versions.
+
+4. NEIGHBOUR ORDER (tried, kept only if better)
+A second version of the model text is made with the triangles in meshoptimizer's vertex-cache order and the vertices in
+first-use order (meshopt_optimizeVertexCache, meshopt_optimizeVertexFetch). Both versions are packed with a quick deflate
+(miniz) and the smaller one is kept. Neighbour order makes triangle indices small and repetitive, which packs better.
+
+5. STRONGEST STANDARD DEFLATE
+The kept model text is packed with zopfli (raw deflate). Effort is set by size: 15 iterations below 4 MB of text, 5 below
+20 MB, 2 below 60 MB, 1 above. The output is ordinary deflate that any zip reader unpacks.
+
+6. ZIP
+A plain zip is written by hand: three entries, deflate, correct CRC-32 and sizes, no extra fields, no data descriptors.
+
+7. SELF-CHECK
+Before the file is saved, the model entry is unpacked again (miniz inflate), its CRC-32 is checked, and every vertex
+coordinate and every triangle index is read back and compared with the mesh in memory, bit for bit. If anything differs, no
+file is written.

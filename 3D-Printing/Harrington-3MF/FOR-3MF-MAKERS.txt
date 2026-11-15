@@ -1,0 +1,77 @@
+HARRINGTON-3MF - A FREE, STANDARD-COMPATIBLE WAY TO WRITE 3MF FILES ABOUT 40 TO 46 PERCENT SMALLER
+For makers of slicers, CAD and modelling software, 3D printers and printer firmware, model-sharing sites, print farms,
+cloud print services, and the 3MF Consortium and its members.
+Michael Hugh Harrington, 15 November 2026. MIT License.
+Created with the assistance of Claude AI. The formal directing and structure behind this work are by Michael Hugh Harrington.
+
+THE SHORT VERSION
+A 3MF file written the Harrington-3MF way is an ordinary 3MF file. It follows the 3MF core specification, it is a normal zip
+with normal deflate, and both 3MF readers it was checked with - lib3mf (the 3MF Consortium's reference library) and trimesh -
+read every test file back exactly. Tests inside the main slicers are under way. Nothing on the reading side has to be updated
+- not the slicer, not the printer, not the website. Only the program that writes the file changes. On 20 real printer files
+the result was 46.0 percent smaller than files written by lib3mf and 41.9 percent smaller than files written by trimesh, and
+every coordinate came back bit-for-bit exact. Files written by lib3mf in the same test were not exact: lib3mf rounds
+coordinates when it writes them. The method is free to use under the MIT license, and the source code is in this folder.
+
+WHAT CHANGES INSIDE THE FILE
+A 3MF model is mostly a long list of corner points written as text, and a list of triangles that point at them, packed in
+a zip. Harrington-3MF changes four things about how that text is written and packed, and nothing about what it means.
+First, every coordinate is written with the shortest decimal text that reads back as exactly the same 32-bit number. Most
+writers either print too many digits, which wastes space, or too few, which quietly moves the model. Shortest exact text
+does neither. Second, the XML is written without padding: no indentation, no line breaks between elements, no attributes
+the specification does not need. Third, the corner points and triangles are put into a neighbour order, so that each
+triangle mostly uses corners that were listed recently; the writer tries both the original order and the neighbour order and
+keeps whichever packs smaller. Fourth, the zip is packed with zopfli, which is the strongest packing that still produces
+standard deflate. Any zip reader unpacks it the usual way.
+
+MEASURED RESULTS (20 real files: Voron-2, Original Prusa i3, NASA 3D Resources, 3DBenchy; 34.2 MB of STL)
+  Written by                                    total bytes    compared with Harrington-3MF
+  STL file, plain                                34,168,480    Harrington-3MF is 85.0% smaller
+  STL file, zipped at maximum                    11,058,997    Harrington-3MF is 53.5% smaller
+  3MF from lib3mf 2.5.0 (reference library)       9,515,703    Harrington-3MF is 46.0% smaller
+  3MF from trimesh 5.2.1                          8,844,606    Harrington-3MF is 41.9% smaller
+  3MF from Harrington-3MF (this method)           5,137,230
+  Same Harrington-3MF text, ordinary deflate -9   6,316,916    still 33.6% smaller than lib3mf
+  Same Harrington-3MF text, ordinary deflate -6   6,578,871    still 30.9% smaller than lib3mf
+Every Harrington-3MF file was read back and checked: same triangles, every coordinate bit-exact. The per-file table is in
+RESULTS.txt in this folder.
+
+OPENING SPEED
+Opening is not slower. Reading all 20 files with lib3mf took 0.49 seconds in total for the Harrington-3MF files and 0.57
+seconds for the files lib3mf itself wrote (median of 5 reads each). Smaller files are less to unpack and less text to read.
+
+WHAT IT COSTS
+The extra work is all on the writing side. The strongest packing, zopfli, is slow: the research encoder took 204 seconds to
+write all 20 files (34 MB of STL), so it suits exporting, uploading, sharing and archiving rather than every quick save.
+For everyday saves, the first three changes alone with ordinary deflate still give files about 31 to 34 percent smaller than
+lib3mf's, at normal deflate speed (deflating all 20 files at level 9 took about 3 seconds). A program can do both: fast for
+saves, zopfli when the user exports or uploads. Two further points matter to software makers. The neighbour order changes the
+order of triangles in the file; any per-triangle data, such as colours or material assignments, has to be kept with its
+triangle, and a writer that depends on triangle order for something else can simply skip that step and keep the other three.
+And triangles that repeat a corner are left out, which the 3MF specification already requires. So far the method has been
+tested on single-mesh models from the 3MF core specification; models using the materials, production and beam-lattice
+extensions have not been tested yet, although the same four changes apply to their text.
+
+WHO GAINS AND HOW
+Slicer and CAD makers: project and export files that are close to half the size, with no compatibility risk, because the
+output is plain 3MF that their own software and everyone else's already reads. Better still, writing shortest exact text
+removes the coordinate rounding that some writers do today, so a model saved and reopened is exactly the model that was saved.
+Printer and firmware makers: smaller jobs to send over Wi-Fi, through the cloud or onto a USB stick or SD card, and more jobs
+in the printer's own storage. A printer reads these files with its existing code. Model-sharing sites and cloud print
+services: less storage and less download traffic for every 3MF they hold; a site can repack the 3MF files it already hosts
+once, on its own servers, without asking anyone to change anything. Print farms and schools: faster transfers and smaller
+archives. The 3MF Consortium: the shortest-exact-text and no-padding changes could go straight into lib3mf's writer, which
+would make every program built on the reference library write smaller and exact files at once.
+
+HOW TO ADOPT IT
+In a writer you already have, the steps are: print each coordinate with a shortest round-trip float formatter (C++17
+std::to_chars, Ryu, or the formatter your language already provides) instead of a fixed number of digits; drop indentation
+and line breaks from the model XML; optionally reorder vertices and triangles with a vertex-cache sort (for example
+meshoptimizer, MIT) and keep the order only if it packs smaller; and for exports, pack the model part with zopfli instead of
+ordinary deflate. The reference code in source/s3mf_core.h does all four in about 250 lines, and checks its own output by
+unpacking the file and reading every number back.
+
+TRY IT
+Harrington-3MF.exe in this folder is a free Windows research encoder: add STL or OBJ files, choose a folder or a USB stick
+or SD card, and it writes the 3MF files and checks each one. Feedback, questions and results from your own software and
+printers are very welcome: michaelhh@gmail.com, subject "Harrington-3MF feedback".

@@ -1,0 +1,45 @@
+STL-HARRINGTON .stlh FILE FORMAT - version 1
+Michael Hugh Harrington, 15 November 2026. MIT License.
+Created with the assistance of Claude AI. The formal directing and structure behind this work are by Michael Hugh Harrington.
+All numbers are little-endian. Reference code: source/stlh_core.h and source/stlx3.h.
+
+FILE HEADER (16 bytes)
+  offset  size  value
+  0       4     "STLH"
+  4       1     version = 1
+  5       1     packer: 1 = ZPAQ (libzpaq, method "5"), 2 = zstd (level 19 when written; any zstd frame decodes)
+  6       1     flags: bit 0 = the inner block starts with the original 80-byte binary STL header
+  7       1     reserved, 0
+  8       4     size of the inner block (unpacked)
+  12      4     CRC-32 (IEEE, as in zip) of the inner block
+  16      ...   the inner block, packed by the packer named at offset 5
+
+INNER BLOCK
+  [80 bytes original STL header, only if flag bit 0] followed by the stlx3 block.
+
+STLX3 BLOCK
+  offset  size  value
+  0       4     "SX3" followed by a zero byte
+  4       4     nv  = number of vertices
+  8       4     nt  = number of triangles
+  12      4     ns  = number of symbols
+  16      4     nfar = number of far-corner distances
+  20      4     lf  = bytes used by the far-corner distances
+  24      ns    symbols, one byte each (see below)
+  ...     lf    far-corner distances, each a varint (7 bits per byte, low bits first, top bit = more bytes follow)
+  ...     12*nv corrections in 12 byte planes: for axis x, y, z in turn, byte 3 (top) of every vertex, then byte 2, byte 1,
+                byte 0. Each correction is a 32-bit zigzag value.
+
+SYMBOLS
+  0-31   the triangle is attached to recent side number j (0 = most recent); one corner symbol follows
+  48     corner is NEW (its correction is the next one in the planes)
+  49     corner is FAR: the next far distance d gives vertex number (vertices so far - d)
+  50     RESTART: the triangle touches no recent side; three corner symbols follow
+  51-66  corner is recent corner number (symbol - 51), 0 = most recent
+
+DECODING A NEW CORNER
+  prediction p: if the triangle is attached and the side has a triangle on its other side, p = A + B - C (parallelogram,
+  float arithmetic, per axis: (A + B) - C); else the corner coded just before it in this triangle; else the last new corner;
+  else 0. Then value = fbits(ford(p) + unzigzag(correction)), with ford(b) = b >> 31 ? ~b : b | 0x80000000 and fbits its
+  inverse, all on 32-bit float bit patterns, wrapping arithmetic. After each triangle the lists of 32 recent sides and 16
+  recent corners are updated (move to front) exactly as in stlx3.h; the decoder must follow that code step for step.

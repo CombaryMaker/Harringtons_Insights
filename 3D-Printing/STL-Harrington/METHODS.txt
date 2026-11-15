@@ -1,0 +1,48 @@
+STL-HARRINGTON - METHODS
+Michael Hugh Harrington, 15 November 2026. MIT License.
+Created with the assistance of Claude AI. The formal directing and structure behind this work are by Michael Hugh Harrington.
+Code: source/stlx3.h (the mesh coder, working name stlx3) and source/stlh_core.h (reading, choosing, packing, checking).
+
+1. READING
+Binary STL, ASCII STL and OBJ are read the same way as in Harrington-3MF (see that folder's METHODS.txt), except that every
+triangle is kept, including flat ones; STL allows them. Corners with exactly the same 32-bit coordinates become one vertex.
+
+2. THE MESH CODER (stlx3) - "attached to a recent side"
+Triangles are coded one after another. The coder keeps a short list of the 32 most recently used sides (edges) and the 16
+most recently used corners. Most triangles share a side with a triangle coded just before them, so each triangle is coded as
+one small symbol: "attached to recent side number j", where j is usually 0, 1 or 2. Only its third corner is then needed,
+and that is one of three things: a corner seen recently (one of the 16), a corner seen long ago (stored as a distance back),
+or a new corner. A triangle that touches no recent side is coded as a restart with three corners. Triangles keep their
+winding: the shared side is used in the direction the triangle runs.
+
+3. PREDICTING NEW CORNERS - the parallelogram
+When a new corner belongs to a triangle attached across a shared side, the coder looks at the triangle on the other side of
+that side and predicts the new corner as the fourth point of the parallelogram: shared corner A + shared corner B - the
+opposite corner. On smooth surfaces and on the flat strips of printed parts this lands very close. A new corner with no such
+neighbour is predicted from the corner coded just before it.
+
+4. STORING THE CORRECTIONS EXACTLY
+Each coordinate is turned into an order-keeping 32-bit integer (the float's bits rearranged so that larger numbers give larger
+integers, negative numbers included). The correction is the difference between the true integer and the predicted integer,
+folded so that small negative and small positive differences both become small numbers (zigzag). Adding the correction back
+gives exactly the original bits, so the geometry is exact, not rounded. The corrections are split into byte planes: for each
+axis, all the top bytes together, then all the second bytes, and so on, so that the packer sees long runs of similar bytes.
+
+5. LIKE WITH LIKE - THREE TRIANGLE ORDERS, BEST KEPT
+The same mesh is coded in three orders: the file's own order; a neighbour pre-sort (meshoptimizer's vertex-cache order, so
+triangles that share corners sit together); and a side walk (a depth-first walk from triangle to triangle across shared
+sides). Each result is packed quickly with zstd level 3, and the order that packs smallest is kept.
+
+6. PACKING
+The kept block (with the original 80-byte STL header in front, for binary STL) is packed with ZPAQ method 5 ("Smallest") or
+zstd level 19 ("Fast"). The .stlh header stores the unpacked size and a CRC-32 (see STLH-FILE-FORMAT.txt).
+
+7. SELF-CHECK
+Before saving, the finished .stlh is unpacked, its CRC-32 checked, the mesh decoded, and the decoded triangles compared with
+the original: each triangle turned to its smallest starting corner (keeping winding), all sorted, and compared bit for bit.
+If anything differs, nothing is saved.
+
+8. RESTORING
+The .stlh is unpacked, checked against its CRC-32 and decoded, and a binary STL is written: the kept 80-byte header (or a
+short label), the triangle count, and for each triangle a normal worked out from its corners (cross product, made unit
+length), the three corners exactly, and a zero attribute.

@@ -1,0 +1,49 @@
+HARRINGTON-3MF - RESULTS, 15 November 2026. Michael Hugh Harrington, MIT License.
+Created with the assistance of Claude AI. The formal directing and structure behind this work are by Michael Hugh Harrington.
+
+Test: 20 real STL files exactly as published (Voron-2, Original Prusa i3, NASA 3D Resources, 3DBenchy).
+Each file was turned into 3MF by: lib3mf 2.5.0 (3MF Consortium reference library), trimesh 5.2.1, and Harrington-3MF
+(the research encoder in this folder, the same code as Harrington-3MF.exe, built for Linux for the test). Sizes in bytes.
+"STL zip" = the STL file in a zip at deflate level 9. "smaller" = Harrington-3MF compared with the smaller of lib3mf and trimesh.
+Exactness: every Harrington-3MF file was unpacked and every number read back: all 20 exact (same triangles, bit-exact
+float32 coordinates). They were also read with lib3mf and trimesh (earlier concept test): exact. lib3mf-written files
+were not exact on any file (lib3mf rounds coordinates when writing). trimesh-written files were exact.
+Encode time = whole program run, one thread, cloud VM (Intel Xeon 2.1 GHz). The 3MF standard forbids triangles that
+repeat a corner; all writers leave them out (3DBenchy has 550, Hubble "All pieces" 8).
+
+file                                         STL     STL zip      lib3mf     trimesh       H-3MF  smaller    enc s
+------------------------------------------------------------------------------------------------------------------
+nasa_01_side_a                           143,684      45,144      42,736      45,995      25,997   -39.2%     1.44
+nasa_04_nozzle_ABS                       243,284      87,140      72,474      79,948      44,548   -38.5%     1.75
+nasa_05_cone_ABS                         127,884      49,199      38,858      42,439      24,126   -37.9%     0.92
+nasa_1-body                              916,984     156,687     249,869     229,578     137,902   -39.9%     6.14
+nasa_All_pieces                          429,584     118,498     130,351     119,014      62,291   -47.7%     2.72
+nasa_Apollo_11_-_Landing_Site          7,138,484   1,052,940   1,753,523   1,407,041     902,382   -35.9%    38.40
+nasa_Asteroid_101955_Bennu             2,457,684   1,058,417     712,293     891,280     395,985   -44.4%    15.97
+nasa_Chandra_base                        466,084     124,496     119,471     111,422      63,415   -43.1%     3.11
+nasa_CubeSat_top                         234,884      42,250      61,183      53,386      31,550   -40.9%     2.03
+prusa_adapter-printer-mmu2s              955,084     398,706     300,687     336,262     180,355   -40.0%     6.00
+prusa_adapter-printer                  1,214,484     443,307     367,469     392,328     218,931   -40.4%     7.64
+prusa_extruder-body                    1,073,284     328,279     307,332     299,180     177,704   -40.6%     6.97
+prusa_extruder-motor-plate               742,184     254,332     217,540     223,016     130,358   -40.1%     4.90
+voron_Duet2_Duet3Mini5_bracket_set     1,472,484     395,108     410,306     378,540     228,357   -39.7%     8.84
+voron_duet_duex_bracket_frame_x2       2,236,684   1,092,773     741,322     792,837     408,963   -44.8%    15.31
+voron_exhaust_filter_grill               242,084      43,760      60,287      48,775      30,793   -36.9%     1.84
+voron_front_skirt_a_250                  744,484     257,131     217,424     199,851     124,564   -37.7%     4.70
+voron_z_chain_guide                      878,284     331,181     239,742     216,588     138,096   -36.2%     5.84
+voron_z_drive_main_a_x2                1,165,484     354,475     317,298     270,793     176,631   -34.8%     7.17
+3DBenchy                              11,285,384   4,425,174   3,155,538   2,706,333   1,634,282   -39.6%    62.03
+------------------------------------------------------------------------------------------------------------------
+TOTAL                                 34,168,480  11,058,997   9,515,703   8,844,606   5,137,230             203.7
+
+Harrington-3MF vs lib3mf -46.0%, vs trimesh -41.9%, vs STL zipped -53.5%, vs plain STL -85.0% (ratio 6.65 to 1).
+
+OPENING SPEED (lib3mf 2.5.0 reading the whole model, median of 5 reads, all 20 files added together)
+  Harrington-3MF files: 0.487 s.  Files written by lib3mf itself: 0.567 s.
+
+SAME TEXT, ORDINARY DEFLATE (how much is left without zopfli; all 20 files)
+  zopfli (as shipped)  5,137,230   ordinary deflate -9  6,316,916 (3.0 s to deflate)   ordinary deflate -6  6,578,871 (0.8 s)
+  With ordinary deflate -9 the files are still 33.6% smaller than lib3mf and 28.6% smaller than trimesh.
+
+CONCEPT TEST (earlier the same day, Python version, zopfli 15 iterations on every file): 4,983,281 bytes in total
+(-47.6% vs lib3mf, -43.7% vs trimesh). The shipped encoder lowers zopfli effort on large files to save time.

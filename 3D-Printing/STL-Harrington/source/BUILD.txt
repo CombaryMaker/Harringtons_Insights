@@ -1,0 +1,36 @@
+STL-HARRINGTON - BUILD NOTES (0.1, 15 Nov 2026). Michael Hugh Harrington, MIT License.
+Created with the assistance of Claude AI. The formal directing and structure behind this work are by Michael Hugh Harrington.
+
+FILES
+stlh_app.cpp    the Windows program (window, file list, drive detection, background worker)
+stlh_core.h     reading STL/OBJ, three triangle orders, packing, .stlh header, self-check, restoring to STL
+stlx3.h         the mesh coder (encode / decode). In this copy the names FAR and far are written SX_FAR and farv,
+                because Windows headers define FAR and far as macros. The coding is the same as the benchmarked version.
+stlh.rc, stlh.manifest   version information, DPI awareness, common controls 6, long paths
+stlh_cli.cpp    command-line tool used for testing:  stlh_cli c in.stl out.stlh   (Smallest, ZPAQ)
+                                                      stlh_cli cz in.stl out.stlh  (Fast, zstd)
+                                                      stlh_cli d in.stlh out.stl   (restore)
+
+LIBRARIES (unmodified)
+meshoptimizer  https://github.com/zeux/meshoptimizer  (MIT)            src/vcacheoptimizer.cpp
+zstd 1.5.6     https://github.com/facebook/zstd       (BSD)            lib/common, lib/compress, lib/decompress
+libzpaq 7.15   http://mattmahoney.net/dc/zpaq.html    (public domain)  libzpaq.cpp, libzpaq.h
+
+WINDOWS BUILD (llvm-mingw 20240619, clang 18, UCRT, x86_64; static, no DLLs needed)
+  x86_64-w64-mingw32-windres stlh.rc -O coff -o res.o
+  zstd .c files:   x86_64-w64-mingw32-clang -O2 -DZSTD_MULTITHREAD=0 -DZSTD_DISABLE_ASM -c ...
+  libzpaq.cpp, vcacheoptimizer.cpp:   x86_64-w64-mingw32-clang++ -O2 -std=c++17 -c ...
+  x86_64-w64-mingw32-clang++ -O2 -std=c++17 -ffp-contract=off -municode -mwindows -static -I<zstd/lib>
+      -I<meshoptimizer/src> -I<zpaq> stlh_app.cpp <objects> res.o -o STL-Harrington.exe
+      -lcomctl32 -lcomdlg32 -lshell32 -lole32 -luuid -lgdi32 -luser32 -ladvapi32
+
+LINUX TEST BUILD
+  g++ -O2 -std=c++17 -Dunix -ffp-contract=off -I<zstd/lib> -I<meshoptimizer/src> -I<zpaq> stlh_cli.cpp
+      <zpaq>/libzpaq.cpp <meshoptimizer>/src/vcacheoptimizer.cpp <zstd>/lib/libzstd.a -o stlh_cli -lpthread
+
+-ffp-contract=off keeps the parallelogram prediction ((A + B) - C in 32-bit floats) the same on every build. Checked: the
+Windows build and the Linux build write byte-identical .stlh files, and each restores the other's files exactly.
+
+TESTED
+19 real printer files (Voron-2, Original Prusa i3, NASA 3D Resources), Fast and Smallest, plus ASCII STL and OBJ: every
+restored STL had the same triangles with bit-exact corners and the original 80-byte header.

@@ -1,0 +1,24 @@
+HARRINGTON-3MF RESEARCH ENCODER - BUILD NOTES (0.1, 15 Nov 2026). Michael Hugh Harrington, MIT License.
+Created with the assistance of Claude AI. The formal directing and structure behind this work are by Michael Hugh Harrington.
+
+FILES
+s3mf_app.cpp    the Windows program (window, file list, drive detection, background worker)
+s3mf_core.h     the encoder: reading STL/OBJ, number text, XML, neighbour order, zopfli, zip, self-check
+s3mf.rc         version information and manifest link
+s3mf.manifest   DPI awareness (PerMonitorV2), common controls 6, long paths
+cli.cpp         command-line test driver (Linux) used for the measured results: cli in.stl out.3mf
+
+LIBRARIES (unmodified)
+zopfli    https://github.com/google/zopfli        (Apache 2.0)  src/zopfli/*.c
+miniz     https://github.com/richgel999/miniz     (MIT)         miniz.c, miniz_tdef.c, miniz_tinfl.c
+meshoptimizer https://github.com/zeux/meshoptimizer (MIT)       src/vcacheoptimizer.cpp, src/vfetchoptimizer.cpp
+
+WINDOWS BUILD (llvm-mingw 20240619, clang 18, UCRT, x86_64; static, no DLLs needed)
+  x86_64-w64-mingw32-windres s3mf.rc -O coff -o res.o
+  compile the library sources above to objects with x86_64-w64-mingw32-clang / clang++ -O2
+  x86_64-w64-mingw32-clang++ -O2 -std=c++17 -municode -mwindows -static -I<zopfli/src> -I<miniz> -I<meshoptimizer/src>
+      s3mf_app.cpp <library objects> res.o -o Harrington-3MF.exe -lcomctl32 -lcomdlg32 -lshell32 -lole32 -luuid
+  (miniz needs a miniz_export.h; an empty one with "#define MINIZ_EXPORT" is enough.)
+
+LINUX TEST BUILD
+  g++ -O2 -std=c++17 -I<zopfli/src> -I<miniz> -I<meshoptimizer/src> cli.cpp <library sources> -o s3mf_cli
