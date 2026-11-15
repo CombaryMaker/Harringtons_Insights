@@ -149,7 +149,7 @@ static void worker(vector<Item> items, W dest, int packer) {
     }
     W s = g_stop ? L"Stopped. " : L"Finished. ";
     int comp = done - restored; s += fmtn(comp) + L" file" + (comp == 1 ? L"" : L"s") + L" compressed";
-    if (comp && inSum) { wchar_t b[128]; swprintf(b, 128, L", %s in, %s out (%.1f%% smaller, %.1f to 1)", human(inSum).c_str(), human(outSum).c_str(), 100.0 * (1.0 - (double)outSum / inSum), (double)inSum / max(1LL, outSum)); s += b; }
+    if (comp && inSum) { wchar_t b[128]; swprintf(b, 128, L", %s in, %s out (%.0f%% smaller)", human(inSum).c_str(), human(outSum).c_str(), 100.0 * (1.0 - (double)outSum / inSum)); s += b; }
     if (restored) s += L", " + fmtn(restored) + L" restored to STL"; if (failed) s += L", " + fmtn(failed) + L" not done"; s += L".";
     PostMessageW(g_wnd, WM_JOBDONE, 0, (LPARAM) new W(s));
 }
@@ -228,10 +228,10 @@ static const wchar_t* ABOUT_TEXT =
     L"It squeezes STL and OBJ files - the shapes you send to a 3D printer - into much smaller .stlh files, and turns .stlh files "
     L"back into STL files whenever you need them. Handy for keeping a big model library, sharing files, or fitting more on a USB stick or SD card.\r\n\r\n"
     L"What we found so far\r\n"
-    L"On 26 typical files (54 MB of STL: Voron, Prusa, NASA, 3DBenchy and well-known scan models), STL-Harrington packed them about 17 to 1 on Smallest "
-    L"and about 15 to 1 on Fast. The best other exact mesh coders we tested reached about 13 to 1 (meshoptimizer), 10 to 1 (OpenCTM) "
-    L"and 8 to 1 (Google's Draco, exact setting); ordinary zip-style packing of the STL (xz) reached about 3.6 to 1. "
-    L"On one very large lattice file STL-Harrington reached about 92 to 1.\r\n\r\n"
+    L"We tried it on 26 everyday print files: Voron and Prusa printer parts, NASA models, 3DBenchy and a few well-known scanned models. "
+    L"Think of them as a 100 MB folder of STL files. On Smallest, STL-Harrington shrank that folder to about 6 MB, and on Fast to about 6.5 MB. "
+    L"The best other tools that keep the shape exact got the same folder down to about 8 MB (meshoptimizer), 10 MB (OpenCTM) and 12 MB (Google's Draco). "
+    L"Zipping the STL files the usual way only got it down to about 28 MB. One very large lattice file went from 144 MB to under 2 MB.\r\n\r\n"
     L"What comes back\r\n"
     L"Every triangle comes back, with every corner point exactly the same down to the last bit, and the same facing. "
     L"Each file is unpacked and checked before it is saved. The triangles may come back in a different order, and the surface direction "

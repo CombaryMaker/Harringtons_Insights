@@ -9,8 +9,8 @@ Harrington-3MF/   Turns STL or OBJ files into ordinary 3MF files, about 40 to 46
                   usual way. Any slicer, printer or website that reads 3MF reads them, with nothing new to install.
                   FOR-3MF-MAKERS.txt explains the method for software and printer makers who may want to write 3MF this way.
 
-STL-Harrington/   Packs STL or OBJ files into a much smaller .stlh file and unpacks them back to STL. About 15 to 17 to 1 on
-                  typical printer files, smaller than every other exact mesh coder we tested, on all 27 test files (Smallest setting). For storing,
+STL-Harrington/   Packs STL or OBJ files into a much smaller .stlh file and unpacks them back to STL. A 100 MB folder of
+                  typical printer files shrinks to about 6 MB - smaller than every other exact tool we tested, on every file. For storing,
                   sharing and archiving; a .stlh file has to be restored to STL before a slicer can open it.
 
 Each folder holds the program (.exe), a README, the methods, the results, and the full source code with build notes.

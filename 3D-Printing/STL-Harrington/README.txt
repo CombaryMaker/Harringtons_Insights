@@ -4,9 +4,11 @@ Created with the assistance of Claude AI. The formal directing and structure beh
 
 WHAT IT DOES
 Packs STL and OBJ files (the shapes sent to 3D printers) into much smaller .stlh files, and restores .stlh files back to STL.
-On 26 typical files (54 MB of STL) it packed about 17 to 1 on "Smallest" and about 15 to 1 on "Fast". The best other exact
-mesh coders we tested reached about 13 to 1 (meshoptimizer), 10 to 1 (OpenCTM) and 8 to 1 (Google Draco, exact setting);
-zipping the STL with xz reached about 3.6 to 1. It was the smallest exact coder on all 27 test files (Smallest setting).
+We tried it on 26 everyday print files: Voron and Prusa printer parts, NASA models, 3DBenchy and a few well-known scanned
+models. Think of them as a 100 MB folder of STL files. On "Smallest", STL-Harrington shrank that folder to about 6 MB, and on
+"Fast" to about 6.5 MB. The best other tools that keep the shape exact got the same folder down to about 8 MB (meshoptimizer),
+10 MB (OpenCTM) and 12 MB (Google's Draco). Zipping the STL files the usual way only got it down to about 28 MB. On every one
+of the 27 test files, STL-Harrington on Smallest made the smallest file of all the exact tools.
 
 WHAT COMES BACK
 Every triangle, with every corner point bit-for-bit the same and the same facing (winding). The triangles may come back in a
