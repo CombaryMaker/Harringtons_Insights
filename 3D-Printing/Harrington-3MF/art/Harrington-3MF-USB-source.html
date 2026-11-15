@@ -1,0 +1,42 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;padding:0;background:#fff}
+body{width:1200px;height:450px}
+</style></head><body>
+<svg width="1200" height="450" viewBox="0 0 1200 450" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3e4044"/><stop offset="1" stop-color="#b9bcc2"/>
+    </linearGradient>
+    <linearGradient id="glint" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.5" stop-color="#fff" stop-opacity="0.18"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f80ed"/><stop offset="1" stop-color="#1b5fc4"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f1f2f4"/><stop offset="0.5" stop-color="#c9ccd1"/><stop offset="1" stop-color="#a7abb2"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="450" rx="28" fill="url(#bg)"/>
+  <rect x="-200" y="0" width="420" height="450" fill="url(#glint)" transform="skewX(-30) translate(520,0)"/>
+
+  <!-- USB thumb drive, tilted slightly -->
+  <g transform="translate(50,150) rotate(-8 190 75)">
+    <rect x="12" y="14" width="300" height="140" rx="30" fill="#000" opacity="0.25"/>
+    <rect x="252" y="32" width="128" height="86" rx="6" fill="url(#metal)" stroke="#8e9299" stroke-width="2"/>
+    <rect x="300" y="52" width="22" height="16" rx="2" fill="#5d6168"/>
+    <rect x="300" y="82" width="22" height="16" rx="2" fill="#5d6168"/>
+    <rect x="0" y="0" width="290" height="150" rx="30" fill="url(#body)"/>
+    <rect x="0" y="0" width="290" height="62" rx="30" fill="#fff" opacity="0.14"/>
+    <circle cx="38" cy="75" r="14" fill="none" stroke="#bfd6fb" stroke-width="7"/>
+    <rect x="80" y="48" width="160" height="54" rx="10" fill="#fff" opacity="0.92"/>
+    <text x="160" y="84" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700" fill="#1b5fc4">3MF</text>
+    <circle cx="262" cy="30" r="6" fill="#7CFC9A"/>
+  </g>
+
+  <!-- the message -->
+  <text x="505" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="600" fill="#e8eaee" letter-spacing="1">Harrington-3MF</text>
+  <text x="500" y="262" font-family="Segoe UI, Arial, sans-serif" font-size="108" font-weight="800" fill="#ffffff">40–46%</text>
+  <text x="505" y="312" font-family="Segoe UI, Arial, sans-serif" font-size="40" font-weight="600" fill="#ffffff">smaller 3MF files</text>
+  <text x="505" y="380" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-style="italic" font-weight="600" fill="#1f2226">Same file, same speed, better packed!</text>
+</svg></body></html>
