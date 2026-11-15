@@ -1,0 +1,87 @@
+EXP-PAQ8PX - RESULTS (paq8px v217 vs the tested build "v20")
+Michael Hugh Harrington, 15 November 2026
+
+WHAT WAS TESTED
+The tested build, v20, is paq8px v217 with the open-source changes described in exp-paq8px-methods.txt PLUS some
+additional components that are protected and not published here. Settings: paq8px -8 (no LSTM). Every archive was
+decoded and compared with the original (SHA-256): all exact. Canterbury: the 11 standard files. Silesia: the 12 full
+standard files (211,938,580 bytes). Windows desktop, one file per core.
+
+IMPORTANT - OPEN SOURCE AND PROTECTED GAINS WERE NOT SEPARATED
+During testing each change was accepted one at a time on a small development set, then the finished v20 was run once
+on the full corpora as a single package. By accident, the full-corpus runs did not separate the gains of the
+open-source changes from those of the protected components. The full-corpus figures below are therefore for the
+combined build. Section 3 gives estimated shares. The published patch on its own has not been run on the full corpora.
+The Mode Context in the published patch is the always-on version (in testing it made a few files 1 to 4 bytes larger).
+
+1. MEASURED RESULTS, FULL CORPORA (bytes)
+
+Canterbury (11 files)
+file            v217      v20     change
+alice29.txt    33,037    33,010      -27
+asyoulik.txt   31,486    31,474      -12
+cp.html         5,405     5,402       -3
+fields.c        2,029     2,026       -3
+grammar.lsp       865       864       -1
+kennedy.xls     8,039     7,992      -47
+lcet10.txt     78,955    78,894      -61
+plrabn12.txt  117,355   117,289      -66
+ptt5           16,907    16,903       -4
+sum             6,642     6,625      -17
+xargs.1         1,297     1,297        0
+TOTAL         302,017   301,776     -241  (-0.080%)   No file larger.
+
+Silesia (12 full files)
+file          v217 bytes    v20 bytes    change
+dickens        1,896,704    1,893,485    -3,219
+mr             1,819,260    1,816,667    -2,593
+x-ray          3,530,564    3,528,435    -2,129
+osdb           2,007,874    2,005,807    -2,067
+mozilla        6,396,506    6,395,150    -1,356
+sao            3,727,085    3,726,200      -885
+ooffice        1,259,168    1,258,347      -821
+reymont          743,538      743,348      -190
+xml              246,460      246,406       -54
+samba          1,613,358    1,613,459      +101
+webster        4,590,983    4,592,184    +1,201
+nci              801,100      804,294    +3,194
+TOTAL         28,632,600   28,623,782    -8,818  (-0.031%)   9 files smaller, 3 larger.
+
+Both corpora: -9,059 bytes.
+Speed: v20 compresses about 8 to 10 times slower than v217 in this test; decompression time is about the same.
+
+2. PROJECTED RESULTS WITH A "NO-WORSE" TRIGGER (not built, not measured)
+A simple trigger would store a file the v217 way whenever the new build comes out larger, at a cost of about 2 bytes.
+Projected: Canterbury -241 (unchanged); Silesia -13,308 (-0.046%); both corpora -13,549.
+
+3. ESTIMATED SHARES (estimates; only the totals are measured)
+Canterbury shares are measured (each change was accepted on Canterbury). Silesia shares are estimated file by file,
+from which kinds of change produced each file's gain on the development set.
+
+                                   Canterbury    Full Silesia,          Full Silesia,
+                                   (measured)    no trigger (est.)      with trigger (est.)
+Open-source changes (items 1-9)       -159        0 to -1,000           -4,500 to -5,400
+Mode Context (item 10, CC0)            -30        -200 to -600          -200 to -600
+Protected components (undisclosed)     -52        -7,700 to -8,200      -7,700 to -8,200
+TOTAL                                 -241        -8,818 (measured)     -13,308 (projected)
+
+Why the open-source share is near zero without the trigger: the open-source changes produced the large text gains
+(for example dickens) but are also behind the three files that got larger (nci, webster, samba: +4,496 together);
+these cancel. With the trigger the losses disappear and the open-source share shows its full size.
+
+4. DEVELOPMENT-SET MEASUREMENTS OF THE PUBLISHED CHANGES (as accepted, one at a time)
+Development set: Canterbury plus 1 MB slices of the 12 Silesia files plus 5 biased random test files.
+change                                   Canterbury   Silesia slices + biased
+1  Refinement Mixer                          -31            -114
+2  Learning-rate floors (input layer)        -63            -110
+2  Learning-rate floors (middle layer)       -20             -49
+3  Line-Position Context                     -15             -29
+4  Columnar Record Context                     0             -62
+5  Character-Group Weight Sets               -11            -134
+6  16-bit operand context                      0             -52
+6  16-bit difference context                   0             -11
+7  Image mixer rescale (two steps)            -4               0
+8  Smaller text fragments                    -15               0
+9  Wider x86 filter window                     0              -8
+   Open-source total                        -159            -569
+10 Mode Context (as tested in v20)           -30             -53

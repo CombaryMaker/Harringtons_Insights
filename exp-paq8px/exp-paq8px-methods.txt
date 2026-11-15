@@ -1,0 +1,88 @@
+EXP-PAQ8PX - OPEN-SOURCE MODIFICATIONS TO PAQ8PX v217 (EXPERIMENTAL)
+Michael Hugh Harrington, 15 November 2026
+
+LICENSE
+paq8px is released under the GNU General Public License version 3 (GPL-3.0) and is the work of its authors and
+contributors (https://github.com/hxim/paq8px). These modifications follow the same license standard: they are released
+under GPL-3.0. The Mode Context part (item 10) is also dedicated to the public domain (CC0 1.0) by its author.
+All ideas below come from the author's earlier open-source (MIT) compressor work and the CC0 Mode Context.
+
+CODE
+The code for every change below is in a separate file in this folder:   exp-paq8px-open-source.patch
+It is one unified diff against the paq8px v217 src folder (apply from inside src with: patch -p1 < the file).
+It applies cleanly to tag v217, builds with the normal CMake release build, and round-trips exactly.
+Each changed line in the code is marked "Harrington mod".
+Results are in a separate file: exp-paq8px-results.txt
+
+THE CHANGES
+
+1. Refinement Mixer   (SSE.hpp, SSE.cpp)
+   What: a small secondary mixer that takes the final probability and refines it once more.
+   How: its inputs are the stretched probabilities from the model and the SSE stages, a learned table keyed by the
+   match state plus the outcome of the last two match-candidate predictions (none / hit / miss), a learned table keyed
+   by the order-2 context plus the candidate byte, and a bias. It keeps one set of weights for each cell of the first
+   table (20 x 9 x 8 sets) and learns online like the other mixers.
+   Where: at the end of the SSE stage, on every bit.
+
+2. Prose and Markup Learning-Rate Floors   (Mixer.hpp, model/ContextModelText.cpp)
+   What: lets the mixer keep learning more finely on long prose.
+   How: two running rates are kept over the recent bytes - how often bytes are markup ('<' or '>') and how often they
+   are prose (letters, space, bytes >= 128). The input-layer learning-rate floor is lowered to 4 for prose and kept at
+   5 for markup-heavy text. The middle-layer floor drops to 2 when the last ~4 KB is more than 85% prose, else 3.
+   Where: mixer learning rates, text blocks.
+
+3. Line-Position Context   (text/TextModel.hpp, text/TextModel.cpp)
+   What: a new context for text with short-line structure (code, lists, logs, verse, tables).
+   How: hash of the column in the current line, the number of letters so far in the current word, and the class of the
+   last byte (bytes >= 128 count as letters). It is skipped when the text has no short-line structure (column above
+   127 or previous line longer than 255 bytes) and in numeric regions (a digit after the last letter).
+   Where: its own context map (cmLine), mixed only in text blocks; binary blocks are unchanged.
+
+4. Columnar Record Context   (model/RecordModel.hpp, model/RecordModel.cpp)
+   What: lets text laid out as fixed-width records (tables, fixed-column data) predict from the row above.
+   How: when the block is text, the previous line is exactly one record long, and the last byte equalled the byte one
+   line above it more than 75% of the time over about the last 128 bytes, a context is formed from the last byte, the
+   byte directly above and the byte above-right. Otherwise it is skipped. One input is padded so the SIMD pairing of
+   all later mixer inputs is unchanged.
+   Where: RecordModel, one extra context map slot.
+
+5. Character-Group Weight Sets   (model/CharGroupModel.hpp, model/CharGroupModel.cpp)
+   What: chooses the mixer's weight set by what kind of characters came just before.
+   How: bytes are collapsed into groups (lowercase word, uppercase, digits, space, other ASCII, control/high). The
+   weight set is the class of the last two groups x an inside-a-word flag x the bit position, plus one shared class
+   for long lines and one for inside markup tags: (72 + 1 + 1) x 8 sets.
+   Where: text blocks only (mixText).
+
+6. 16-bit Operand Contexts for x86 Code   (model/ExeModel.hpp, model/ExeModel.cpp)
+   What: better prediction of numbers inside machine-code instructions.
+   How: inside operands of detected x86 blocks, two extra contexts: the previous little-endian 16-bit value, and its
+   difference from the 16-bit value before it.
+   Where: ExeModel.
+
+7. Image Mixer Rescale   (model/ContextModelImage1.cpp)
+   What: retunes the mixer scale for 1-bit images.
+   How: the mixer scale factors change from 800 / 360 to 760 / 320.
+   Where: 1-bit image model.
+
+8. Smaller Text Fragments   (filter/TextParserStateInfo.hpp)
+   What: lets shorter stretches of text inside binary files be treated as text.
+   How: the minimum text block size changes from 1024 to 512 bytes.
+   Where: block segmentation.
+
+9. Wider x86 Filter Window   (filter/exe.hpp)
+   What: the x86 E8/E9 call-address transform works on larger blocks.
+   How: the filter block size changes from 64 KiB to 1 MiB.
+   Where: x86 pre-transform.
+
+10. Mode Context (CC0)   (text/TextModel.hpp, text/TextModel.cpp)
+   What: a context that knows what kind of line and paragraph the coder is in.
+   How: the kind of a line is taken from its first non-blank byte (14 kinds: lowercase, uppercase, digit, quote mark,
+   '=', list marks, braces/bar, brackets, '<', parentheses, high bytes, control, punctuation, other). The context is a
+   hash of the current line's kind, the previous non-empty line's kind, the kind of the paragraph's first line, an
+   indent flag and an open-double-quote flag for the paragraph, joined to the last two bytes (order 2). It is read
+   only from bytes already decoded, so the decoder rebuilds it exactly.
+   Where: a second slot in the line context map (cmLine), text blocks only.
+   Note: this is the always-on version. In testing it made a few files 1 to 4 bytes larger.
+
+CREDITS
+paq8px: its authors and contributors (GPL-3.0). Modifications and ideas: Michael Hugh Harrington.

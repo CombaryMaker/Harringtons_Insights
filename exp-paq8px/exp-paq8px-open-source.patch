@@ -1,0 +1,635 @@
+# exp-paq8px - open-source modifications to paq8px v217 (experimental)
+# Copyright (C) 2026 Michael Hugh Harrington (modifications only).
+#
+# paq8px is free software released under the GNU General Public License version 3 (GPL-3.0);
+# copyright its authors and contributors (https://github.com/hxim/paq8px). These modifications follow
+# the same license: they are released under GPL-3.0 (https://www.gnu.org/licenses/gpl-3.0.html).
+# The Mode Context part is also dedicated to the public domain (CC0 1.0) by its author.
+#
+# Unified diff against the paq8px v217 source tree (the src folder). Apply from inside src:
+#     patch -p1 < exp-paq8px-open-source.patch
+# Checked: applies cleanly to tag v217, builds (Linux, CMake, Release) and round-trips exactly.
+# Descriptions of every change: exp-paq8px-methods.txt
+#
+diff -ruN a/Mixer.hpp b/Mixer.hpp
+--- a/Mixer.hpp	2026-11-15 01:26:14.387646287 -0600
++++ b/Mixer.hpp	2026-11-15 01:26:18.399878287 -0600
+@@ -1,4 +1,4 @@
+-﻿#pragma once
++#pragma once
+ 
+ #include "IPredictor.hpp"
+ #include "Shared.hpp"
+@@ -326,6 +326,19 @@
+   */
+   void setLowerLimitOfLearningRate(int lr0, int lr1, int lr2);
+ 
++  // Harrington mod, 2026 - Michael Hugh Harrington
++  // Changes only the input-layer floor (in units); the current rate is not raised.
++  void setInputLowerLimit(const int units) {
++    inputLayer.lowerLimitOfLearningRate = learningRate(units);
++  }
++  // Middle-layer floor (in units); the current rate is raised to the floor when below it.
++  void setMiddleLowerLimitRaise(const int units) {
++    middleLayer.lowerLimitOfLearningRate = learningRate(units);
++    if (middleLayer.rate < middleLayer.lowerLimitOfLearningRate) {
++      middleLayer.rate = middleLayer.lowerLimitOfLearningRate;
++    }
++  }
++
+   /**
+   * Adds one input to the promoted blocks of both the middle and combining
+   * layers. The value must be a stretched prediction in the range -2047..2047.
+diff -ruN a/SSE.cpp b/SSE.cpp
+--- a/SSE.cpp	2026-11-15 01:26:14.388368466 -0600
++++ b/SSE.cpp	2026-11-15 01:26:18.400966372 -0600
+@@ -1,6 +1,9 @@
+-﻿#include "SSE.hpp"
++#include "SSE.hpp"
+ #include "Hash.hpp"
+ #include "Utils.hpp"
++#include "Squash.hpp"
++#include "Stretch.hpp"
++#include "Array.hpp"
+ 
+ // ---------------------------------------------------------------------------
+ // SSE (Secondary Symbol Estimation)
+@@ -183,12 +186,76 @@
+ // statistics. Which branch is better changes over time, and the final linear
+ // average never loses more than 1 bit to whichever is currently better.
+ 
++// Harrington mod, 2026 - Michael Hugh Harrington
++RefineMixer::RefineMixer(const Shared* sh) : shared(sh), w(NSETS * NIN), t1(NSETS), t2(1 << 16) {
++  for (int i = 0; i < NSETS; i++) {
++    int32_t* wi = &w[i * NIN];
++    wi[0] = 0; wi[1] = 1 << 15; wi[2] = 1 << 15; wi[3] = 0; wi[4] = 0; wi[5] = 0;
++    t1[i] = 2048u << 20;
++  }
++  for (int i = 0; i < (1 << 16); i++)
++    t2[i] = 2048u << 20;
++}
++
++void RefineMixer::tupd(uint32_t& v, int y, int limit) {
++  int n = static_cast<int>(v & 1023);
++  int p = static_cast<int>(v >> 10); // 22 bits
++  const int target = (y << 22) - y;
++  p += static_cast<int>((static_cast<int64_t>(target - p) * 2) / (2 * n + 3));
++  if (n < limit) n++;
++  v = static_cast<uint32_t>(p) << 10 | static_cast<uint32_t>(n);
++}
++
++int RefineMixer::p(int prOrig, int prA, int prB) {
++  INJECT_SHARED_c0
++  INJECT_SHARED_bpos
++  INJECT_SHARED_c4
++  if (bpos == 0) {
++    const uint8_t o = lastExpected >= 256 ? 0 : (lastExpected == (c4 & 0xff) ? 1 : 2);
++    hist = static_cast<uint8_t>((hist % 3) * 3 + o);
++    lastExpected = shared->State.Match.expectedByte;
++  }
++  uint32_t mode5 = shared->State.Match.mode5;
++  if (mode5 > 19) mode5 = 19;
++  sel = static_cast<int>((mode5 * 9 + hist) * 8 + bpos);
++  const uint32_t eb = shared->State.Match.expectedByte;
++  idx2 = static_cast<int>(finalize64(hash(c4 & 0xffff, eb, c0), 16));
++  x[0] = stretch(prOrig);
++  x[1] = stretch(prA);
++  x[2] = stretch(prB);
++  x[3] = stretch(tp(t1[sel]));
++  x[4] = stretch(tp(t2[idx2]));
++  x[5] = 256;
++  const int32_t* wi = &w[sel * NIN];
++  int64_t dot = 0;
++  for (int i = 0; i < NIN; i++)
++    dot += static_cast<int64_t>(wi[i]) * x[i];
++  int d = static_cast<int>(dot >> 16);
++  if (d < -2047) d = -2047;
++  if (d > 2047) d = 2047;
++  pr = squash(d);
++  shared->GetUpdateBroadcaster()->subscribe(this);
++  return pr;
++}
++
++void RefineMixer::update() {
++  INJECT_SHARED_y
++  const int err = ((y << 12) - pr) * 6;
++  int32_t* wi = &w[sel * NIN];
++  for (int i = 0; i < NIN; i++)
++    wi[i] += (x[i] * err) >> 16;
++  tupd(t1[sel], y, 1023);
++  tupd(t2[idx2], y, 255);
++}
++
+ SSE::SSE(Shared* const sh) : shared(sh),
+ Text{
+     { /*APM:*/  {sh,1 << 15,20,1023}, {sh,1 << 16,24,1023}, {sh,1 << 16,24,1023}, {sh,1 << 16,24,1023}} , /* APM: contexts, steps */
+     { /*APM1:*/ {sh,256 * 257,7}, {sh,1 << 16,6}, {sh,1 << 16,6}}, /* APM1: contexts, rate */
+     { /*ApmPostA: */ sh,8},
+-    { /*ApmPostB: */ sh,8}
++    { /*ApmPostB: */ sh,8},
++    { sh }, // Harrington mod
++    { /*ApmPostC: */ sh,8}
+ },
+ Image{
+   // color:
+@@ -296,7 +363,14 @@
+ 
+     uint32_t prB = (pr0 + pr4 + pr5 + pr6 + 2) >> 2;
+ 
+-    uint32_t pr = (Text.APMPostA.p(prA, bpos) + Text.APMPostB.p(prB, bpos) + 1) >> 1;
++    // Harrington mod, 2026 - Michael Hugh Harrington
++    const uint32_t prC = Text.Refine.p(pr_orig, prA, prB);
++    const int stA = stretch(prA);
++    uint32_t pr;
++    if (stA > -1600 && stA < 1600)
++      pr = static_cast<uint32_t>((3 * static_cast<uint64_t>(Text.APMPostA.p(prA, bpos)) + 3 * static_cast<uint64_t>(Text.APMPostB.p(prB, bpos)) + 2 * static_cast<uint64_t>(Text.APMPostC.p(prC, bpos)) + 4) >> 3);
++    else
++      pr = (Text.APMPostA.p(prA, bpos) + Text.APMPostB.p(prB, bpos) + 1) >> 1;
+     return pr;
+     break;
+   }
+diff -ruN a/SSE.hpp b/SSE.hpp
+--- a/SSE.hpp	2026-11-15 01:26:14.375489370 -0600
++++ b/SSE.hpp	2026-11-15 01:26:18.377952998 -0600
+@@ -5,6 +5,29 @@
+ #include "APMPost.hpp"
+ #include "Mixer.hpp"
+ 
++// Harrington mod, 2026 - Michael Hugh Harrington
++// Refinement mixer: a small secondary mixer on the final probability.
++// Inputs: stretch of model/SSE probabilities, a table keyed by match state + last 2 candidate outcomes,
++// a table keyed by order-2 context + candidate byte, and a bias. One weight set per cell of the first table.
++class RefineMixer : IPredictor {
++private:
++  const Shared* const shared;
++  static constexpr int NIN = 6;
++  static constexpr int NSETS = 20 * 9 * 8;
++  Array<int32_t> w;
++  Array<uint32_t> t1, t2;
++  int x[NIN]{};
++  int sel = 0, idx2 = 0, pr = 2048;
++  uint16_t lastExpected = 256;
++  uint8_t hist = 0; // two trits: 0 = no candidate, 1 = hit, 2 = miss
++  static int tp(uint32_t v) { return static_cast<int>(v >> 20); }
++  static void tupd(uint32_t& v, int y, int limit);
++public:
++  RefineMixer(const Shared* sh);
++  int p(int prOrig, int prA, int prB);
++  void update() override;
++};
++
+ /**
+  * Filter the context model with APMs
+  */
+@@ -17,6 +40,8 @@
+     APM APMs[4];
+     APM1 APM1s[3];
+     APMPost APMPostA, APMPostB;
++    RefineMixer Refine; // Harrington mod, 2026 - Michael Hugh Harrington
++    APMPost APMPostC;
+   } Text;
+   struct
+   {
+diff -ruN a/filter/TextParserStateInfo.hpp b/filter/TextParserStateInfo.hpp
+--- a/filter/TextParserStateInfo.hpp	2026-11-15 01:26:14.396210827 -0600
++++ b/filter/TextParserStateInfo.hpp	2026-11-15 01:26:18.414743045 -0600
+@@ -11,7 +11,7 @@
+   uint8_t EOLType{0}; /**< 0: none or CR-only;   1: CRLF-only (applicable to EOL transform);   2: mixed or LF-only */
+   uint8_t UTF8State{0}; /**< state of utf8 parser; 0: valid;  12: invalid;  any other value: yet uncertain (more bytes must be read) */
+ 
+-  static constexpr uint32_t TEXT_FRAGMENT_MIN_SIZE = 1024;/**< size of minimum allowed text block (in bytes) */
++  static constexpr uint32_t TEXT_FRAGMENT_MIN_SIZE = 512; // Harrington mod, 2026 - Michael Hugh Harrington: 1024 -> 512/**< size of minimum allowed text block (in bytes) */
+   static constexpr uint32_t TEXT_SMALL_BLOCK_SIZE = 128; /**< size of minimum allowed error-free text block (in bytes) */
+   static constexpr uint32_t TEXT_MAX_MISSES = 8; /**< threshold: max allowed number of invalid UTF8 sequences seen recently before reporting "fail" */
+   static constexpr uint32_t TEXT_ADAPT_RATE = 256; /**< smaller (like 32) = illegal sequences are allowed to come more often, larger (like 1024) = more rigorous detection */
+diff -ruN a/filter/exe.hpp b/filter/exe.hpp
+--- a/filter/exe.hpp	2026-11-15 01:26:14.394535614 -0600
++++ b/filter/exe.hpp	2026-11-15 01:26:18.411866664 -0600
+@@ -1,4 +1,4 @@
+-﻿#pragma once
++#pragma once
+ 
+ #include "../file/File.hpp"
+ #include "../Block.hpp"
+@@ -19,7 +19,7 @@
+  */
+ class ExeFilter : public Filter {
+ private:
+-  constexpr static int block = 0x10000; /**< block size */
++  constexpr static int block = 0x100000; /**< block size */ // Harrington mod, 2026 - Michael Hugh Harrington: 64 KiB -> 1 MiB
+   int info;
+ public:
+   
+diff -ruN a/model/CharGroupModel.cpp b/model/CharGroupModel.cpp
+--- a/model/CharGroupModel.cpp	2026-11-15 01:26:14.378077998 -0600
++++ b/model/CharGroupModel.cpp	2026-11-15 01:26:18.383836769 -0600
+@@ -2,6 +2,17 @@
+ 
+ CharGroupModel::CharGroupModel(const Shared* const sh, const uint64_t size) : shared(sh), cm(sh, size, nCM, 64) {}
+ 
++// Harrington mod, 2026 - Michael Hugh Harrington
++// class of a collapsed group id: lowercase word, uppercase, digits, space, other ASCII, control/high
++static inline uint32_t groupClass6(const uint8_t g) {
++  if( g == 'a' ) return 0;
++  if( g == 'A' ) return 1;
++  if( g == '0' ) return 2;
++  if( g == ' ' ) return 3;
++  if( g > 32 && g < 128 ) return 4;
++  return 5;
++}
++
+ void CharGroupModel::mix(Mixer &m) {
+   INJECT_SHARED_bpos
+   if( bpos == 0 ) {
+@@ -27,6 +38,25 @@
+       g1 |= g;
+     }
+ 
++    // Harrington mod, 2026 - Michael Hugh Harrington
++    // weight-set class; one shared class on long lines (column > 127 or previous line > 255), one inside tags
++    INJECT_SHARED_pos
++    const uint8_t c1 = static_cast<uint8_t>(c4);
++    if( c1 == '\n' ) {
++      prevLineLen = pos - lastNewLinePos;
++      lastNewLinePos = pos;
++    }
++    if( c1 == '<' ) inTag = true;
++    else if( c1 == '>' ) inTag = false;
++    const uint32_t col = pos - lastNewLinePos;
++    if( col > 127 || prevLineLen > 255 ) {
++      mixCtx = 72;
++    } else if( inTag ) {
++      mixCtx = 73;
++    } else {
++      mixCtx = (groupClass6(g1 & 0xff) * 6 + groupClass6((g1 >> 8) & 0xff)) * 2 + static_cast<uint32_t>(toBeCollapsed);
++    }
++
+     uint64_t i = static_cast<uint64_t>(toBeCollapsed) * nCM;
+     const uint8_t RH = CM_USE_RUN_STATS | CM_USE_BYTE_HISTORY;
+     cm.set(RH, hash(++i, g3, g2,            g1)); // last 12 groups
+@@ -39,3 +69,10 @@
+   }
+   cm.mix(m);
+ }
++
++// Harrington mod, 2026 - Michael Hugh Harrington
++// Text-only mixer weight set: class of the last two collapsed groups x inside-word flag x bit position.
++void CharGroupModel::mixText(Mixer &m) {
++  INJECT_SHARED_bpos
++  m.set(mixCtx * 8 + bpos, MIXERCONTEXTS_TEXT);
++}
+diff -ruN a/model/CharGroupModel.hpp b/model/CharGroupModel.hpp
+--- a/model/CharGroupModel.hpp	2026-11-15 01:26:14.380483392 -0600
++++ b/model/CharGroupModel.hpp	2026-11-15 01:26:18.389236356 -0600
+@@ -24,7 +24,17 @@
+   uint32_t g1 = 0; /**< collapsed group identifiers of the last 12 (4+4+4) characters; the most recent is @ref gAscii1 **/
+   uint32_t g2 = 0;
+   uint32_t g3 = 0;
++  // Harrington mod, 2026 - Michael Hugh Harrington
++  uint32_t mixCtx = 0;
++  uint32_t lastNewLinePos = 0;
++  uint32_t prevLineLen = 0;
++  bool inTag = false;
+ public:
++  // Harrington mod, 2026 - Michael Hugh Harrington: text-only weight set
++  // (72 group classes + 1 long-line class + 1 in-tag class) x 8 bit positions
++  static constexpr int MIXERCONTEXTS_TEXT = 74 * 8;
++  static constexpr int MIXERCONTEXTSETS_TEXT = 1;
++  void mixText(Mixer &m);
+   static constexpr int MIXERINPUTS =
+           nCM * (ContextMap2::MIXERINPUTS + ContextMap2::MIXERINPUTS_RUN_STATS + ContextMap2::MIXERINPUTS_BYTE_HISTORY); // 49
+   static constexpr int MIXERCONTEXTS = 0;
+diff -ruN a/model/ContextModelImage1.cpp b/model/ContextModelImage1.cpp
+--- a/model/ContextModelImage1.cpp	2026-11-15 01:26:14.379928418 -0600
++++ b/model/ContextModelImage1.cpp	2026-11-15 01:26:18.388501562 -0600
+@@ -1,4 +1,4 @@
+-﻿#include "../MixerFactory.hpp"
++#include "../MixerFactory.hpp"
+ #include "../Models.hpp"
+ 
+ class ContextModelImage1 : public IContextModel {
+@@ -27,7 +27,7 @@
+       ,
+       (useLSTM ? 1 : 0)
+     );
+-    m->setScaleFactor(800, 360, 80);
++    m->setScaleFactor(760, 320, 80); // Harrington mod, 2026 - Michael Hugh Harrington: 800 -> 760
+   }
+ 
+   void setParam(int width) {
+diff -ruN a/model/ContextModelText.cpp b/model/ContextModelText.cpp
+--- a/model/ContextModelText.cpp	2026-11-15 01:26:14.379530105 -0600
++++ b/model/ContextModelText.cpp	2026-11-15 01:26:18.387450008 -0600
+@@ -1,4 +1,4 @@
+-﻿#include "../MixerFactory.hpp"
++#include "../MixerFactory.hpp"
+ #include "../Models.hpp"
+ 
+ class ContextModelText : public IContextModel {
+@@ -7,6 +7,10 @@
+   Shared* const shared;
+   Models* const models;
+   Mixer* m;
++  // Harrington mod, 2026 - Michael Hugh Harrington
++  // Running rate of markup bytes ('<' or '>'), about 65536 * frequency.
++  uint32_t markupRate = 0;
++  uint32_t proseRate = 0; // Harrington mod: running rate of prose bytes, about 65536 * frequency
+ 
+ public:
+   ContextModelText(Shared* const sh, Models* const models, const MixerFactory* const mf) : shared(sh), models(models) {
+@@ -16,20 +20,20 @@
+       MatchModel::MIXERINPUTS + NormalModel::MIXERINPUTS + SparseMatchModel::MIXERINPUTS +
+       SparseModel::MIXERINPUTS_TEXT + SparseBitModel::MIXERINPUTS_TEXT + ChartModel::MIXERINPUTS_TEXT +
+       RecordModel::MIXERINPUTS + CharGroupModel::MIXERINPUTS +
+-      TextModel::MIXERINPUTS + WordModel::MIXERINPUTS_TEXT + IndirectModel::MIXERINPUTS_TEXT +
++      TextModel::MIXERINPUTS + TextModel::MIXERINPUTS_LINE /* Harrington mod */ + WordModel::MIXERINPUTS_TEXT + IndirectModel::MIXERINPUTS_TEXT +
+       DmcForest::MIXERINPUTS + NestModel::MIXERINPUTS + XMLModel::MIXERINPUTS +
+       (useLSTM ? LstmModelContainer::MIXERINPUTS : 0)
+       ,
+       MatchModel::MIXERCONTEXTS + NormalModel::MIXERCONTEXTS_PRE + NormalModel::MIXERCONTEXTS_POST + SparseMatchModel::MIXERCONTEXTS +
+       SparseModel::MIXERCONTEXTS_TEXT + SparseBitModel::MIXERCONTEXTS + ChartModel::MIXERCONTEXTS +
+-      RecordModel::MIXERCONTEXTS + CharGroupModel::MIXERCONTEXTS +
++      RecordModel::MIXERCONTEXTS + CharGroupModel::MIXERCONTEXTS + CharGroupModel::MIXERCONTEXTS_TEXT /* Harrington mod */ +
+       TextModel::MIXERCONTEXTS + WordModel::MIXERCONTEXTS + IndirectModel::MIXERCONTEXTS +
+       DmcForest::MIXERCONTEXTS + NestModel::MIXERCONTEXTS + XMLModel::MIXERCONTEXTS +
+       (useLSTM ? LstmModelContainer::MIXERCONTEXTS : 0)
+       ,
+       MatchModel::MIXERCONTEXTSETS + NormalModel::MIXERCONTEXTSETS_PRE + NormalModel::MIXERCONTEXTSETS_POST + SparseMatchModel::MIXERCONTEXTSETS +
+       SparseModel::MIXERCONTEXTSETS_TEXT + SparseBitModel::MIXERCONTEXTSETS + ChartModel::MIXERCONTEXTSETS +
+-      RecordModel::MIXERCONTEXTSETS + CharGroupModel::MIXERCONTEXTSETS +
++      RecordModel::MIXERCONTEXTSETS + CharGroupModel::MIXERCONTEXTSETS + CharGroupModel::MIXERCONTEXTSETS_TEXT /* Harrington mod */ +
+       TextModel::MIXERCONTEXTSETS + WordModel::MIXERCONTEXTSETS + IndirectModel::MIXERCONTEXTSETS +
+       DmcForest::MIXERCONTEXTSETS + NestModel::MIXERCONTEXTSETS + XMLModel::MIXERCONTEXTSETS +
+       (useLSTM ? LstmModelContainer::MIXERCONTEXTSETS : 0)
+@@ -45,6 +49,20 @@
+ 
+     m->add(256); //network bias
+ 
++    // Harrington mod, 2026 - Michael Hugh Harrington
++    // Lower input-layer learning-rate floor (4) for prose, default (5) for markup-heavy text.
++    if (shared->State.bitPosition == 0) {
++      INJECT_SHARED_c1
++      markupRate -= markupRate >> 10;
++      if (c1 == '<' || c1 == '>') markupRate += 64;
++      m->setInputLowerLimit(markupRate > 328 ? 5 : 4);
++      // Harrington mod, 2026 - Michael Hugh Harrington
++      // Middle-layer floor 2 for long prose (letters, space, bytes >= 128 over 85%, ~4 KB window), else 3.
++      proseRate -= proseRate >> 12;
++      if ((c1 >= 'a' && c1 <= 'z') || (c1 >= 'A' && c1 <= 'Z') || c1 == ' ' || c1 >= 128) proseRate += 16;
++      m->setMiddleLowerLimitRaise(proseRate > 55705 ? 2 : 3);
++    }
++
+     NormalModel& normalModel = models->normalModel();
+     normalModel.mix(*m);
+     normalModel.mixPost(*m);
+@@ -78,8 +96,10 @@
+     recordModel.mix(*m);
+     CharGroupModel& charGroupModel = models->charGroupModel();
+     charGroupModel.mix(*m);
++    charGroupModel.mixText(*m); // Harrington mod, 2026 - Michael Hugh Harrington
+     TextModel& textModel = models->textModel();
+     textModel.mix(*m);
++    textModel.mixLine(*m); // Harrington mod, 2026 - Michael Hugh Harrington
+     WordModel& wordModel = models->wordModel();
+     wordModel.mix(*m);
+     IndirectModel& indirectModel = models->indirectModel();
+diff -ruN a/model/ExeModel.cpp b/model/ExeModel.cpp
+--- a/model/ExeModel.cpp	2026-11-15 01:26:14.381163519 -0600
++++ b/model/ExeModel.cpp	2026-11-15 01:26:18.390322549 -0600
+@@ -278,6 +278,18 @@
+          static_cast<int>((op.data & multiByteOpcode) != 0 && (op.code & 0xF0) == 0x80)
+     ));
+ 
++    // Harrington mod, 2026 - Michael Hugh Harrington
++    // numeric 16-bit context inside operands of detected x86 blocks: previous little-endian 16-bit value
++    if( forced && op.bytesRead > 0 ) {
++      cm.set(RH, hash(++i, state + 16 * op.bytesRead, buf(1) << 8 | buf(2)));
++      // Harrington mod, 2026 - Michael Hugh Harrington: and its difference from the 16-bit value before it
++      const uint16_t le0 = static_cast<uint16_t>(buf(1) << 8 | buf(2)), le1 = static_cast<uint16_t>(buf(3) << 8 | buf(4));
++      cm.set(RH, hash(++i, state + 16 * op.bytesRead, static_cast<uint16_t>(le0 - le1)));
++    } else {
++      cm.skip(RH);
++      cm.skip(RH);
++    }
++
+     shared->State.x86_64.state = 0x80 | (static_cast<uint8_t>(state) << 3) | op.bytesRead;
+   }
+   else
+diff -ruN a/model/ExeModel.hpp b/model/ExeModel.hpp
+--- a/model/ExeModel.hpp	2026-11-15 01:26:14.381766038 -0600
++++ b/model/ExeModel.hpp	2026-11-15 01:26:18.391335994 -0600
+@@ -582,7 +582,7 @@
+   static constexpr uint8_t REX_w = 0x08;
+   static constexpr uint32_t minRequired = 8; /**< minimum required consecutive valid instructions to be considered as code */
+ private:
+-  static constexpr int nCM1 = 10, nCM2 = 10, nIM = 1;
++  static constexpr int nCM1 = 10, nCM2 = 12, nIM = 1; // Harrington mod, 2026 - Michael Hugh Harrington: nCM2 10 -> 12
+   Shared * const shared;
+   ContextMap2 cm;
+   IndirectMap iMap;
+@@ -620,7 +620,7 @@
+ public:
+   static constexpr int MIXERINPUTS =
+           (nCM1 + nCM2) * (ContextMap2::MIXERINPUTS + ContextMap2::MIXERINPUTS_RUN_STATS + ContextMap2::MIXERINPUTS_BYTE_HISTORY) +
+-          nIM * IndirectMap::MIXERINPUTS; /**< 142 */
++          nIM * IndirectMap::MIXERINPUTS; /**< 148 (+2 slots = 14 inputs, even: Harrington mod) */
+   static constexpr int MIXERCONTEXTS = 1024 + 1024 + 1024 + 8192 + 8192 + 8192; /**< 27648 */
+   static constexpr int MIXERCONTEXTSETS = 6;
+ 
+diff -ruN a/model/RecordModel.cpp b/model/RecordModel.cpp
+--- a/model/RecordModel.cpp	2026-11-15 01:26:14.377464729 -0600
++++ b/model/RecordModel.cpp	2026-11-15 01:26:18.382530392 -0600
+@@ -1,9 +1,9 @@
+-﻿#include "RecordModel.hpp"
++#include "RecordModel.hpp"
+ #include "../CharacterNames.hpp"
+ 
+ RecordModel::RecordModel(Shared* const sh, const uint64_t size) : shared(sh),
+     cm(sh,32768,3), cn(sh,32768/2,3), co(sh,32768*2,3), // cm,cn,co: memory pressure is advantageous
+-    cp(sh,size,16),
++    cp(sh,size,17), // Harrington mod: +1 context
+     maps{ /* StationaryMap :  BitsOfContext, InputBits, Scale=64, Rate=16  */
+       {sh,10,8},{sh,10,8},{sh,8,8},{sh,8,8},{sh,8,8},{sh,11,1}
+     },
+@@ -185,6 +185,21 @@
+ 
+     cp.set(hash(++i, N, (WxNW = c ^ buf(rLength[0] + 1))));
+     cp.set(hash(++i, shared->State.Match.expectedByte, uint8_t(iCtx[1]()), N, WxNW));
++    // Harrington mod, 2026 - Michael Hugh Harrington
++    // Last byte + row above + above-right, in columnar text: text block, the previous line is exactly one record
++    // long, and the last byte equals the byte above it more than 75% of the time (~128-byte window). Skipped otherwise.
++    vertRate -= vertRate >> 7;
++    if( c == buf(rLength[0] + 1) ) vertRate += 512;
++    if( c == NEW_LINE ) {
++      prevLineLen = pos - lastNewLinePos;
++      lastNewLinePos = pos;
++    }
++    ++i;
++    if( isText && rLength[0] > 2 && prevLineLen == rLength[0] && vertRate > 49152 ) {
++      cp.set(hash(i, c, N, buf(rLength[0] - 1)));
++    } else {
++      cp.skip();
++    }
+ 
+     if (!isText) {
+       int k = 0x300;
+@@ -236,6 +251,9 @@
+   cn.mix(m);
+   co.mix(m);
+   cp.mix(m);
++  // Harrington mod, 2026 - Michael Hugh Harrington: pad to an even number of added inputs (the extra cp
++  // slot gives 5) so the pairing of all later inputs in the SIMD dot product is unchanged.
++  m.add(0);
+   
+   if (!isText) {
+     maps[0].mix(m);
+diff -ruN a/model/RecordModel.hpp b/model/RecordModel.hpp
+--- a/model/RecordModel.hpp	2026-11-15 01:26:14.379157112 -0600
++++ b/model/RecordModel.hpp	2026-11-15 01:26:18.386555408 -0600
+@@ -1,4 +1,4 @@
+-﻿#pragma once
++#pragma once
+ 
+ #include "../Shared.hpp"
+ #include "../ContextMap.hpp"
+@@ -14,7 +14,7 @@
+  */
+ class RecordModel {
+ private:
+-  static constexpr int nCM = 3 + 3 + 3 + 16; //cm,cn,co,cp
++  static constexpr int nCM = 3 + 3 + 3 + 17; //cm,cn,co,cp  // Harrington mod, 2026 - Michael Hugh Harrington: cp +1
+   static constexpr int nSM = 6;
+   static constexpr int nSSM = 4;
+   static constexpr int nIM = 3;
+@@ -36,13 +36,15 @@
+   uint32_t prevTransition = 0, nTransition = 0; // position of the last padding transition
+   uint32_t col = 0, mxCtx = 0, x = 0;
+   bool mayBeImg24B = false;
++  uint32_t vertRate = 0; // Harrington mod: running rate of (byte == byte above), about 65536 * frequency
++  uint32_t lastNewLinePos = 0, prevLineLen = 0; // Harrington mod: length of the previous line incl. newline
+ 
+ public:
+   static constexpr int MIXERINPUTS =
+     nCM * ContextMap::MIXERINPUTS +
+     nSM * StationaryMap::MIXERINPUTS + 
+     nSSM * SmallStationaryContextMap::MIXERINPUTS +
+-    nIM * IndirectMap::MIXERINPUTS; // 157
++    nIM * IndirectMap::MIXERINPUTS + 1; // 157 + 5 + 1 pad (Harrington mod)
+   static constexpr int MIXERCONTEXTS = 1024 + 512 + 11 * 32; //1888
+   static constexpr int MIXERCONTEXTSETS = 3;
+   RecordModel(Shared* const sh, uint64_t size);
+diff -ruN a/text/TextModel.cpp b/text/TextModel.cpp
+--- a/text/TextModel.cpp	2026-11-15 01:26:14.384031700 -0600
++++ b/text/TextModel.cpp	2026-11-15 01:26:18.394887710 -0600
+@@ -4,6 +4,7 @@
+ TextModel::TextModel(Shared* const sh, const uint64_t size) : 
+     shared(sh),
+     cm(sh, size, nCM2, 64),
++    cmLine(sh, size / 8, 2, 74), // Harrington mod, 2026 - Michael Hugh Harrington
+     stemmers(Language::Count - 1), languages(Language::Count - 1), dictionaries(Language::Count - 1), wordPos(0x10000),
+     State(Parse::Unknown), pState(State), Lang {{0}, {0}, Language::Unknown, Language::Unknown}, Info {}, parseCtx(0)
+ {
+@@ -526,6 +527,76 @@
+   assert(i - State * 64 + 1 == nCM2);
+ }
+ 
++// Harrington mod, 2026 - Michael Hugh Harrington
++// Line-position context: column in line, letters so far in the word, class of last byte
++// (bytes >= 128 count as letters). Mixed only in text blocks; skipped when the text has no
++// short-line structure (column > 127 or previous line longer than 255 bytes) and in numeric
++// regions (a digit seen after the last letter).
++void TextModel::mixLine(Mixer &m) {
++  INJECT_SHARED_bpos
++  if( bpos == 0 ) {
++    INJECT_SHARED_c1
++    uint32_t cls;
++    if( c1 == SPACE || c1 == TAB ) cls = 0;
++    else if( c1 == NEW_LINE || c1 == CARRIAGE_RETURN ) cls = 1;
++    else if( c1 >= '0' && c1 <= '9' ) cls = 2;
++    else if((c1 >= 'a' && c1 <= 'z') || (c1 >= 'A' && c1 <= 'Z') || c1 >= 128 ) cls = 3;
++    else if( c1 < 32 ) cls = 4;
++    else cls = 5;
++    const uint32_t lineLen = Info.prevNewLine - Info.lastNewLine;
++    if( Info.lastNewLine > 127 || lineLen > 255 || Info.lastDigit < Info.lastLetter ) {
++      cmLine.skip(CM_USE_RUN_STATS | CM_USE_BYTE_HISTORY);
++    } else {
++      cmLine.set(CM_USE_RUN_STATS | CM_USE_BYTE_HISTORY, hash(0x4C494E45, Info.lastNewLine, min(15, Info.wordLength[0]), cls));
++    }
++    // Harrington mod, 2026 - Michael Hugh Harrington. Mode Context (CC0 1.0).
++    // Kind of current line (first non-blank byte), previous non-empty line, first line of the paragraph,
++    // indentation and open double quote in the paragraph, joined to order 2. Read from decoded bytes only.
++    if( c1 == NEW_LINE ) {
++      if( modeCur != 0 ) {
++        modePrev = modeCur;
++      } else {
++        modePara = 0, modeQuote = 0; // empty line: new paragraph
++      }
++      modeCur = 0, modeIndent = 0;
++    } else if( modeCur == 0 ) {
++      if( c1 == SPACE || c1 == TAB ) {
++        modeIndent = 1;
++      } else if( c1 != CARRIAGE_RETURN ) {
++        modeCur = modeKind(c1);
++        if( modePara == 0 ) {
++          modePara = modeCur;
++        }
++      }
++    }
++    if( c1 == QUOTE ) {
++      modeQuote ^= 1;
++    }
++    INJECT_SHARED_c4
++    cmLine.set(CM_USE_RUN_STATS | CM_USE_BYTE_HISTORY,
++      hash(0x4D4F4445, modeCur | modePrev << 4, modePara | modeIndent << 4 | modeQuote << 5, c4 & 0xFFFF));
++  }
++  cmLine.mix(m);
++}
++
++// Harrington mod, 2026 - Michael Hugh Harrington. Mode Context (CC0 1.0): line kind from its first byte.
++uint8_t TextModel::modeKind(const uint8_t c) {
++  if( c >= 'a' && c <= 'z' ) return 1;
++  if( c >= 'A' && c <= 'Z' ) return 2;
++  if( c >= '0' && c <= '9' ) return 3;
++  if( c == QUOTE || c == APOSTROPHE || c == '`' ) return 4;
++  if( c == '=' ) return 5;
++  if( c == '*' || c == '-' || c == '#' || c == '+' ) return 6;
++  if( c == '{' || c == '|' || c == '}' ) return 7;
++  if( c == '[' || c == ']' ) return 8;
++  if( c == '<' ) return 9;
++  if( c == '(' || c == ')' ) return 10;
++  if( c >= 128 ) return 11;
++  if( c < 32 ) return 12;
++  if( c == '.' || c == ',' || c == ';' || c == ':' || c == '!' || c == '?' ) return 13;
++  return 14;
++}
++
+ void TextModel::setCmScale(int cmScale) {
+   cm.setScale(cmScale);
+ }
+diff -ruN a/text/TextModel.hpp b/text/TextModel.hpp
+--- a/text/TextModel.hpp	2026-11-15 01:26:14.383604706 -0600
++++ b/text/TextModel.hpp	2026-11-15 01:26:18.394223406 -0600
+@@ -32,6 +32,12 @@
+   Shared * const shared;
+   static constexpr uint32_t MIN_RECOGNIZED_WORDS = 4;
+   ContextMap2 cm;
++  // Harrington mod, 2026 - Michael Hugh Harrington
++  // Line-position context map, used only in text blocks (binary blocks unchanged).
++  ContextMap2 cmLine;
++  // Harrington mod, 2026 - Michael Hugh Harrington. Mode Context (CC0): line/paragraph mode state.
++  uint8_t modeCur = 0, modePrev = 0, modePara = 0, modeIndent = 0, modeQuote = 0;
++  static uint8_t modeKind(uint8_t c);
+   Array<Stemmer *> stemmers;
+   Array<Language *> languages;
+   Array<WordEmbeddingDictionary *> dictionaries;
+@@ -96,6 +102,10 @@
+           nCM2 * (ContextMap2::MIXERINPUTS + ContextMap2::MIXERINPUTS_RUN_STATS + ContextMap2::MIXERINPUTS_BYTE_HISTORY); // 196
+   static constexpr int MIXERCONTEXTS = 2048 + 2048 + 4096 + 4096 + 2048 + 2048 + 4096 + 8192 + 2048 + (16 * 8); //30848
+   static constexpr int MIXERCONTEXTSETS = 10;
++  // Harrington mod, 2026 - Michael Hugh Harrington
++  static constexpr int MIXERINPUTS_LINE =
++          2 * (ContextMap2::MIXERINPUTS + ContextMap2::MIXERINPUTS_RUN_STATS + ContextMap2::MIXERINPUTS_BYTE_HISTORY); // 14 (line + mode)
++  void mixLine(Mixer &m); // text blocks only, call after mix()
+ 
+   TextModel(Shared* const sh, uint64_t size);
+   ~TextModel();
